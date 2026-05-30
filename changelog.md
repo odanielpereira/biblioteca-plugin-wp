@@ -101,3 +101,57 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Criada a tag `v0.1-planning-complete` para marcar o commit que finaliza a fase de planejamento e documentação. A tag foi enviada ao repositório remoto.
 - **Ferramenta:** `run_terminal_command` (git tag, git push)
 - **Decisão:** Estabelece um ponto de restauração seguro antes do início da codificação (Fase 1).
+
+**16 - Data:** 2026-05-30
+- **Ação:** Início da Fase 1, Tarefa 1.
+- **Detalhes:** Criação do diretório `book-manager` e do arquivo principal do plugin `book-manager.php` com o cabeçalho padrão do WordPress, conforme especificado no `roadmap.md`.
+- **Ferramenta:** `write_file`
+- **Decisão:** A estrutura inicial do plugin está criada, permitindo a verificação do plugin na tela de administração do WordPress.
+
+**17 - Data:** 2026-05-30
+- **Ação:** Fase 1, Tarefa 2.
+- **Detalhes:** Adicionada a verificação de segurança `defined('ABSPATH') || exit;` ao arquivo `book-manager/book-manager.php` para impedir o acesso direto.
+- **Ferramenta:** `write_file`
+- **Decisão:** Medida de segurança padrão do WordPress implementada.
+
+**18 - Data:** 2026-05-30
+- **Ação:** Correção do nome do plugin.
+- **Detalhes:** O nome do plugin no cabeçalho do `book-manager.php` foi alterado de "Book Manager" para "Gestão de Livros" para alinhar com a especificação do `escopo.md`.
+- **Ferramenta:** `write_file`
+- **Decisão:** Aderir estritamente às definições do `escopo.md`.
+
+**19 - Data:** 2026-05-30
+- **Ação:** Fase 1, Tarefa 3.
+- **Detalhes:** Registro do Custom Post Type `bm_book` no `book-manager.php` usando `register_post_type` no hook `init`.
+- **Ferramenta:** `write_file`
+- **Decisão:** Implementação inicial do CPT. O `capability_type` está definido como `post` e será refinado na próxima tarefa.
+
+**20 - Data:** 2026-05-30
+- **Ação:** Reversão e atualização manual do `book-manager.php`.
+- **Detalhes:** O conteúdo de `book-manager/book-manager.php` foi substituído por uma versão específica fornecida pelo usuário. Esta versão reverte as `capabilities` para `'post'` e remove o `register_deactivation_hook`.
+- **Ferramenta:** `write_file`
+- **Decisão:** Ação executada por instrução direta do usuário, resultando em uma regressão deliberada das tarefas 4 e 6 da Fase 1.
+
+**21 - Data:** 2026-05-30
+- **Ação:** Correção definitiva da lógica de `capability`.
+- **Detalhes:** Implementada a solução robusta para o `capability_type` personalizado `bm_book`. Adicionadas as funções `bm_add_admin_caps` e `bm_remove_admin_caps` para adicionar/remover as permissões do perfil de 'administrator' nos hooks de ativação e desativação, respectivamente. Isso resolve o problema do menu não aparecer para o administrador.
+- **Ferramenta:** `write_file`
+- **Decisão:** Adotar a prática recomendada do WordPress para gerenciamento de permissões personalizadas, garantindo segurança e escalabilidade, em vez do atalho de usar `capability_type => 'post'`. A Fase 1 está agora corretamente concluída.
+
+**22 - Data:** 2026-05-30
+- **Ação:** Alinhamento com `escopo.md` sobre `deactivation hook`.
+- **Detalhes:** A função `bm_plugin_deactivation` foi corrigida para remover a chamada a `bm_remove_admin_caps`. Conforme a Linha 53 do `escopo.md`, apenas `flush_rewrite_rules()` deve ser executado na desativação. A remoção das capabilities fica reservada para o `uninstall.php` (Fase 5).
+- **Ferramenta:** `write_file`
+- **Decisão:** Aderência estrita à hierarquia dos documentos (`escopo.md` sobrepõe a implementação genérica), garantindo que as permissões não sejam removidas em uma simples desativação/reativação.
+
+**23 - Data:** 2026-05-30
+- **Ação:** Finalização da Fase 1 e atualização do `roadmap.md`.
+- **Detalhes:** Marcou a Fase 1 como concluída no `roadmap.md`. Atualizou o status para "FASE CONCLUÍDA". Definou a Fase 2 como "FASE ATIVA" com suas respectivas tarefas e critérios de saída.
+- **Ferramenta:** `write_file`
+- **Decisão:** O planejamento do projeto está atualizado refletindo a conclusão da Fase 1.
+
+**24 - Data:** 2026-05-30
+- **Ação:** Commit e Tag no Git.
+- **Detalhes:** Realizado commit de todas as alterações concluídas até o momento, incluindo a finalização da Fase 1 e correções de alinhamento com o `escopo.md`. Criada a tag `v0.1-book-title-added` para marcar este ponto de versão.
+- **Ferramenta:** `run_terminal_command` (git add, git commit, git tag, git push)
+- **Decisão:** O estado atual do projeto está versionado e marcado com uma nova tag, indicando a conclusão da Fase 1 e a adição do título do livro como funcionalidade pronta.
