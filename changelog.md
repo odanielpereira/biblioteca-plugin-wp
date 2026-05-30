@@ -77,3 +77,15 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Inserida a Cláusula de Fallback no Princípio 5 com 3 sub-regras: declarar documento ausente, prosseguir com disponíveis, proibição de alucinar conteúdo faltante. As outras duas melhorias previamente planejadas (protocolo de conflito changelog vs roadmap e exemplos de prolixidade) não foram implementadas por decisão do usuário.
 - **Ferramenta:** `write_file`
 - **Decisão:** A entrada 9 deste changelog fica parcialmente retificada. Apenas a cláusula de fallback foi adicionada. As demais melhorias mencionadas na entrada 9 não ocorreram e não são mais requeridas.
+
+**12 - Data:** 2026-05-30
+- **Ação:** Envio dos arquivos de planejamento para o repositório remoto.
+- **Detalhes:** Realizado o commit inicial e `push` para `https://github.com/odanielpereira/biblioteca-plugin-wp.git`, enviando os arquivos `claude.md`, `escopo.md`, `roadmap.md` e `changelog.md`.
+- **Ferramenta:** `run_terminal_command` (git init, add, commit, remote, push)
+- **Decisão:** O planejamento do projeto agora está versionado e seguro no GitHub.
+
+**13 - Data:** 2026-05-30
+- **Ação:** Remoção de arquivos desnecessários do projeto.
+- **Detalhes:** Exclusão dos arquivos `README.md`, `index.php`, `.dockerignore` e `Dockerfile` por não fazerem parte do escopo funcional definido no `escopo.md`.
+- **Ferramenta:** `delete_file`
+- **Decisão:** O diretório do projeto foi limpo para refletir estritamente a arquitetura definida, alinhando-se ao princípio da simplicidade.
