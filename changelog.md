@@ -89,3 +89,9 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Exclusão dos arquivos `README.md`, `index.php`, `.dockerignore` e `Dockerfile` por não fazerem parte do escopo funcional definido no `escopo.md`.
 - **Ferramenta:** `delete_file`
 - **Decisão:** O diretório do projeto foi limpo para refletir estritamente a arquitetura definida, alinhando-se ao princípio da simplicidade.
+
+**14 - Data:** 2026-05-30
+- **Ação:** Remoção de arquivo de metadados.
+- **Detalhes:** Exclusão do arquivo `anotações.md`, que continha notas sobre a interação e não era parte do projeto.
+- **Ferramenta:** `delete_file`
+- **Decisão:** Manter o projeto estritamente focado nos artefatos de planejamento e, futuramente, no código-fonte.
