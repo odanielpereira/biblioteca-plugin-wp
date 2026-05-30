@@ -95,3 +95,9 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Exclusão do arquivo `anotações.md`, que continha notas sobre a interação e não era parte do projeto.
 - **Ferramenta:** `delete_file`
 - **Decisão:** Manter o projeto estritamente focado nos artefatos de planejamento e, futuramente, no código-fonte.
+
+**15 - Data:** 2026-05-30
+- **Ação:** Criação de `tag` de versão para o estado de planejamento.
+- **Detalhes:** Criada a tag `v0.1-planning-complete` para marcar o commit que finaliza a fase de planejamento e documentação. A tag foi enviada ao repositório remoto.
+- **Ferramenta:** `run_terminal_command` (git tag, git push)
+- **Decisão:** Estabelece um ponto de restauração seguro antes do início da codificação (Fase 1).
