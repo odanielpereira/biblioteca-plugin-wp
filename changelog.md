@@ -287,3 +287,21 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Implementada a exportação CSV. Criada subpágina "Exportar CSV" no menu Livros. Processamento via `admin_init` com `get_posts()`, saída em CSV com delimitador `;`, UTF-8 com BOM, colunas Título, Autor, Editora. Download forçado via headers. Corrigido warning de headers com hook `admin_init`.
 - **Ferramenta:** `write_file`
 - **Decisão:** Fase 6B concluída. Pendências de usabilidade (aviso de sucesso, contagem) movidas para Fase 6C.
+
+**47 - Data:** 2026-05-31
+- **Ação:** Commit e tag da versão 1.2.
+- **Detalhes:** Realizado commit com as Fases 6A (Importação CSV) e 6B (Exportação CSV) concluídas e funcionais. Criada a tag `v1.2-csv-funcional`. A Fase 6C (ajustes de usabilidade) foi planejada para o próximo ciclo de desenvolvimento. A tag `v1.1-csv-funcional` foi removida por erro de versionamento.
+- **Ferramenta:** `run_terminal_command` (git add, commit, tag, push, delete)
+- **Decisão:** O Ciclo 2 permanece em andamento. A versão 1.2 reflete o estado funcional da importação e exportação CSV.
+
+**48 - Data:** 2026-05-31
+- **Ação:** Planejamento da Fase 6C.
+- **Detalhes:** Definidas 4 tarefas de usabilidade: aviso na exportação, detecção de duplicados por Título + Autor + Editora com opção de pular ou forçar, confirmação pré-importação e relatório detalhado.
+- **Ferramenta:** `write_file`
+- **Decisão:** O critério de duplicata considera os três campos juntos, permitindo que livros populares com editoras diferentes sejam importados.
+
+**49 - Data:** 2026-05-31
+- **Ação:** Fase 6C concluída.
+- **Detalhes:** Implementado aviso de contagem na exportação ("X livros disponíveis"). Implementada detecção de duplicados na importação por Título + Autor + Editora, com prévia, lista de duplicados, opção de pular ou importar todos, e relatório detalhado (importados, ignorados, duplicados pulados). Adicionada função auxiliar `bm_find_duplicate_book()`.
+- **Ferramenta:** `write_file`
+- **Decisão:** Fase 6C concluída. Pendências (seleção individual de duplicados, filtros na exportação) movidas para Fase 6D.

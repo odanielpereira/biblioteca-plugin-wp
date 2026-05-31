@@ -329,59 +329,82 @@ function bm_render_csv_import_page() {
         return;
     }
 
-    $imported = 0;
-    $skipped  = 0;
-    $message  = '';
+    $message     = '';
+    $preview     = array();
+    $duplicates  = array();
+    $stage       = isset($_POST['import_stage']) ? $_POST['import_stage'] : '';
 
-    if (isset($_FILES['csv_file']) && isset($_POST['bm_csv_import_nonce'])) {
+    // Estágio 2: Processar a importação após decisão do usuário
+    if ('process' === $stage && isset($_POST['bm_csv_import_nonce']) && wp_verify_nonce($_POST['bm_csv_import_nonce'], 'bm_csv_import_action')) {
+        $skip_duplicates = isset($_POST['skip_duplicates']) && '1' === $_POST['skip_duplicates'];
+        $imported = 0;
+        $skipped  = 0;
+        $dup_skipped = 0;
+
+        if (!empty($_POST['csv_data'])) {
+            $rows = json_decode(stripslashes($_POST['csv_data']), true);
+            foreach ($rows as $row) {
+                $title     = sanitize_text_field($row[0]);
+                $author    = sanitize_text_field($row[1]);
+                $publisher = sanitize_text_field($row[2]);
+
+                if (empty($title)) {
+                    $skipped++;
+                    continue;
+                }
+
+                $exists = bm_find_duplicate_book($title, $author, $publisher);
+                if ($exists && $skip_duplicates) {
+                    $dup_skipped++;
+                    continue;
+                }
+
+                $post_id = wp_insert_post(array(
+                    'post_type'   => 'bm_book',
+                    'post_title'  => $title,
+                    'post_status' => 'publish',
+                ));
+
+                if ($post_id && !is_wp_error($post_id)) {
+                    update_post_meta($post_id, '_bm_author', $author);
+                    update_post_meta($post_id, '_bm_publisher', $publisher);
+                    $imported++;
+                } else {
+                    $skipped++;
+                }
+            }
+        }
+        $message = sprintf(__('%d importados, %d ignorados (sem título), %d duplicados pulados.', 'book-manager'), $imported, $skipped, $dup_skipped);
+    }
+
+    // Estágio 1: Upload e prévia
+    if ('' === $stage && isset($_FILES['csv_file']) && isset($_POST['bm_csv_import_nonce'])) {
         if (!wp_verify_nonce($_POST['bm_csv_import_nonce'], 'bm_csv_import_action')) {
-            $message = __('Erro de segurança. Tente novamente.', 'book-manager');
+            $message = __('Erro de segurança.', 'book-manager');
         } elseif (empty($_FILES['csv_file']['tmp_name'])) {
             $message = __('Nenhum arquivo enviado.', 'book-manager');
         } else {
             $filetype = wp_check_filetype($_FILES['csv_file']['name']);
             if ('csv' !== $filetype['ext']) {
-                $message = __('Formato inválido. Envie um arquivo .csv.', 'book-manager');
+                $message = __('Formato inválido.', 'book-manager');
             } else {
                 $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
                 if ($handle) {
                     $line = 0;
                     while (($data = fgetcsv($handle, 0, ';')) !== false) {
                         $line++;
-                        if (1 === $line) {
-                            continue;
-                        }
+                        if (1 === $line) continue;
                         $title     = isset($data[0]) ? trim(sanitize_text_field($data[0])) : '';
                         $author    = isset($data[1]) ? sanitize_text_field($data[1]) : '';
                         $publisher = isset($data[2]) ? sanitize_text_field($data[2]) : '';
-
-                        if (empty($title)) {
-                            $skipped++;
-                            continue;
-                        }
-
-                        $post_id = wp_insert_post(array(
-                            'post_type'   => 'bm_book',
-                            'post_title'  => $title,
-                            'post_status' => 'publish',
-                        ));
-
-                        if ($post_id && !is_wp_error($post_id)) {
-                            update_post_meta($post_id, '_bm_author', $author);
-                            update_post_meta($post_id, '_bm_publisher', $publisher);
-                            $imported++;
-                        } else {
-                            $skipped++;
+                        if (empty($title)) continue;
+                        $row = array($title, $author, $publisher);
+                        $preview[] = $row;
+                        if (bm_find_duplicate_book($title, $author, $publisher)) {
+                            $duplicates[] = $row;
                         }
                     }
                     fclose($handle);
-                    $message = sprintf(
-                        __('%d livros importados com sucesso. %d linhas ignoradas.', 'book-manager'),
-                        $imported,
-                        $skipped
-                    );
-                } else {
-                    $message = __('Erro ao abrir o arquivo.', 'book-manager');
                 }
             }
         }
@@ -390,25 +413,71 @@ function bm_render_csv_import_page() {
     <div class="wrap">
         <h1><?php _e('Importar Livros via CSV', 'book-manager'); ?></h1>
         <?php if ($message): ?>
-            <div class="notice notice-<?php echo $imported > 0 ? 'success' : 'error'; ?> is-dismissible">
-                <p><?php echo esc_html($message); ?></p>
-            </div>
+            <div class="notice notice-success is-dismissible"><p><?php echo esc_html($message); ?></p></div>
         <?php endif; ?>
-        <form method="post" enctype="multipart/form-data">
-            <?php wp_nonce_field('bm_csv_import_action', 'bm_csv_import_nonce'); ?>
-            <table class="form-table">
-                <tr>
-                    <th><label for="csv_file"><?php _e('Arquivo CSV', 'book-manager'); ?></label></th>
-                    <td>
-                        <input type="file" id="csv_file" name="csv_file" accept=".csv" />
-                        <p class="description"><?php _e('Formato: Título;Autor;Editora. Primeira linha ignorada.', 'book-manager'); ?></p>
-                    </td>
-                </tr>
-            </table>
-            <?php submit_button('Enviar Arquivo'); ?>
-        </form>
+
+        <?php if (!empty($preview)): ?>
+            <h2><?php echo sprintf(__('%d livros encontrados no arquivo.', 'book-manager'), count($preview)); ?></h2>
+            <?php if (!empty($duplicates)): ?>
+                <div class="notice notice-warning">
+                    <p><?php echo sprintf(__('%d livros já existem no acervo.', 'book-manager'), count($duplicates)); ?></p>
+                    <ul style="margin-left:20px;list-style:disc;">
+                        <?php foreach ($duplicates as $d): ?>
+                            <li><?php echo esc_html($d[0] . ' — ' . $d[1] . ' / ' . $d[2]); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
+            <form method="post">
+                <?php wp_nonce_field('bm_csv_import_action', 'bm_csv_import_nonce'); ?>
+                <input type="hidden" name="import_stage" value="process">
+                <input type="hidden" name="csv_data" value="<?php echo esc_attr(json_encode($preview)); ?>">
+                <?php if (!empty($duplicates)): ?>
+                    <p><strong><?php _e('Como deseja tratar os duplicados?', 'book-manager'); ?></strong></p>
+                    <label><input type="radio" name="skip_duplicates" value="1" checked> <?php _e('Pular duplicados', 'book-manager'); ?></label><br>
+                    <label><input type="radio" name="skip_duplicates" value="0"> <?php _e('Importar mesmo assim', 'book-manager'); ?></label>
+                <?php else: ?>
+                    <input type="hidden" name="skip_duplicates" value="0">
+                <?php endif; ?>
+                <p><?php submit_button('Confirmar Importação'); ?></p>
+            </form>
+        <?php else: ?>
+            <form method="post" enctype="multipart/form-data">
+                <?php wp_nonce_field('bm_csv_import_action', 'bm_csv_import_nonce'); ?>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="csv_file"><?php _e('Arquivo CSV', 'book-manager'); ?></label></th>
+                        <td>
+                            <input type="file" id="csv_file" name="csv_file" accept=".csv" />
+                            <p class="description"><?php _e('Formato: Título;Autor;Editora. Primeira linha ignorada.', 'book-manager'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+                <?php submit_button('Enviar Arquivo'); ?>
+            </form>
+        <?php endif; ?>
     </div>
     <?php
+}
+
+function bm_find_duplicate_book($title, $author, $publisher) {
+    $existing = get_posts(array(
+        'post_type'      => 'bm_book',
+        'title'          => $title,
+        'posts_per_page' => 1,
+        'post_status'    => 'any',
+    ));
+
+    if (empty($existing)) return false;
+
+    foreach ($existing as $book) {
+        $existing_author    = get_post_meta($book->ID, '_bm_author', true);
+        $existing_publisher = get_post_meta($book->ID, '_bm_publisher', true);
+        if ($author === $existing_author && $publisher === $existing_publisher) {
+            return $book->ID;
+        }
+    }
+    return false;
 }
 
 // --- FASE 6B: Exportação CSV ---
@@ -444,6 +513,8 @@ function bm_handle_csv_export() {
         return;
     }
 
+    $total = count($books);
+
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="livros.csv"');
     echo "\xEF\xBB\xBF";
@@ -462,16 +533,28 @@ function bm_handle_csv_export() {
     fclose($output);
     exit;
 }
+
 add_action('admin_init', 'bm_handle_csv_export');
+
 
 function bm_render_csv_export_page() {
     if (!current_user_can('manage_options')) {
         return;
     }
+
+    $book_count = wp_count_posts('bm_book');
+    $total = $book_count->publish + $book_count->draft + $book_count->trash;
+
+    $exported = isset($_GET['exported']) ? intval($_GET['exported']) : 0;
     ?>
     <div class="wrap">
         <h1><?php _e('Exportar Livros para CSV', 'book-manager'); ?></h1>
-        <p><?php _e('Clique no botão abaixo para baixar um arquivo CSV com todos os livros cadastrados.', 'book-manager'); ?></p>
+        <?php if ($exported > 0): ?>
+            <div class="notice notice-success is-dismissible">
+                <p><?php echo sprintf(__('Sucesso! %d livros exportados.', 'book-manager'), $exported); ?></p>
+            </div>
+        <?php endif; ?>
+        <p><?php echo sprintf(__('%d livros disponíveis para exportação.', 'book-manager'), $total); ?></p>
         <form method="post">
             <?php wp_nonce_field('bm_csv_export_action', 'bm_csv_export_nonce'); ?>
             <?php submit_button('Baixar CSV'); ?>

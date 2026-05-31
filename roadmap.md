@@ -89,7 +89,16 @@
     *   CSV deve usar delimitador `;` e codificação UTF-8 com BOM.
     *   Forçar download do arquivo CSV via headers HTTP.
 *   **Tarefas:**
-    1.  [x] Criar subpágina "Exportar CSV" no menu "Livros" (`add_submenu_page`).
-    2.  [x] Buscar todos os livros com `get_posts()`.
-    3.  [ x Gerar arquivo CSV (delimitador `;`, UTF-8 com BOM) com colunas Título, Autor, Editora.
-    4.  [x] Forçar download via headers PHP.
+ 1.  [x] Criar subpágina "Exportar CSV" no menu "Livros" (`add_submenu_page`).
+2.  [x] Buscar todos os livros com `get_posts()`.
+3.  [x] Gerar arquivo CSV (delimitador `;`, UTF-8 com BOM) com colunas Título, Autor, Editora.
+4.  [x] Forçar download via headers PHP.
+
+### Fase 6C — Ajustes de Usabilidade ← FASE ATIVA
+*   **Objetivo:** Refinar a experiência de importação e exportação com avisos, detecção de duplicados e relatórios detalhados.
+*   **Critério de saída:** O usuário recebe feedback claro em todas as operações. A importação detecta duplicados por Título + Autor + Editora e oferece opção de pular ou importar.
+*   **Tarefas:**
+ 1. [x] Aviso na exportação: "X livros disponíveis para exportação"
+2. [x] Detecção de duplicados: Título + Autor + Editora, opção pular ou forçar
+3. [x] Confirmação pré-importação: prévia com lista de duplicados
+4. [x] Relatório detalhado: importados, ignorados, duplicados pulados

@@ -120,7 +120,35 @@
   - `Content-Type: text/csv; charset=utf-8`
   - `Content-Disposition: attachment; filename="livros.csv"`
 
-## 6. BARREIRAS DO ESCOPO (Proibido)
+## 6. NOVA FUNCIONALIDADE — AJUSTES DE USABILIDADE (Fase 6C)
+
+### 6.1 Aviso na Exportação
+- Após o download do CSV, exibir mensagem: "X livros exportados com sucesso."
+- A mensagem deve aparecer na própria página de exportação, não no arquivo CSV.
+
+### 6.2 Detecção de Duplicados na Importação
+- Critério de duplicata: Título + Autor + Editora (os três campos juntos).
+- Antes de inserir, verificar se já existe um `bm_book` com o mesmo título E mesmos valores em `_bm_author` e `_bm_publisher`.
+- Se duplicata encontrada:
+  - Exibir lista dos títulos duplicados.
+  - Oferecer opção: "Pular" ou "Importar mesmo assim".
+- Livros com mesmo título mas autor ou editora diferentes NÃO são considerados duplicados.
+
+### 6.3 Confirmação Pré-Importação
+- Antes de processar o CSV, exibir prévia:
+  - "X livros serão importados."
+  - "Y já existem no acervo."
+  - Botões: "Continuar" / "Cancelar".
+
+### 6.4 Relatório Detalhado
+- Após a importação, exibir:
+  - "X livros importados com sucesso."
+  - "Y linhas ignoradas (sem título)."
+  - "Z duplicados pulados."
+  - "W duplicados importados mesmo assim."
+  - "Total de linhas processadas: T."
+
+## 7. BARREIRAS DO ESCOPO (Proibido)
 - ❌ Alterar a estrutura do CPT existente
 - ❌ Adicionar novos campos fixos à metabox
 - ❌ Modificar os hooks de activation/deactivation/uninstall
