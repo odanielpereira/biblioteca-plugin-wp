@@ -353,3 +353,15 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Substituída a exportação simples por sistema flexível com filtros dinâmicos (campo + operador + valor), múltiplos filtros combinados com E/OU, seleção de checkboxes para escolher colunas, nomes amigáveis para campos dinâmicos e taxonomias. Suporte a campos fixos, dinâmicos e taxonomias.
 - **Ferramenta:** `write_file`
 - **Decisão:** Exportação flexível concluída. Seleção individual de duplicados movida para Ciclo 4.
+
+**58 - Data:** 2026-05-31
+- **Ação:** Fase 7F concluída — Soft Delete e Auditoria.
+- **Detalhes:** Implementado sistema de auditoria com `bm_log_audit()`. Registra criação, edição, envio para lixeira e restauração de livros. Log exibido na metabox "Detalhes do Livro" com data, usuário e ação. Soft delete já era nativo do WordPress via `wp_trash_post`. Base pronta para expansão futura (empréstimos, reservas).
+- **Ferramenta:** `write_file`
+- **Decisão:** Fase 7F concluída. Fase 7G (Mapeamento dinâmico de colunas) a seguir.
+
+**59 - Data:** 2026-05-31
+- **Ação:** Fase 7G concluída — Mapeamento Dinâmico de Colunas na Importação.
+- **Detalhes:** Substituída a importação fixa de 3 colunas por sistema de mapeamento dinâmico. O usuário faz upload do CSV, o sistema lê os cabeçalhos e permite associar cada coluna do arquivo a um campo do sistema (fixo ou dinâmico). Corrigido bug de acentuação com `JSON_UNESCAPED_UNICODE`. Restaurada a importação de capas em massa. Etapas: Upload → Mapeamento → Processamento.
+- **Ferramenta:** `write_file`
+- **Decisão:** Fase 7G concluída. Fase 7H (Ordenação e visibilidade de campos) a seguir.

@@ -152,16 +152,16 @@
 #### Fase 7F — Soft Delete e Auditoria
 *   **Descrição:** Garantir que nada seja excluído fisicamente e auditar ações.
 *   **Tarefas:**
-    1.  [ ] Confirmar que `wp_trash_post` é usado em todas as exclusões.
-    2.  [ ] Criar log de auditoria para criação, edição e exclusão.
+    1. [x] Confirmar uso de wp_trash_post para soft delete.
+    2. [x] Criar log de auditoria para criação, edição e exclusão.
 
 #### Fase 7G — Mapeamento Dinâmico de Colunas
 *   **Descrição:** Permitir importação de CSVs com formatos variados.
 *   **Tarefas:**
-    1.  [ ] Ler cabeçalhos do CSV e exibir para o usuário.
-    2.  [ ] Criar interface de mapeamento (dropdowns).
-    3.  [ ] Aplicar mapeamento antes da detecção de duplicados.
-    4.  [ ] Suportar número variável de colunas.
+    1. [x] Ler cabeçalhos do CSV e exibir para o usuário.
+    2. [x] Criar interface de mapeamento (dropdowns).
+    3. [x] Aplicar mapeamento antes da detecção de duplicados.
+    4. [x] Suportar número variável de colunas.
 
     #### Fase 7H — Ordenação e Visibilidade de Campos
 *   **Descrição:** Permitir ocultar e reordenar campos da metabox.
