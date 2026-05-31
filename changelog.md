@@ -257,3 +257,33 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** O roadmap foi reorganizado em Ciclo 1 (v1.0.0, concluído) e Ciclo 2 (v2.0.0, em andamento). Adicionada a Fase 6 com 6A (Importação CSV, 5 tarefas) e 6B (Exportação CSV, 4 tarefas). Todas as tarefas da Fase 6 permanecem com `[ ]` — nenhuma foi iniciada.
 - **Ferramenta:** `write_file`
 - **Decisão:** A estrutura de Ciclos facilita a navegação e o versionamento semântico. O desenvolvimento da Fase 6A começa a seguir.
+
+**42 - Data:** 2026-05-30
+- **Ação:** Registro do commit e tag do Ciclo 2 no `changelog.md`.
+- **Detalhes:** Adicionada a Entrada 42 detalhando o commit e a tag (`v1.1.0-contexto-ciclo2`) referentes à preparação para o Ciclo 2, com atualização dos documentos `escopo.md`, `roadmap.md` e `changelog.md` para a Fase 6 (Importação e Exportação CSV). O commit e push para `main` e a criação da tag foram realizados via `git`.
+- **Ferramenta:** `write_file` (para atualizar o changelog), `run_terminal_command` (para git add, commit, tag, push).
+- **Decisão:** O `changelog.md` agora reflete o estado atual do versionamento e do planejamento do projeto, consolidando as ações realizadas.
+
+**43 - Data:** 2026-05-31
+- **Ação:** Fase 6A, Tarefa 1 concluída.
+- **Detalhes:** Adicionada a subpágina "Importar CSV" ao menu "Livros" via `add_submenu_page`. Implementadas as funções `bm_add_csv_import_submenu_page()` e `bm_render_csv_import_page()` com formulário de upload e nonce de segurança.
+- **Ferramenta:** `write_file`
+- **Decisão:** A interface de importação está pronta. O processamento do CSV será implementado na Tarefa 2.
+
+**44 - Data:** 2026-05-31
+- **Ação:** Fase 6A, Tarefa 2 concluída.
+- **Detalhes:** O formulário de upload com `wp_nonce_field` e campo de arquivo `.csv` foi renderizado na função `bm_render_csv_import_page()`. A Tarefa 2 foi implementada simultaneamente à Tarefa 1.
+- **Ferramenta:** `write_file`
+- **Decisão:** Tarefa 2 concluída. O processamento do CSV (Tarefa 3) é o próximo passo.
+
+**45 - Data:** 2026-05-31
+- **Ação:** Fase 6A, Tarefa 3 concluída.
+- **Detalhes:** Implementado o processamento do arquivo CSV na função `bm_render_csv_import_page()`. Upload com verificação de nonce, tipo de arquivo, leitura com `fgetcsv()` (delimitador `;`), sanitização com `sanitize_text_field()`, inserção via `wp_insert_post()` + `update_post_meta()`, e relatório de resultados.
+- **Ferramenta:** `write_file`
+- **Decisão:** A importação de CSV está funcional. Restam as Tarefas 4 e 5 da Fase 6A.
+
+**46 - Data:** 2026-05-31
+- **Ação:** Fase 6B concluída.
+- **Detalhes:** Implementada a exportação CSV. Criada subpágina "Exportar CSV" no menu Livros. Processamento via `admin_init` com `get_posts()`, saída em CSV com delimitador `;`, UTF-8 com BOM, colunas Título, Autor, Editora. Download forçado via headers. Corrigido warning de headers com hook `admin_init`.
+- **Ferramenta:** `write_file`
+- **Decisão:** Fase 6B concluída. Pendências de usabilidade (aviso de sucesso, contagem) movidas para Fase 6C.

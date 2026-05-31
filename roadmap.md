@@ -74,11 +74,11 @@
     *   Utilizar `update_post_meta()` para salvar os metadados (`_bm_author`, `_bm_publisher`).
     *   Exibir relatório detalhado dos resultados da importação (sucessos, falhas, motivos).
 *   **Tarefas:**
-    1.  [ ] Criar subpágina "Importar CSV" no menu "Livros" (`add_submenu_page`).
-    2.  [ ] Renderizar formulário de upload com nonce de segurança.
-    3.  [ ] Processar o arquivo CSV (delimitador `;`, UTF-8, ignorar cabeçalho).
-    4.  [ ] Para cada linha: validar título obrigatório, sanitizar, inserir via `wp_insert_post()` + `update_post_meta()`.
-    5.  [ ] Exibir relatório: "X importados, Y ignorados (sem título)".
+    1.  [x] Criar subpágina "Importar CSV" no menu "Livros" (`add_submenu_page`).
+    2.  [x] Renderizar formulário de upload com nonce de segurança.
+    3.  [x] Processar o arquivo CSV (delimitador `;`, UTF-8, ignorar cabeçalho).
+    4.  [x] Para cada linha: validar título obrigatório, sanitizar, inserir via `wp_insert_post()` + `update_post_meta()`.
+    5.  [x] Exibir relatório: "X importados, Y ignorados (sem título)".
 
 #### Fase 6B — Exportação CSV
 *   **Descrição:** Desenvolver a funcionalidade de exportar todos os dados de livros cadastrados para um arquivo CSV.
@@ -89,7 +89,7 @@
     *   CSV deve usar delimitador `;` e codificação UTF-8 com BOM.
     *   Forçar download do arquivo CSV via headers HTTP.
 *   **Tarefas:**
-    1.  [ ] Criar subpágina "Exportar CSV" no menu "Livros" (`add_submenu_page`).
-    2.  [ ] Buscar todos os livros com `get_posts()`.
-    3.  [ ] Gerar arquivo CSV (delimitador `;`, UTF-8 com BOM) com colunas Título, Autor, Editora.
-    4.  [ ] Forçar download via headers PHP.
+    1.  [x] Criar subpágina "Exportar CSV" no menu "Livros" (`add_submenu_page`).
+    2.  [x] Buscar todos os livros com `get_posts()`.
+    3.  [ x Gerar arquivo CSV (delimitador `;`, UTF-8 com BOM) com colunas Título, Autor, Editora.
+    4.  [x] Forçar download via headers PHP.
