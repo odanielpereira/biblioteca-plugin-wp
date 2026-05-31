@@ -141,7 +141,7 @@
 *   **Tarefas:**
     1.  [x] Adicionar thumbnail ao CPT
     2.  [x] Busca automática via Google Books API (5 níveis)
-    3.  [ ] Integrar busca de capa na importação CSV.
+    3. [x] Integrar busca de capa na importação CSV..
 
 #### Fase 7E — Filtros na Exportação e Seleção Individual de Duplicados
 *   **Descrição:** Refinar exportação e importação.

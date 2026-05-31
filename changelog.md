@@ -335,3 +335,15 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Habilitado `thumbnail` no CPT. Implementada busca automática de capa via Google Books API com 5 níveis hierárquicos (ISBN → Título+Autor+Editora → Título+Autor → Título+Editora → Título). Adicionado fallback em cascata, filtro de títulos inválidos (análise, resumo, estudo, guia), validação de similaridade (30% para títulos curtos, 50% para longos) e verificação de capa antes de aceitar o nível. Download manual da imagem com `wp_remote_get` + `file_put_contents`. Botão "Buscar Capa" via AJAX.
 - **Ferramenta:** `write_file`
 - **Decisão:** Fase 7D concluída. Fase 7E (Filtros na exportação + seleção individual de duplicados) a seguir.
+
+**55 - Data:** 2026-05-31
+- **Ação:** Commit e tag da Fase 7D (Capa do Livro — busca manual).
+- **Detalhes:** Commit com a Fase 7D parcial: upload manual de capa via thumbnail, busca automática via Google Books API com 5 níveis hierárquicos, fallback em cascata, filtro de títulos inválidos e validação de similaridade. Tag `v2.3-capa-livro` criada. Integração com CSV pendente.
+- **Ferramenta:** `run_terminal_command` (git add, commit, tag, push)
+- **Decisão:** Commit seguro antes de integrar a busca de capa na importação CSV.
+
+**56 - Data:** 2026-05-31
+- **Ação:** Fase 7D concluída — Integração de capa no CSV.
+- **Detalhes:** Corrigida a busca automática de capas durante a importação CSV. Substituído `media_sideload_image` por download manual via `wp_remote_get` + `file_put_contents` + `wp_insert_attachment`. Forçado HTTPS nas URLs de imagem. Testado com sucesso em 5 livros.
+- **Ferramenta:** `write_file`
+- **Decisão:** Fase 7D totalmente concluída. Fase 7E (Filtros na exportação + seleção individual de duplicados) a seguir.
