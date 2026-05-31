@@ -199,6 +199,12 @@
 - Suporte a número variável de colunas.
 - O mapeamento é aplicado antes da detecção de duplicados.
 
+### 7.8 Ordenação e Visibilidade de Campos (Fase 7H)
+- Permitir ocultar campos da metabox (exceto Título, que é sempre visível).
+- Interface para reordenar campos via arrastar ou setas.
+- Preferências salvas por usuário.
+- Integrado à subpágina "Campos Dinâmicos".
+
 ## 8. BARREIRAS DO ESCOPO (Proibido)tente
 - ❌ Adicionar novos campos fixos à metabox
 - ❌ Modificar os hooks de activation/deactivation/uninstall

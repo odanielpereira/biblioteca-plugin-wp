@@ -114,27 +114,27 @@
 #### Fase 7A — Campos Fixos de Catalogação
 *   **Descrição:** Adicionar Gênero, Categoria, Exemplares, ISBN e Localização à metabox.
 *   **Tarefas:**
-    1.  [ ] Adicionar 5 novos campos à metabox "Detalhes do Livro".
-    2.  [ ] Implementar salvamento com `sanitize_text_field()` e `intval()`.
-    3.  [ ] Exibir apenas campos preenchidos na ficha do livro.
+   1. [x] Adicionar 5 novos campos à metabox "Detalhes do Livro".
+2. [x] Implementar salvamento com sanitize_text_field() e intval().
+3. [x] Exibir apenas campos preenchidos na ficha do livro.
     4.  [ ] Atualizar importação CSV para aceitar as novas colunas.
     5.  [ ] Atualizar exportação CSV para incluir as novas colunas.
 
 #### Fase 7B — Campos Dinâmicos
 *   **Descrição:** Permitir que o Gestor crie campos personalizados.
 *   **Tarefas:**
-    1.  [ ] Criar interface para adicionar/remover campos dinâmicos.
-    2.  [ ] Salvar campos como `_bm_dynamic_` + nome.
-    3.  [ ] Exibir campos dinâmicos na metabox.
-    4.  [ ] Integrar com importação/exportação CSV.
+1. [x] Criar interface para adicionar/remover campos dinâmicos.
+2. [x] Salvar campos como _bm_dynamic_ + nome.
+3. [x] Exibir campos dinâmicos na metabox.
+4. [ ] Integrar com importação/exportação CSV.
 
 #### Fase 7C — Taxonomias
 *   **Descrição:** Criar Gênero e Categoria como taxonomias do WordPress.
 *   **Tarefas:**
-    1.  [ ] Registrar taxonomia `bm_genre` (não hierárquica).
-    2.  [ ] Registrar taxonomia `bm_category` (hierárquica).
-    3.  [ ] Adicionar metabox de taxonomias na tela de edição.
-    4.  [ ] Atualizar filtros da listagem para usar taxonomias.
+    1. [x] Registrar taxonomia bm_genre (hierárquica).
+2. [x] Registrar taxonomia bm_category (hierárquica).
+3. [x] Adicionar metabox de taxonomias na tela de edição.
+4. [x] Atualizar filtros da listagem para usar taxonomias.
 
 #### Fase 7D — Capa do Livro
 *   **Descrição:** Habilitar imagem destacada e busca automática de capa.
@@ -162,3 +162,10 @@
     2.  [ ] Criar interface de mapeamento (dropdowns).
     3.  [ ] Aplicar mapeamento antes da detecção de duplicados.
     4.  [ ] Suportar número variável de colunas.
+
+    #### Fase 7H — Ordenação e Visibilidade de Campos
+*   **Descrição:** Permitir ocultar e reordenar campos da metabox.
+*   **Tarefas:**
+    1.  [ ] Checkbox para mostrar/ocultar cada campo (exceto Título).
+    2.  [ ] Interface para reordenar campos (arrastar ou setas).
+    3.  [ ] Salvar preferências por usuário.

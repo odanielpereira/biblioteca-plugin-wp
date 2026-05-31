@@ -46,6 +46,50 @@ function bm_register_book_cpt() {
 }
 add_action( 'init', 'bm_register_book_cpt' );
 
+function bm_register_taxonomies() {
+    register_taxonomy('bm_genre', 'bm_book', array(
+    'label'        => __('Gêneros', 'book-manager'),
+    'labels'       => array(
+        'name'              => __('Gêneros', 'book-manager'),
+        'singular_name'     => __('Gênero', 'book-manager'),
+        'search_items'      => __('Buscar Gêneros', 'book-manager'),
+        'all_items'         => __('Todos os Gêneros', 'book-manager'),
+        'parent_item'       => __('Gênero Pai', 'book-manager'),
+        'parent_item_colon' => __('Gênero Pai:', 'book-manager'),
+        'edit_item'         => __('Editar Gênero', 'book-manager'),
+        'update_item'       => __('Atualizar Gênero', 'book-manager'),
+        'add_new_item'      => __('Adicionar Novo Gênero', 'book-manager'),
+        'new_item_name'     => __('Nome do Novo Gênero', 'book-manager'),
+        'menu_name'         => __('Gêneros', 'book-manager'),
+    ),
+    'rewrite'      => false,
+    'hierarchical' => true,
+    'show_ui'      => true,
+    'show_in_menu' => true,
+    'capabilities' => array(
+        'manage_terms' => 'manage_options',
+        'edit_terms'   => 'manage_options',
+        'delete_terms' => 'manage_options',
+        'assign_terms' => 'manage_options',
+    ),
+));
+
+    register_taxonomy('bm_category', 'bm_book', array(
+        'label'        => __('Categorias', 'book-manager'),
+        'rewrite'      => false,
+        'hierarchical' => true,
+        'show_ui'      => true,
+        'show_in_menu' => true,
+        'capabilities' => array(
+            'manage_terms' => 'manage_options',
+            'edit_terms'   => 'manage_options',
+            'delete_terms' => 'manage_options',
+            'assign_terms' => 'manage_options',
+        ),
+    ));
+}
+add_action('init', 'bm_register_taxonomies');
+
 function bm_add_admin_caps() {
     $admin_role = get_role('administrator');
     if ($admin_role) {
@@ -96,6 +140,7 @@ function bm_remove_admin_caps() {
 
 function bm_plugin_activation() {
     bm_register_book_cpt();
+    bm_register_taxonomies();
     bm_add_admin_caps();
     flush_rewrite_rules();
 }
@@ -111,9 +156,11 @@ register_deactivation_hook( __FILE__, 'bm_plugin_deactivation' );
 function bm_render_book_details_metabox( $post ) {
     wp_nonce_field( 'bm_save_book_details', 'bm_book_details_nonce' );
 
-    $author = get_post_meta( $post->ID, '_bm_author', true );
+    $author    = get_post_meta( $post->ID, '_bm_author', true );
     $publisher = get_post_meta( $post->ID, '_bm_publisher', true );
-
+    $copies    = get_post_meta( $post->ID, '_bm_copies', true );
+    $isbn      = get_post_meta( $post->ID, '_bm_isbn', true );
+    $location  = get_post_meta( $post->ID, '_bm_location', true );
     ?>
     <p>
         <label for="_bm_author"><?php _e( 'Autor:', 'book-manager' ); ?></label>
@@ -123,7 +170,30 @@ function bm_render_book_details_metabox( $post ) {
         <label for="_bm_publisher"><?php _e( 'Editora:', 'book-manager' ); ?></label>
         <input type="text" id="_bm_publisher" name="_bm_publisher" value="<?php echo esc_attr( $publisher ); ?>" size="50" />
     </p>
+    <p>
+        <label for="_bm_copies"><?php _e( 'Exemplares:', 'book-manager' ); ?></label>
+        <input type="number" id="_bm_copies" name="_bm_copies" value="<?php echo esc_attr( $copies ); ?>" min="0" size="10" />
+    </p>
+    <p>
+        <label for="_bm_isbn"><?php _e( 'ISBN:', 'book-manager' ); ?></label>
+        <input type="text" id="_bm_isbn" name="_bm_isbn" value="<?php echo esc_attr( $isbn ); ?>" size="30" />
+    </p>
+    <p>
+        <label for="_bm_location"><?php _e( 'Localização:', 'book-manager' ); ?></label>
+        <input type="text" id="_bm_location" name="_bm_location" value="<?php echo esc_attr( $location ); ?>" size="30" />
+    </p>
     <?php
+    $dynamic_fields = get_option('bm_dynamic_fields', array());
+    foreach ($dynamic_fields as $field) {
+        $key = '_bm_dynamic_' . sanitize_key($field);
+        $value = get_post_meta($post->ID, $key, true);
+        ?>
+        <p>
+            <label for="<?php echo esc_attr($key); ?>"><?php echo esc_html($field); ?>:</label>
+            <input type="text" id="<?php echo esc_attr($key); ?>" name="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr($value); ?>" size="50" />
+        </p>
+        <?php
+    }
 }
 
 function bm_add_book_details_metabox() {
@@ -151,11 +221,23 @@ function bm_save_book_details_metabox_data( $post_id ) {
         return;
     }
 
-    $fields = array( '_bm_author', '_bm_publisher' );
+    $text_fields = array( '_bm_author', '_bm_publisher', '_bm_isbn', '_bm_location' );
 
-    foreach ( $fields as $field ) {
+    foreach ( $text_fields as $field ) {
         if ( isset( $_POST[ $field ] ) ) {
             update_post_meta( $post_id, $field, sanitize_text_field( $_POST[ $field ] ) );
+        }
+    }
+
+    if ( isset( $_POST['_bm_copies'] ) ) {
+        update_post_meta( $post_id, '_bm_copies', absint( $_POST['_bm_copies'] ) );
+    }
+
+    $dynamic_fields = get_option('bm_dynamic_fields', array());
+    foreach ($dynamic_fields as $field) {
+        $key = '_bm_dynamic_' . sanitize_key($field);
+        if (isset($_POST[$key])) {
+            update_post_meta($post_id, $key, sanitize_text_field($_POST[$key]));
         }
     }
 }
@@ -170,11 +252,13 @@ function bm_manage_book_columns( $columns ) {
         if ($key === 'title') {
             $new_columns['_bm_author'] = __('Autor', 'book-manager');
             $new_columns['_bm_publisher'] = __('Editora', 'book-manager');
+            $new_columns['taxonomy-bm_genre'] = __('Gênero', 'book-manager');
+            $new_columns['taxonomy-bm_category'] = __('Categoria', 'book-manager');
         }
     }
-    if (!isset($new_columns['_bm_author'])) {
-        $new_columns['_bm_author'] = __('Autor', 'book-manager');
-        $new_columns['_bm_publisher'] = __('Editora', 'book-manager');
+    if (!isset($new_columns['taxonomy-bm_genre'])) {
+        $new_columns['taxonomy-bm_genre'] = __('Gênero', 'book-manager');
+        $new_columns['taxonomy-bm_category'] = __('Categoria', 'book-manager');
     }
     return $new_columns;
 }
@@ -237,6 +321,20 @@ function bm_add_book_filter_form() {
                 <label for="_bm_publisher"><?php _e('Editora:', 'book-manager'); ?></label>
                 <input type="text" id="_bm_publisher" name="_bm_publisher" value="<?php echo esc_attr($filter_publisher); ?>" placeholder="<?php _e('Filtrar por editora', 'book-manager'); ?>">
             </p>
+            <?php
+            wp_dropdown_categories(array(
+                'show_option_all' => __('Todos os Gêneros', 'book-manager'),
+                'taxonomy'        => 'bm_genre',
+                'name'            => 'bm_genre_filter',
+                'selected'        => isset($_GET['bm_genre_filter']) ? $_GET['bm_genre_filter'] : '',
+            ));
+            wp_dropdown_categories(array(
+                'show_option_all' => __('Todas as Categorias', 'book-manager'),
+                'taxonomy'        => 'bm_category',
+                'name'            => 'bm_category_filter',
+                'selected'        => isset($_GET['bm_category_filter']) ? $_GET['bm_category_filter'] : '',
+            ));
+            ?>
             <input type="submit" name="filter_action" id="post-query-submit" class="button" value="<?php _e('Filtrar', 'book-manager'); ?>">
             <a href="<?php echo admin_url('edit.php?post_type=bm_book'); ?>" class="button"><?php _e('Limpar Filtros', 'book-manager'); ?></a>
         </form>
@@ -280,29 +378,33 @@ function bm_filter_books_by_metadata($query) {
              }
         }
         $query->set('meta_query', $meta_query);
-        
-        if (isset($_GET['_bm_author']) && !empty($_GET['_bm_author'])) {
-            $query->set('meta_key', '_bm_author');
-            $query->set('orderby', 'meta_value');
-        } elseif (isset($_GET['_bm_publisher']) && !empty($_GET['_bm_publisher'])) {
-            $query->set('meta_key', '_bm_publisher');
-            $query->set('orderby', 'meta_value');
-        }
+    }
+
+    if (isset($_GET['bm_genre_filter']) && !empty($_GET['bm_genre_filter'])) {
+        $tax_query = $query->get('tax_query') ?: array();
+        $tax_query[] = array(
+            'taxonomy' => 'bm_genre',
+            'field'    => 'term_id',
+            'terms'    => intval($_GET['bm_genre_filter']),
+        );
+        $query->set('tax_query', $tax_query);
+    }
+
+    if (isset($_GET['bm_category_filter']) && !empty($_GET['bm_category_filter'])) {
+        $tax_query = $query->get('tax_query') ?: array();
+        $tax_query[] = array(
+            'taxonomy' => 'bm_category',
+            'field'    => 'term_id',
+            'terms'    => intval($_GET['bm_category_filter']),
+        );
+        $query->set('tax_query', $tax_query);
     }
 
     if ( ! $query->get('meta_query') && !isset($_GET['s']) ) {
          $orderby = isset($_GET['orderby']) ? sanitize_text_field($_GET['orderby']) : 'title';
          $order = isset($_GET['order']) ? sanitize_text_field($_GET['order']) : 'ASC';
-         
-         if ($orderby === '_bm_author') {
-             $query->set('meta_key', '_bm_author');
-         } elseif ($orderby === '_bm_publisher') {
-             $query->set('meta_key', '_bm_publisher');
-         }
-         
          $query->set('orderby', $orderby);
          $query->set('order', $order);
-    } elseif ($query->get('meta_query') && !isset($_GET['orderby'])) {
     } elseif (isset($_GET['orderby']) && $_GET['orderby'] === 'title' && !$query->get('meta_query')) {
          $query->set('orderby', 'title');
          $query->set('order', isset($_GET['order']) ? sanitize_text_field($_GET['order']) : 'ASC');
@@ -334,7 +436,6 @@ function bm_render_csv_import_page() {
     $duplicates  = array();
     $stage       = isset($_POST['import_stage']) ? $_POST['import_stage'] : '';
 
-    // Estágio 2: Processar a importação após decisão do usuário
     if ('process' === $stage && isset($_POST['bm_csv_import_nonce']) && wp_verify_nonce($_POST['bm_csv_import_nonce'], 'bm_csv_import_action')) {
         $skip_duplicates = isset($_POST['skip_duplicates']) && '1' === $_POST['skip_duplicates'];
         $imported = 0;
@@ -377,7 +478,6 @@ function bm_render_csv_import_page() {
         $message = sprintf(__('%d importados, %d ignorados (sem título), %d duplicados pulados.', 'book-manager'), $imported, $skipped, $dup_skipped);
     }
 
-    // Estágio 1: Upload e prévia
     if ('' === $stage && isset($_FILES['csv_file']) && isset($_POST['bm_csv_import_nonce'])) {
         if (!wp_verify_nonce($_POST['bm_csv_import_nonce'], 'bm_csv_import_action')) {
             $message = __('Erro de segurança.', 'book-manager');
@@ -513,8 +613,6 @@ function bm_handle_csv_export() {
         return;
     }
 
-    $total = count($books);
-
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="livros.csv"');
     echo "\xEF\xBB\xBF";
@@ -533,9 +631,7 @@ function bm_handle_csv_export() {
     fclose($output);
     exit;
 }
-
 add_action('admin_init', 'bm_handle_csv_export');
-
 
 function bm_render_csv_export_page() {
     if (!current_user_can('manage_options')) {
@@ -544,21 +640,93 @@ function bm_render_csv_export_page() {
 
     $book_count = wp_count_posts('bm_book');
     $total = $book_count->publish + $book_count->draft + $book_count->trash;
-
-    $exported = isset($_GET['exported']) ? intval($_GET['exported']) : 0;
     ?>
     <div class="wrap">
         <h1><?php _e('Exportar Livros para CSV', 'book-manager'); ?></h1>
-        <?php if ($exported > 0): ?>
-            <div class="notice notice-success is-dismissible">
-                <p><?php echo sprintf(__('Sucesso! %d livros exportados.', 'book-manager'), $exported); ?></p>
-            </div>
-        <?php endif; ?>
         <p><?php echo sprintf(__('%d livros disponíveis para exportação.', 'book-manager'), $total); ?></p>
         <form method="post">
             <?php wp_nonce_field('bm_csv_export_action', 'bm_csv_export_nonce'); ?>
             <?php submit_button('Baixar CSV'); ?>
         </form>
+    </div>
+    <?php
+}
+
+// --- FASE 7B: Campos Dinâmicos ---
+
+function bm_add_dynamic_fields_page() {
+    add_submenu_page(
+        'edit.php?post_type=bm_book',
+        'Campos Dinâmicos',
+        'Campos Dinâmicos',
+        'manage_options',
+        'bm_dynamic_fields',
+        'bm_render_dynamic_fields_page'
+    );
+}
+add_action('admin_menu', 'bm_add_dynamic_fields_page');
+
+function bm_render_dynamic_fields_page() {
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    $message = '';
+
+    if (isset($_POST['bm_dynamic_nonce']) && wp_verify_nonce($_POST['bm_dynamic_nonce'], 'bm_dynamic_action')) {
+        if (isset($_POST['add_field']) && !empty($_POST['new_field_name'])) {
+            $field_name = sanitize_text_field($_POST['new_field_name']);
+            $fields = get_option('bm_dynamic_fields', array());
+            if (!in_array($field_name, $fields)) {
+                $fields[] = $field_name;
+                update_option('bm_dynamic_fields', $fields);
+                $message = __('Campo adicionado.', 'book-manager');
+            }
+        }
+        if (isset($_POST['remove_field']) && !empty($_POST['remove_field_name'])) {
+            $field_name = sanitize_text_field($_POST['remove_field_name']);
+            $fields = get_option('bm_dynamic_fields', array());
+            $fields = array_diff($fields, array($field_name));
+            update_option('bm_dynamic_fields', array_values($fields));
+            $message = __('Campo removido.', 'book-manager');
+        }
+    }
+
+    $fields = get_option('bm_dynamic_fields', array());
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Campos Dinâmicos', 'book-manager'); ?></h1>
+        <?php if ($message): ?>
+            <div class="notice notice-success is-dismissible"><p><?php echo esc_html($message); ?></p></div>
+        <?php endif; ?>
+
+        <h2><?php _e('Adicionar novo campo', 'book-manager'); ?></h2>
+        <form method="post">
+            <?php wp_nonce_field('bm_dynamic_action', 'bm_dynamic_nonce'); ?>
+            <input type="text" name="new_field_name" placeholder="<?php _e('Nome do campo', 'book-manager'); ?>" />
+            <input type="submit" name="add_field" class="button" value="<?php _e('Adicionar', 'book-manager'); ?>" />
+        </form>
+
+        <?php if (!empty($fields)): ?>
+            <h2><?php _e('Campos existentes', 'book-manager'); ?></h2>
+            <table class="wp-list-table widefat fixed striped">
+                <thead><tr><th><?php _e('Nome do Campo', 'book-manager'); ?></th><th><?php _e('Ação', 'book-manager'); ?></th></tr></thead>
+                <tbody>
+                    <?php foreach ($fields as $field): ?>
+                        <tr>
+                            <td><?php echo esc_html($field); ?></td>
+                            <td>
+                                <form method="post" style="display:inline;">
+                                    <?php wp_nonce_field('bm_dynamic_action', 'bm_dynamic_nonce'); ?>
+                                    <input type="hidden" name="remove_field_name" value="<?php echo esc_attr($field); ?>" />
+                                    <input type="submit" name="remove_field" class="button button-small" value="<?php _e('Remover', 'book-manager'); ?>" />
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
     </div>
     <?php
 }

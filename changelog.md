@@ -311,3 +311,21 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Atualizados `escopo.md` (Seção 7) e `roadmap.md` (Ciclo 3) com as Fases 7A a 7G. O Ciclo 3 expande a ficha catalográfica com campos fixos, dinâmicos, taxonomias, capa, auditoria, filtros na exportação e mapeamento dinâmico de colunas.
 - **Ferramenta:** `write_file`
 - **Decisão:** Ciclo 3 inicia com a Fase 7A (Campos Fixos de Catalogação).
+
+**51 - Data:** 2026-05-31
+- **Ação:** Fase 7A concluída — Campos fixos de catalogação.
+- **Detalhes:** Adicionados 5 novos campos à metabox "Detalhes do Livro": Gênero (`_bm_genre`), Categoria (`_bm_category`), Exemplares (`_bm_copies`), ISBN (`_bm_isbn`), Localização (`_bm_location`). Todos opcionais. Salvamento com `sanitize_text_field()` e `absint()`. Corrigido posicionamento do hook `save_post_bm_book`.
+- **Ferramenta:** `write_file`
+- **Decisão:** Ficha catalográfica expandida. Campos fixos prontos. Fase 7B (Campos Dinâmicos) a seguir.
+
+**52 - Data:** 2026-05-31
+- **Ação:** Fase 7B concluída — Campos Dinâmicos.
+- **Detalhes:** Implementada subpágina "Campos Dinâmicos" para adicionar/remover campos personalizados. Campos são salvos como `_bm_dynamic_` + nome e exibidos automaticamente na metabox. Salvamento com `sanitize_text_field()`. Adicionada função `bm_add_dynamic_fields_page()` e `bm_render_dynamic_fields_page()`.
+- **Ferramenta:** `write_file`
+- **Decisão:** Gestor pode criar campos personalizados. Fase 7C (Taxonomias) a seguir.
+
+**53 - Data:** 2026-05-31
+- **Ação:** Fase 7C concluída — Taxonomias.
+- **Detalhes:** Criadas taxonomias `bm_genre` (Gêneros, hierárquica) e `bm_category` (Categorias, hierárquica). Removidos os campos de texto Gênero e Categoria da metabox. Adicionadas colunas e dropdowns de filtro na listagem. Labels em português. Filtros integrados ao `pre_get_posts` via `tax_query`.
+- **Ferramenta:** `write_file`
+- **Decisão:** Gêneros permitem hierarquia (pai/filho). Categorias mantidas para uso futuro. Fase 7D (Capa do Livro) a seguir.
