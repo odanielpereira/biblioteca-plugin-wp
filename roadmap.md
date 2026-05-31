@@ -146,7 +146,7 @@
 #### Fase 7E — Filtros na Exportação e Seleção Individual de Duplicados
 *   **Descrição:** Refinar exportação e importação.
 *   **Tarefas:**
-    1.  [ ] Adicionar filtros por Autor/Editora/Gênero na página de exportação.
+    1. [x] Filtros na exportação (Autor/Editora/Gênero/dinâmicos).
     2.  [ ] Implementar seleção individual de duplicados com checkbox.
 
 #### Fase 7F — Soft Delete e Auditoria

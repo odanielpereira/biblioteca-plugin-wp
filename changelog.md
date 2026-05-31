@@ -347,3 +347,9 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Corrigida a busca automática de capas durante a importação CSV. Substituído `media_sideload_image` por download manual via `wp_remote_get` + `file_put_contents` + `wp_insert_attachment`. Forçado HTTPS nas URLs de imagem. Testado com sucesso em 5 livros.
 - **Ferramenta:** `write_file`
 - **Decisão:** Fase 7D totalmente concluída. Fase 7E (Filtros na exportação + seleção individual de duplicados) a seguir.
+
+**57 - Data:** 2026-05-31
+- **Ação:** Fase 7E concluída — Exportação flexível.
+- **Detalhes:** Substituída a exportação simples por sistema flexível com filtros dinâmicos (campo + operador + valor), múltiplos filtros combinados com E/OU, seleção de checkboxes para escolher colunas, nomes amigáveis para campos dinâmicos e taxonomias. Suporte a campos fixos, dinâmicos e taxonomias.
+- **Ferramenta:** `write_file`
+- **Decisão:** Exportação flexível concluída. Seleção individual de duplicados movida para Ciclo 4.
