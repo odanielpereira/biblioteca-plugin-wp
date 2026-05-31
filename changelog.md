@@ -239,3 +239,21 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** O arquivo `uninstall.php` foi criado e a Fase 5 do `roadmap.md` foi marcada como concluída. Os requisitos de limpeza (posts, metadados e capabilities) foram atendidos.
 - **Ferramenta:** `write_file`
 - **Decisão:** O projeto atingiu a versão 1.0.0 com a conclusão de todas as fases de desenvolvimento planejadas.
+
+**39 - Data:** 2026-05-30
+- **Ação:** Atualização do \`escopo.md\` para o Ciclo 2 (Versão 2.0.0).
+- **Detalhes:** O arquivo \`escopo.md\` foi atualizado para incluir as especificações das Fases 6A (Importação CSV) e 6B (Exportação CSV) nas Seções 4 e 5, respectivamente. As barreiras técnicas na Seção 6 foram revisadas para refletir as novas funcionalidades e manter as restrições de código mínimo e ausência de dependências externas.
+- **Ferramenta:** \`write_file\`
+- **Decisão:** O escopo do projeto foi expandido para o próximo ciclo de desenvolvimento, mantendo a aderência aos princípios de código limpo e documentação atualizada.
+
+**40 - Data:** 2026-05-30
+*   **Ação:** Recuperação de erro no \`changelog.md\`.
+*   **Detalhes:** Restauração das 38 entradas originais do \`changelog.md\` que foram indevidamente removidas. A entrada 39 (atualização do escopo) foi mantida e reposicionada corretamente. A presente entrada (40) documenta a recuperação do erro.
+*   **Ferramenta:** \`write_file\`
+*   **Decisão:** O histórico do \`changelog.md\` foi restaurado conforme as regras de imutabilidade, corrigindo o erro anterior.
+
+**41 - Data:** 2026-05-30
+- **Ação:** Atualização do `roadmap.md` com estrutura de Ciclos e Fase 6.
+- **Detalhes:** O roadmap foi reorganizado em Ciclo 1 (v1.0.0, concluído) e Ciclo 2 (v2.0.0, em andamento). Adicionada a Fase 6 com 6A (Importação CSV, 5 tarefas) e 6B (Exportação CSV, 4 tarefas). Todas as tarefas da Fase 6 permanecem com `[ ]` — nenhuma foi iniciada.
+- **Ferramenta:** `write_file`
+- **Decisão:** A estrutura de Ciclos facilita a navegação e o versionamento semântico. O desenvolvimento da Fase 6A começa a seguir.
