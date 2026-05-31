@@ -139,8 +139,8 @@
 #### Fase 7D — Capa do Livro
 *   **Descrição:** Habilitar imagem destacada e busca automática de capa.
 *   **Tarefas:**
-    1.  [ ] Adicionar `thumbnail` ao `supports` do CPT.
-    2.  [ ] Busca automática via Google Books API (`wp_remote_get`).
+    1.  [x] Adicionar thumbnail ao CPT
+    2.  [x] Busca automática via Google Books API (5 níveis)
     3.  [ ] Integrar busca de capa na importação CSV.
 
 #### Fase 7E — Filtros na Exportação e Seleção Individual de Duplicados

@@ -329,3 +329,9 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Criadas taxonomias `bm_genre` (Gêneros, hierárquica) e `bm_category` (Categorias, hierárquica). Removidos os campos de texto Gênero e Categoria da metabox. Adicionadas colunas e dropdowns de filtro na listagem. Labels em português. Filtros integrados ao `pre_get_posts` via `tax_query`.
 - **Ferramenta:** `write_file`
 - **Decisão:** Gêneros permitem hierarquia (pai/filho). Categorias mantidas para uso futuro. Fase 7D (Capa do Livro) a seguir.
+
+**54 - Data:** 2026-05-31
+- **Ação:** Fase 7D concluída — Capa do Livro.
+- **Detalhes:** Habilitado `thumbnail` no CPT. Implementada busca automática de capa via Google Books API com 5 níveis hierárquicos (ISBN → Título+Autor+Editora → Título+Autor → Título+Editora → Título). Adicionado fallback em cascata, filtro de títulos inválidos (análise, resumo, estudo, guia), validação de similaridade (30% para títulos curtos, 50% para longos) e verificação de capa antes de aceitar o nível. Download manual da imagem com `wp_remote_get` + `file_put_contents`. Botão "Buscar Capa" via AJAX.
+- **Ferramenta:** `write_file`
+- **Decisão:** Fase 7D concluída. Fase 7E (Filtros na exportação + seleção individual de duplicados) a seguir.
