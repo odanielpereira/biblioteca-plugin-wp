@@ -305,3 +305,9 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Implementado aviso de contagem na exportação ("X livros disponíveis"). Implementada detecção de duplicados na importação por Título + Autor + Editora, com prévia, lista de duplicados, opção de pular ou importar todos, e relatório detalhado (importados, ignorados, duplicados pulados). Adicionada função auxiliar `bm_find_duplicate_book()`.
 - **Ferramenta:** `write_file`
 - **Decisão:** Fase 6C concluída. Pendências (seleção individual de duplicados, filtros na exportação) movidas para Fase 6D.
+
+**50 - Data:** 2026-05-31
+- **Ação:** Planejamento do Ciclo 3.
+- **Detalhes:** Atualizados `escopo.md` (Seção 7) e `roadmap.md` (Ciclo 3) com as Fases 7A a 7G. O Ciclo 3 expande a ficha catalográfica com campos fixos, dinâmicos, taxonomias, capa, auditoria, filtros na exportação e mapeamento dinâmico de colunas.
+- **Ferramenta:** `write_file`
+- **Decisão:** Ciclo 3 inicia com a Fase 7A (Campos Fixos de Catalogação).

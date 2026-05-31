@@ -102,3 +102,63 @@
 2. [x] Detecção de duplicados: Título + Autor + Editora, opção pular ou forçar
 3. [x] Confirmação pré-importação: prévia com lista de duplicados
 4. [x] Relatório detalhado: importados, ignorados, duplicados pulados
+
+---
+
+## Ciclo 3 — Versão 3.0.0 ← EM ANDAMENTO
+
+### Fase 7: Expansão da Ficha Catalográfica ← FASE ATIVA
+*   **Objetivo:** Transformar o livro em uma entidade rica, com campos fixos, dinâmicos, taxonomias, capa, auditoria e mapeamento inteligente de importação.
+*   **Critério de saída:** O Gestor consegue cadastrar livros com todos os campos da ficha catalográfica, criar seus próprios campos, associar gêneros e categorias, adicionar capas, e importar planilhas com mapeamento flexível de colunas.
+
+#### Fase 7A — Campos Fixos de Catalogação
+*   **Descrição:** Adicionar Gênero, Categoria, Exemplares, ISBN e Localização à metabox.
+*   **Tarefas:**
+    1.  [ ] Adicionar 5 novos campos à metabox "Detalhes do Livro".
+    2.  [ ] Implementar salvamento com `sanitize_text_field()` e `intval()`.
+    3.  [ ] Exibir apenas campos preenchidos na ficha do livro.
+    4.  [ ] Atualizar importação CSV para aceitar as novas colunas.
+    5.  [ ] Atualizar exportação CSV para incluir as novas colunas.
+
+#### Fase 7B — Campos Dinâmicos
+*   **Descrição:** Permitir que o Gestor crie campos personalizados.
+*   **Tarefas:**
+    1.  [ ] Criar interface para adicionar/remover campos dinâmicos.
+    2.  [ ] Salvar campos como `_bm_dynamic_` + nome.
+    3.  [ ] Exibir campos dinâmicos na metabox.
+    4.  [ ] Integrar com importação/exportação CSV.
+
+#### Fase 7C — Taxonomias
+*   **Descrição:** Criar Gênero e Categoria como taxonomias do WordPress.
+*   **Tarefas:**
+    1.  [ ] Registrar taxonomia `bm_genre` (não hierárquica).
+    2.  [ ] Registrar taxonomia `bm_category` (hierárquica).
+    3.  [ ] Adicionar metabox de taxonomias na tela de edição.
+    4.  [ ] Atualizar filtros da listagem para usar taxonomias.
+
+#### Fase 7D — Capa do Livro
+*   **Descrição:** Habilitar imagem destacada e busca automática de capa.
+*   **Tarefas:**
+    1.  [ ] Adicionar `thumbnail` ao `supports` do CPT.
+    2.  [ ] Busca automática via Google Books API (`wp_remote_get`).
+    3.  [ ] Integrar busca de capa na importação CSV.
+
+#### Fase 7E — Filtros na Exportação e Seleção Individual de Duplicados
+*   **Descrição:** Refinar exportação e importação.
+*   **Tarefas:**
+    1.  [ ] Adicionar filtros por Autor/Editora/Gênero na página de exportação.
+    2.  [ ] Implementar seleção individual de duplicados com checkbox.
+
+#### Fase 7F — Soft Delete e Auditoria
+*   **Descrição:** Garantir que nada seja excluído fisicamente e auditar ações.
+*   **Tarefas:**
+    1.  [ ] Confirmar que `wp_trash_post` é usado em todas as exclusões.
+    2.  [ ] Criar log de auditoria para criação, edição e exclusão.
+
+#### Fase 7G — Mapeamento Dinâmico de Colunas
+*   **Descrição:** Permitir importação de CSVs com formatos variados.
+*   **Tarefas:**
+    1.  [ ] Ler cabeçalhos do CSV e exibir para o usuário.
+    2.  [ ] Criar interface de mapeamento (dropdowns).
+    3.  [ ] Aplicar mapeamento antes da detecção de duplicados.
+    4.  [ ] Suportar número variável de colunas.

@@ -148,8 +148,58 @@
   - "W duplicados importados mesmo assim."
   - "Total de linhas processadas: T."
 
-## 7. BARREIRAS DO ESCOPO (Proibido)
-- ❌ Alterar a estrutura do CPT existente
+  ## 7. NOVA FUNCIONALIDADE — EXPANSÃO DA FICHA CATALOGRÁFICA (Fase 7)
+
+### 7.1 Campos Fixos de Catalogação (Fase 7A)
+- Adicionar à metabox "Detalhes do Livro" os campos:
+  - Gênero (`_bm_genre`) — texto, opcional
+  - Categoria (`_bm_category`) — texto, opcional
+  - Número de exemplares (`_bm_copies`) — número, opcional
+  - ISBN (`_bm_isbn`) — texto, opcional
+  - Localização (`_bm_location`) — texto, opcional
+- Nenhum campo é obrigatório. Apenas Título permanece obrigatório.
+- Sanitização: `sanitize_text_field()` para campos de texto, `intval()` para exemplares.
+- Exibir apenas campos que possuem valor na ficha do livro.
+- Importação/exportação CSV deve aceitar as novas colunas como opcionais.
+- Critério de duplicata permanece Título + Autor + Editora.
+
+### 7.2 Campos Dinâmicos (Fase 7B)
+- Interface para o Gestor criar campos personalizados.
+- Cada campo dinâmico tem: nome, tipo (texto/número) e valor.
+- Salvos como meta keys com prefixo `_bm_dynamic_`.
+- Exibidos na metabox junto com os campos fixos.
+- Importação/exportação CSV aceita colunas dinâmicas.
+
+### 7.3 Taxonomias (Fase 7C)
+- Criar taxonomias para Gênero e Categoria (hierárquica).
+- Registro via `register_taxonomy()` vinculado ao CPT `bm_book`.
+- Interface de seleção na metabox (como categorias de posts).
+- Filtros na listagem usando as taxonomias.
+- Suporte na importação/exportação CSV.
+
+### 7.4 Capa do Livro (Fase 7D)
+- Habilitar `thumbnail` no `supports` do CPT.
+- Campo de upload de imagem na metabox.
+- Busca automática de capa via Google Books API usando `wp_remote_get()`.
+- A busca automática é opcional e não bloqueia o cadastro.
+
+### 7.5 Filtros na Exportação e Seleção Individual de Duplicados (Fase 7E)
+- Filtros na exportação: permitir exportar apenas livros de determinado autor/editora/gênero.
+- Seleção individual de duplicados na importação: checkbox ao lado de cada duplicado para decidir individualmente.
+
+### 7.6 Soft Delete e Auditoria (Fase 7F)
+- Livros nunca são excluídos fisicamente (apenas movidos para lixeira).
+- Registro de auditoria: log de quem criou, editou ou excluiu cada livro.
+- Tabela de auditoria usando `wp_posts` com post type `bm_audit_log` ou meta keys.
+
+### 7.7 Mapeamento Dinâmico de Colunas na Importação (Fase 7G)
+- Leitura prévia dos cabeçalhos do CSV.
+- Interface para o usuário associar colunas do arquivo aos campos do sistema.
+- Exemplo: "Nome do Livro" → "Título", "Escritor" → "Autor".
+- Suporte a número variável de colunas.
+- O mapeamento é aplicado antes da detecção de duplicados.
+
+## 8. BARREIRAS DO ESCOPO (Proibido)tente
 - ❌ Adicionar novos campos fixos à metabox
 - ❌ Modificar os hooks de activation/deactivation/uninstall
 - ❌ Usar bibliotecas externas (Laravel-Excel, PhpSpreadsheet, etc.)
