@@ -388,14 +388,91 @@ add_action('admin_menu', 'bm_add_csv_export_submenu_page');
 function bm_handle_csv_export() {
     if (!current_user_can('manage_options')) return;
     if (!isset($_POST['bm_csv_export_nonce']) || !wp_verify_nonce($_POST['bm_csv_export_nonce'], 'bm_csv_export_action')) return;
-    $books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
+
+    $args = array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any');
+
+    $meta_query = array();
+    $tax_query  = array();
+
+    if (isset($_POST['filters']) && is_array($_POST['filters'])) {
+        foreach ($_POST['filters'] as $filter) {
+            if (empty($filter['value'])) continue;
+            $field = sanitize_text_field($filter['field']);
+            $op    = sanitize_text_field($filter['op']);
+            $value = sanitize_text_field($filter['value']);
+
+            if (in_array($field, array('bm_genre', 'bm_category'))) {
+                $term = get_term_by('name', $value, $field);
+                if ($term) {
+                    $tax_query[] = array('taxonomy' => $field, 'field' => 'term_id', 'terms' => $term->term_id);
+                }
+            } else {
+                $compare = ($op === '=') ? '=' : 'LIKE';
+                $meta_query[] = array('key' => $field, 'value' => $value, 'compare' => $compare);
+            }
+        }
+    }
+
+    if (!empty($meta_query)) {
+        $meta_query['relation'] = isset($_POST['filter_relation']) && 'OR' === $_POST['filter_relation'] ? 'OR' : 'AND';
+        $args['meta_query'] = $meta_query;
+    }
+    if (!empty($tax_query)) {
+        $tax_query['relation'] = isset($_POST['filter_relation']) && 'OR' === $_POST['filter_relation'] ? 'OR' : 'AND';
+        $args['tax_query'] = $tax_query;
+    }
+
+    $books = get_posts($args);
     if (empty($books)) return;
+
+    $columns = isset($_POST['columns']) ? array_map('sanitize_text_field', $_POST['columns']) : array('title', '_bm_author', '_bm_publisher');
+    $dynamic_fields = get_option('bm_dynamic_fields', array());
+
+    $headers = array();
+    foreach ($columns as $col) {
+        if ('title' === $col) { $headers[] = 'Título'; }
+        elseif ('bm_genre' === $col) { $headers[] = 'Gênero'; }
+        elseif ('bm_category' === $col) { $headers[] = 'Categoria'; }
+        elseif (strpos($col, '_bm_dynamic_') === 0) {
+            $dynamic_name = str_replace('_bm_dynamic_', '', $col);
+            $original = $dynamic_name;
+            foreach ($dynamic_fields as $df) {
+                if (sanitize_key($df) === $dynamic_name) { $original = $df; break; }
+            }
+            $headers[] = $original;
+        }
+        elseif (strpos($col, '_bm_') === 0) {
+            $h = substr($col, 4);
+            $map = array('author' => 'Autor', 'publisher' => 'Editora', 'isbn' => 'ISBN', 'location' => 'Localização', 'copies' => 'Exemplares');
+            $headers[] = isset($map[$h]) ? $map[$h] : ucfirst($h);
+        }
+        else { $headers[] = $col; }
+    }
+
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="livros.csv"');
     echo "\xEF\xBB\xBF";
     $output = fopen('php://output', 'w');
-    fputcsv($output, array('Título', 'Autor', 'Editora'), ';');
-    foreach ($books as $book) fputcsv($output, array($book->post_title, get_post_meta($book->ID, '_bm_author', true), get_post_meta($book->ID, '_bm_publisher', true)), ';');
+    fputcsv($output, $headers, ';');
+
+    foreach ($books as $book) {
+        $row = array();
+        foreach ($columns as $col) {
+            if ('title' === $col) { $row[] = $book->post_title; }
+            elseif ('bm_genre' === $col) {
+                $terms = wp_get_post_terms($book->ID, 'bm_genre', array('fields' => 'names'));
+                $row[] = implode(', ', $terms);
+            }
+            elseif ('bm_category' === $col) {
+                $terms = wp_get_post_terms($book->ID, 'bm_category', array('fields' => 'names'));
+                $row[] = implode(', ', $terms);
+            }
+            elseif (strpos($col, '_bm_dynamic_') === 0 || strpos($col, '_bm_') === 0) {
+                $row[] = get_post_meta($book->ID, $col, true);
+            }
+        }
+        fputcsv($output, $row, ';');
+    }
     fclose($output); exit;
 }
 add_action('admin_init', 'bm_handle_csv_export');
@@ -404,9 +481,73 @@ function bm_render_csv_export_page() {
     if (!current_user_can('manage_options')) return;
     $book_count = wp_count_posts('bm_book');
     $total = $book_count->publish + $book_count->draft + $book_count->trash;
+
+    $fields = array(
+        '_bm_author'    => 'Autor',
+        '_bm_publisher' => 'Editora',
+        '_bm_isbn'      => 'ISBN',
+        '_bm_location'  => 'Localização',
+        '_bm_copies'    => 'Exemplares',
+        'bm_genre'      => 'Gênero',
+        'bm_category'   => 'Categoria',
+    );
+    $dynamic_fields = get_option('bm_dynamic_fields', array());
+    foreach ($dynamic_fields as $df) {
+        $key = '_bm_dynamic_' . sanitize_key($df);
+        $fields[$key] = $df;
+    }
     ?>
-    <div class="wrap"><h1><?php _e('Exportar Livros para CSV', 'book-manager'); ?></h1><p><?php echo sprintf(__('%d livros disponíveis para exportação.', 'book-manager'), $total); ?></p>
-        <form method="post"><?php wp_nonce_field('bm_csv_export_action', 'bm_csv_export_nonce'); ?><?php submit_button('Baixar CSV'); ?></form></div>
+    <div class="wrap">
+        <h1><?php _e('Exportar Livros para CSV', 'book-manager'); ?></h1>
+        <p><?php echo sprintf(__('%d livros no acervo.', 'book-manager'), $total); ?></p>
+        <form method="post">
+            <?php wp_nonce_field('bm_csv_export_action', 'bm_csv_export_nonce'); ?>
+
+            <h3><?php _e('Colunas para exportar', 'book-manager'); ?></h3>
+            <p>
+                <label><input type="checkbox" name="columns[]" value="title" checked> <?php _e('Título', 'book-manager'); ?></label>
+                <?php foreach ($fields as $key => $label): ?>
+                    <label style="margin-left:10px"><input type="checkbox" name="columns[]" value="<?php echo esc_attr($key); ?>" checked> <?php echo esc_html($label); ?></label>
+                <?php endforeach; ?>
+            </p>
+
+            <h3><?php _e('Filtros (opcional)', 'book-manager'); ?></h3>
+            <div id="bm-export-filters">
+                <div class="bm-filter-row" style="margin-bottom:5px;">
+                    <select name="filters[0][field]">
+                        <?php foreach ($fields as $key => $label): ?>
+                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <select name="filters[0][op]">
+                        <option value="="><?php _e('Igual a', 'book-manager'); ?></option>
+                        <option value="LIKE"><?php _e('Contém', 'book-manager'); ?></option>
+                    </select>
+                    <input type="text" name="filters[0][value]" placeholder="<?php _e('Valor', 'book-manager'); ?>" />
+                </div>
+            </div>
+            <p>
+                <button type="button" class="button" id="bm-add-filter"><?php _e('+ Adicionar Filtro', 'book-manager'); ?></button>
+                <select name="filter_relation" style="margin-left:10px;">
+                    <option value="AND"><?php _e('E (todos os filtros)', 'book-manager'); ?></option>
+                    <option value="OR"><?php _e('OU (qualquer filtro)', 'book-manager'); ?></option>
+                </select>
+            </p>
+            <?php submit_button('Exportar CSV'); ?>
+        </form>
+    </div>
+    <script>
+    jQuery(document).ready(function($) {
+        var filterIndex = 1;
+        $('#bm-add-filter').on('click', function() {
+            var html = '<div class="bm-filter-row" style="margin-bottom:5px;">' +
+                $('#bm-export-filters .bm-filter-row').first().html().replace(/filters\[0\]/g, 'filters[' + filterIndex + ']') +
+                '</div>';
+            $('#bm-export-filters').append(html);
+            filterIndex++;
+        });
+    });
+    </script>
     <?php
 }
 
@@ -458,7 +599,7 @@ function bm_fetch_cover_from_google($title, $author, $publisher, $isbn = '') {
     if (!empty($title)) $queries[] = $title;
 
     foreach ($queries as $query) {
-        $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($query) . '&key=AIzaSyCLxVszxvuOQOe8_VdsC_lRFwntUP4uX_U';
+        $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($query) . '&key=' . BM_GOOGLE_BOOKS_API_KEY;
         $response = wp_remote_get($url, array('timeout' => 10));
         if (is_wp_error($response)) continue;
         $body = json_decode(wp_remote_retrieve_body($response), true);
@@ -513,7 +654,7 @@ function bm_search_book_cover() {
 
     $body = null; $used = '';
     foreach ($queries as $i => $q) {
-        $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($q) . '&key=AIzaSyCLxVszxvuOQOe8_VdsC_lRFwntUP4uX_U';
+        $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($q) . '&key=' . BM_GOOGLE_BOOKS_API_KEY;
         $r = wp_remote_get($url, array('timeout' => 15));
         if (is_wp_error($r)) continue;
         $body = json_decode(wp_remote_retrieve_body($r), true);
