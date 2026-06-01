@@ -389,3 +389,16 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Atualizados `escopo.md` (Seção 8 com 7 fases + requisitos de segurança) e `roadmap.md` (Ciclo 4 detalhado com fases 8A a 8G). Ciclos 1-3 consolidados como concluídos. Planejadas: CPT público (8A), single (8B), archive (8C), filtros inteligentes (8D), vitrine visual (8E), busca de sinopse (8F) e classificação interdisciplinar por IA (8G). Ênfase em segurança: controle de exibição por `current_user_can()`, REST API desabilitada, dados sensíveis apenas para admin. Auditoria do Gemini revisada e refutada nos pontos de falsos positivos (nonces presentes, `bm_remove_admin_caps()` usada no `uninstall.php`).
 - **Ferramenta:** `write_file`
 - **Decisão:** Ciclo 4 inicia com a Fase 8A (Tornar CPT Público).
+
+**64 - Data:** 2026-06-01
+- **Ação:** Commit e tag de alinhamento da engenharia de contexto para o Ciclo 4.
+- **Detalhes:** Commit com `escopo.md`, `roadmap.md` e `changelog.md` atualizados para o Ciclo 4. Tag `v3.1-ciclo4-contexto` criada. Código auditado e validado: sem erros, nonces presentes, `bm_remove_admin_caps()` em uso no `uninstall.php`. Falsos positivos da auditoria do Gemini refutados. Projeto pronto para iniciar a Fase 8A (Tornar CPT Público).
+- **Ferramenta:** `run_terminal_command` (git add, commit, tag, push)
+- **Decisão:** Ciclo 4 inicia oficialmente. Próximo passo: Fase 8A.
+
+**65 - Data:** 2026-06-01
+- **Ação:** Fase 8A e 8B concluídas — CPT público e página individual do livro.
+- **Detalhes:** Alterado `public` para `true`, adicionados `has_archive`, `rewrite` com slug `livros`, `show_in_rest` false e `exclude_from_search` false no registro do CPT. Criado arquivo `single-bm_book.php` com template personalizado: visitantes veem capa, título, autor, editora, gêneros, categorias e campos dinâmicos; admin logado vê adicionalmente ISBN, localização, exemplares e histórico de auditoria. Campos vazios são ocultados automaticamente.
+- **Ferramenta:** `write_file`
+- **Decisão:** Fases 8A e 8B concluídas. Fase 8C (Archive/Catálogo) a seguir.
+
