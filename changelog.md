@@ -377,3 +377,15 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Página "Gerenciar Campos" reformulada com: drag and drop para reordenar, renomeação inline de campos dinâmicos com migração automática de meta keys em todos os livros, checkbox de visibilidade (mostrar/ocultar na metabox), campos do sistema como readonly, remoção apenas de campos dinâmicos, tipo de campo (texto curto/longo). Adicionado `jquery-ui-sortable`. Correção da conversão de formato antigo de `bm_dynamic_fields`.
 - **Ferramenta:** `write_file`
 - **Decisão:** Ciclo 3 concluído. Todos os módulos de expansão da ficha catalográfica implementados.
+
+**62 - Data:** 2026-05-31
+- **Ação:** Commit e tag de encerramento do Ciclo 3.
+- **Detalhes:** Commit final com todas as fases do Ciclo 3 concluídas: campos fixos, dinâmicos, taxonomias, capa do livro, exportação flexível, soft delete e auditoria, mapeamento dinâmico de colunas e gerenciamento de campos. Tag `v3.0-ciclo3-concluido` criada. Plugin pronto para o próximo ciclo (empréstimos, usuários, vitrine pública).
+- **Ferramenta:** `run_terminal_command` (git add, commit, tag, push)
+- **Decisão:** Ciclo 3 encerrado. Ciclo 4 iniciará com módulo de empréstimos ou vitrine pública conforme prioridade.
+
+**63 - Data:** 2026-06-01
+- **Ação:** Planejamento do Ciclo 4 — Vitrine Pública e Página do Livro.
+- **Detalhes:** Atualizados `escopo.md` (Seção 8 com 7 fases + requisitos de segurança) e `roadmap.md` (Ciclo 4 detalhado com fases 8A a 8G). Ciclos 1-3 consolidados como concluídos. Planejadas: CPT público (8A), single (8B), archive (8C), filtros inteligentes (8D), vitrine visual (8E), busca de sinopse (8F) e classificação interdisciplinar por IA (8G). Ênfase em segurança: controle de exibição por `current_user_can()`, REST API desabilitada, dados sensíveis apenas para admin. Auditoria do Gemini revisada e refutada nos pontos de falsos positivos (nonces presentes, `bm_remove_admin_caps()` usada no `uninstall.php`).
+- **Ferramenta:** `write_file`
+- **Decisão:** Ciclo 4 inicia com a Fase 8A (Tornar CPT Público).

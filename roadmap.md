@@ -16,157 +16,100 @@
 ### Fase 1: Estrutura Base e Custom Post Type (CPT) ← FASE CONCLUÍDA
 *   **Objetivo:** Criar a fundação do plugin com slug `book-manager` e o CPT `bm_book` visível apenas para administradores.
 *   **Critério de saída:** Um admin consegue ver o menu "Livros" no painel, adicionar um livro com título, e o livro aparece na listagem.
-*   **Tarefas:**
-    1.  [x] Criar `/wp-content/plugins/book-manager/book-manager.php` com cabeçalho WordPress padrão.
-    2.  [x] Adicionar `defined('ABSPATH') || exit;`.
-    3.  [x] Registrar CPT `bm_book` via `register_post_type()` no hook `init`.
-    4.  [x] Configurar capabilities: `capability_type` => `bm_book`, `map_meta_cap` => true.
-    5.  [x] Adicionar `register_activation_hook()` para flush de rewrite rules.
-    6.  [x] Adicionar `register_deactivation_hook()` para flush de rewrite rules (sem apagar dados).
 
 ### Fase 2: Metaboxes e Campos Personalizados ← FASE CONCLUÍDA
-*   **Objetivo:** Implementar a metabox para adicionar e editar detalhes do livro (Autor e Editora), garantindo a segurança e a aderência ao escopo.
-*   **Critério de saída:** A metabox "Detalhes do Livro" aparece na tela de edição do CPT `bm_book`, com campos para Autor e Editora. Os dados inseridos são salvos corretamente e preenchidos ao recarregar a página.
-*   **Tarefas:**
-    1.  [x] Usar `add_meta_box()` no hook `add_meta_boxes` para criar a caixa "Detalhes do Livro" para o CPT `bm_book`.
-    2.  [x] Criar a função de callback que renderiza os campos Autor e Editora na metabox.
-    3.  [x] Incluir um nonce field (`wp_nonce_field`) na metabox para verificação de segurança.
-    4.  [x] Implementar o hook `save_post` (`save_post_bm_book`) com:
-        *   Verificação do nonce (`wp_verify_nonce`).
-        *   Verificação de permissão (`current_user_can('manage_options')`).
-        *   Sanitização dos campos com `sanitize_text_field()`.
-        *   Salvamento dos dados com `update_post_meta()`.
-    5.  [x] Preencher os campos Autor e Editora com os valores salvos usando `get_post_meta()` na função de callback da metabox.
+*   **Objetivo:** Implementar a metabox para adicionar e editar detalhes do livro (Autor e Editora).
 
 ### Fase 4: Interface de Listagem e Visualização ← FASE CONCLUÍDA
-*   **Objetivo:** Criar uma interface para listar todos os livros cadastrados e visualizar seus detalhes, aderindo estritamente ao escopo e princípios.
-*   **Critério de saída:** A listagem nativa do CPT `bm_book` é customizada para exibir colunas de Título, Autor e Editora, com funcionalidade de busca/filtro. Nenhuma interface de menu duplicada é criada.
-*   **Tarefas:**
-    1.  [x] Customizar a listagem nativa do CPT `bm_book` para exibir colunas de Título, Autor e Editora.
-    2.  [x] Implementar funcionalidade de busca/filtro por Título, Autor e Editora na listagem customizada.
+*   **Objetivo:** Customizar a listagem nativa com colunas de Título, Autor, Editora e filtros.
 
 ### Fase 5: Desativação, Desinstalação e Limpeza ← FASE CONCLUÍDA
-*   **Objetivo:** Garantir que o plugin possa ser desativado e desinstalado de forma limpa, removendo todas as opções e dados criados.
-*   **Critério de saída:** O plugin pode ser desativado sem erros. A desinstalação remove completamente o CPT `bm_book`, seus metadados e quaisquer outras opções criadas pelo plugin.
-*   **Tarefas:**
-    1.  [x] Criar o arquivo `uninstall.php`.
-    2.  [x] Implementar a lógica de remoção do CPT `bm_book` e limpeza de metadados no `uninstall.php`.
-    3.  [x] Garantir que a desativação (hook `register_deactivation_hook`) apenas execute `flush_rewrite_rules()`, conforme o `escopo.md`.
+*   **Objetivo:** Garantir limpeza completa na desinstalação.
 
 ---
 
-## Ciclo 2 — Versão 2.0.0 ← EM ANDAMENTO
+## Ciclo 2 — Versão 2.0.0 ← CONCLUÍDO
 
-### Fase 6: Importação e Exportação CSV ← FASE ATIVA
-*   **Objetivo:** Permitir que o Gestor importe livros em massa via arquivo CSV e exporte o acervo cadastrado.
-*   **Critério de saída:** 
-    *   6A: O admin consegue fazer upload de um CSV com Título, Autor e Editora, e os livros são criados no sistema com relatório de resultados.
-    *   6B: O admin consegue baixar um CSV com todos os livros cadastrados e suas informações.
-
-#### Fase 6A — Importação CSV
-*   **Descrição:** Desenvolver a funcionalidade de importar dados de livros a partir de um arquivo CSV, permitindo o cadastro em massa.
-*   **Critérios de Saída:**
-    *   Criar subpágina no menu "Livros" para a funcionalidade de importação.
-    *   Implementar formulário de upload de arquivo CSV com nonce para segurança.
-    *   Processar upload de CSV: delimitador `;`, codificação UTF-8, ignorar linha de cabeçalho.
-    *   Validar dados: Título é obrigatório. Aplicar `sanitize_text_field()` nos campos.
-    *   Utilizar `wp_insert_post()` para criar novos posts do tipo `bm_book`.
-    *   Utilizar `update_post_meta()` para salvar os metadados (`_bm_author`, `_bm_publisher`).
-    *   Exibir relatório detalhado dos resultados da importação (sucessos, falhas, motivos).
-*   **Tarefas:**
-    1.  [x] Criar subpágina "Importar CSV" no menu "Livros" (`add_submenu_page`).
-    2.  [x] Renderizar formulário de upload com nonce de segurança.
-    3.  [x] Processar o arquivo CSV (delimitador `;`, UTF-8, ignorar cabeçalho).
-    4.  [x] Para cada linha: validar título obrigatório, sanitizar, inserir via `wp_insert_post()` + `update_post_meta()`.
-    5.  [x] Exibir relatório: "X importados, Y ignorados (sem título)".
-
-#### Fase 6B — Exportação CSV
-*   **Descrição:** Desenvolver a funcionalidade de exportar todos os dados de livros cadastrados para um arquivo CSV.
-*   **Critérios de Saída:**
-    *   Criar subpágina no menu "Livros" para a funcionalidade de exportação.
-    *   Buscar todos os livros utilizando `get_posts()` com o post type `bm_book`.
-    *   Gerar arquivo CSV com as colunas: Título, Autor, Editora.
-    *   CSV deve usar delimitador `;` e codificação UTF-8 com BOM.
-    *   Forçar download do arquivo CSV via headers HTTP.
-*   **Tarefas:**
- 1.  [x] Criar subpágina "Exportar CSV" no menu "Livros" (`add_submenu_page`).
-2.  [x] Buscar todos os livros com `get_posts()`.
-3.  [x] Gerar arquivo CSV (delimitador `;`, UTF-8 com BOM) com colunas Título, Autor, Editora.
-4.  [x] Forçar download via headers PHP.
-
-### Fase 6C — Ajustes de Usabilidade ← FASE ATIVA
-*   **Objetivo:** Refinar a experiência de importação e exportação com avisos, detecção de duplicados e relatórios detalhados.
-*   **Critério de saída:** O usuário recebe feedback claro em todas as operações. A importação detecta duplicados por Título + Autor + Editora e oferece opção de pular ou importar.
-*   **Tarefas:**
- 1. [x] Aviso na exportação: "X livros disponíveis para exportação"
-2. [x] Detecção de duplicados: Título + Autor + Editora, opção pular ou forçar
-3. [x] Confirmação pré-importação: prévia com lista de duplicados
-4. [x] Relatório detalhado: importados, ignorados, duplicados pulados
+### Fase 6: Importação e Exportação CSV ← FASE CONCLUÍDA
+*   **Fase 6A — Importação CSV** ✅
+*   **Fase 6B — Exportação CSV** ✅
+*   **Fase 6C — Ajustes de Usabilidade** ✅
 
 ---
 
-## Ciclo 3 — Versão 3.0.0 ← EM ANDAMENTO
+## Ciclo 3 — Versão 3.0.0 ← CONCLUÍDO
 
-### Fase 7: Expansão da Ficha Catalográfica ← FASE ATIVA
-*   **Objetivo:** Transformar o livro em uma entidade rica, com campos fixos, dinâmicos, taxonomias, capa, auditoria e mapeamento inteligente de importação.
-*   **Critério de saída:** O Gestor consegue cadastrar livros com todos os campos da ficha catalográfica, criar seus próprios campos, associar gêneros e categorias, adicionar capas, e importar planilhas com mapeamento flexível de colunas.
+### Fase 7: Expansão da Ficha Catalográfica ← FASE CONCLUÍDA
+*   **Fase 7A — Campos Fixos de Catalogação** ✅
+*   **Fase 7B — Campos Dinâmicos** ✅
+*   **Fase 7C — Taxonomias** ✅
+*   **Fase 7D — Capa do Livro** ✅
+*   **Fase 7E — Exportação Flexível** ✅
+*   **Fase 7F — Soft Delete e Auditoria** ✅
+*   **Fase 7G — Mapeamento Dinâmico de Colunas** ✅
+*   **Fase 7H — Gerenciamento de Campos** ✅
 
-#### Fase 7A — Campos Fixos de Catalogação
-*   **Descrição:** Adicionar Gênero, Categoria, Exemplares, ISBN e Localização à metabox.
+---
+
+## Ciclo 4 — Versão 4.0.0 ← EM ANDAMENTO
+
+### Fase 8: Vitrine Pública e Página do Livro ← FASE ATIVA
+*   **Objetivo:** Abrir o acervo ao público com uma vitrine visual, página individual para cada livro e busca inteligente, garantindo a segurança dos dados sensíveis.
+*   **Critério de saída:** Visitantes navegam pelo catálogo público, veem capas e informações básicas, filtram por gênero/categoria. Admin logado vê dados sensíveis adicionais.
+
+#### Fase 8A — Tornar CPT Público
+*   **Descrição:** Alterar `public` para `true`, habilitar `has_archive` e `rewrite`. Manter `show_in_rest => false` por segurança.
 *   **Tarefas:**
-   1. [x] Adicionar 5 novos campos à metabox "Detalhes do Livro".
-2. [x] Implementar salvamento com sanitize_text_field() e intval().
-3. [x] Exibir apenas campos preenchidos na ficha do livro.
-    4.  [ ] Atualizar importação CSV para aceitar as novas colunas.
-    5.  [ ] Atualizar exportação CSV para incluir as novas colunas.
+    1.  [ ] Alterar `public` → true no registro do CPT.
+    2.  [ ] Adicionar `has_archive` → true.
+    3.  [ ] Adicionar `rewrite` → `['slug' => 'livros']`.
+    4.  [ ] Adicionar `show_in_rest` → false.
+    5.  [ ] Testar se as URLs `/livros/` e `/livros/nome-do-livro` funcionam.
 
-#### Fase 7B — Campos Dinâmicos
-*   **Descrição:** Permitir que o Gestor crie campos personalizados.
+#### Fase 8B — Página Individual do Livro (Single)
+*   **Descrição:** Criar template para exibir a ficha completa do livro, com controle de visibilidade por perfil.
 *   **Tarefas:**
-1. [x] Criar interface para adicionar/remover campos dinâmicos.
-2. [x] Salvar campos como _bm_dynamic_ + nome.
-3. [x] Exibir campos dinâmicos na metabox.
-4. [ ] Integrar com importação/exportação CSV.
+    1.  [ ] Criar arquivo `single-bm_book.php` no tema ou plugin.
+    2.  [ ] Exibir capa, título, autor, editora, gêneros, sinopse para visitantes.
+    3.  [ ] Exibir ISBN, localização, exemplares e histórico de auditoria apenas para admin (`current_user_can('manage_options')`).
+    4.  [ ] Ocultar campos vazios.
+    5.  [ ] Layout responsivo.
 
-#### Fase 7C — Taxonomias
-*   **Descrição:** Criar Gênero e Categoria como taxonomias do WordPress.
+#### Fase 8C — Página de Catálogo (Archive)
+*   **Descrição:** Criar página de listagem com grid de capas.
 *   **Tarefas:**
-    1. [x] Registrar taxonomia bm_genre (hierárquica).
-2. [x] Registrar taxonomia bm_category (hierárquica).
-3. [x] Adicionar metabox de taxonomias na tela de edição.
-4. [x] Atualizar filtros da listagem para usar taxonomias.
+    1.  [ ] Criar arquivo `archive-bm_book.php`.
+    2.  [ ] Grid de capas com título e autor.
+    3.  [ ] Paginação.
+    4.  [ ] Cada capa linka para a página individual.
+    5.  [ ] Layout responsivo.
 
-#### Fase 7D — Capa do Livro
-*   **Descrição:** Habilitar imagem destacada e busca automática de capa.
+#### Fase 8D — Filtros Inteligentes na Vitrine
+*   **Descrição:** Adicionar filtros por gênero, categoria, autor e busca textual.
 *   **Tarefas:**
-    1.  [x] Adicionar thumbnail ao CPT
-    2.  [x] Busca automática via Google Books API (5 níveis)
-    3. [x] Integrar busca de capa na importação CSV..
+    1.  [ ] Dropdowns de gênero e categoria.
+    2.  [ ] Campo de busca textual (título, autor, sinopse).
+    3.  [ ] Filtros via `pre_get_posts` no front-end.
+    4.  [ ] Manter filtros ao navegar entre páginas.
 
-#### Fase 7E — Filtros na Exportação e Seleção Individual de Duplicados
-*   **Descrição:** Refinar exportação e importação.
+#### Fase 8E — Vitrine Visual
+*   **Descrição:** Refinar o layout com grid de capas e hover.
 *   **Tarefas:**
-    1. [x] Filtros na exportação (Autor/Editora/Gênero/dinâmicos).
-    2.  [ ] Implementar seleção individual de duplicados com checkbox.
+    1.  [ ] Grid de capas responsivo (CSS Grid).
+    2.  [ ] Hover com informações básicas.
+    3.  [ ] Preparar estrutura para futuro carrossel de "Mais Lidos".
 
-#### Fase 7F — Soft Delete e Auditoria
-*   **Descrição:** Garantir que nada seja excluído fisicamente e auditar ações.
+#### Fase 8F — Busca Automática de Sinopse
+*   **Descrição:** Buscar sinopse via Google Books API e salvar como campo dinâmico.
 *   **Tarefas:**
-    1. [x] Confirmar uso de wp_trash_post para soft delete.
-    2. [x] Criar log de auditoria para criação, edição e exclusão.
+    1.  [ ] Criar função `bm_fetch_sinopse_from_google()` reaproveitando a lógica da busca de capa.
+    2.  [ ] Botão "Buscar Sinopse" na tela de edição.
+    3.  [ ] Integrar na importação CSV.
+    4.  [ ] Exibir sinopse na página pública.
 
-#### Fase 7G — Mapeamento Dinâmico de Colunas
-*   **Descrição:** Permitir importação de CSVs com formatos variados.
+#### Fase 8G — Classificação Interdisciplinar por IA (Planejamento)
+*   **Descrição:** Planejamento para Ciclo 9/10. Conectar livros a disciplinas escolares via IA.
 *   **Tarefas:**
-    1. [x] Ler cabeçalhos do CSV e exibir para o usuário.
-    2. [x] Criar interface de mapeamento (dropdowns).
-    3. [x] Aplicar mapeamento antes da detecção de duplicados.
-    4. [x] Suportar número variável de colunas.
-
-    #### Fase 7H — Ordenação e Visibilidade de Campos
-*   **Descrição:** Permitir ocultar e reordenar campos da metabox.
-*   **Tarefas:**
-    1. [x] Checkbox para mostrar/ocultar cada campo.
-    2. [x] Interface para reordenar campos (drag and drop).
-    3. [x] Renomear campos dinâmicos com migração de dados.
-    4. [x] Tipo de campo (texto curto/longo).
+    1.  [ ] Planejar taxonomia `bm_discipline`.
+    2.  [ ] Planejar integração com API de IA (Gemini/ChatGPT).
+    3.  [ ] Planejar cache de resultados.
