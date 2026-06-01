@@ -365,3 +365,15 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Substituída a importação fixa de 3 colunas por sistema de mapeamento dinâmico. O usuário faz upload do CSV, o sistema lê os cabeçalhos e permite associar cada coluna do arquivo a um campo do sistema (fixo ou dinâmico). Corrigido bug de acentuação com `JSON_UNESCAPED_UNICODE`. Restaurada a importação de capas em massa. Etapas: Upload → Mapeamento → Processamento.
 - **Ferramenta:** `write_file`
 - **Decisão:** Fase 7G concluída. Fase 7H (Ordenação e visibilidade de campos) a seguir.
+
+**60 - Data:** 2026-05-31
+- **Ação:** Commit e tag da Fase 7G (Mapeamento Dinâmico de Colunas).
+- **Detalhes:** Commit com a Fase 7G concluída: sistema de mapeamento dinâmico na importação CSV (Upload → Mapeamento → Processamento), leitura de cabeçalhos, dropdowns para associar colunas do arquivo a campos do sistema, suporte a campos fixos e dinâmicos, acentos corrigidos com `JSON_UNESCAPED_UNICODE`, importação de capas em massa restaurada. Tag `v2.6-mapeamento-dinamico` criada.
+- **Ferramenta:** `run_terminal_command` (git add, commit, tag, push)
+- **Decisão:** Fase 7G concluída. Fase 7H (Gerenciamento de Campos: renomear, reordenar, ocultar, tipo de campo) a seguir.
+
+**61 - Data:** 2026-05-31
+- **Ação:** Fase 7H concluída — Gerenciamento de Campos (renomear, reordenar, ocultar, tipo de campo).
+- **Detalhes:** Página "Gerenciar Campos" reformulada com: drag and drop para reordenar, renomeação inline de campos dinâmicos com migração automática de meta keys em todos os livros, checkbox de visibilidade (mostrar/ocultar na metabox), campos do sistema como readonly, remoção apenas de campos dinâmicos, tipo de campo (texto curto/longo). Adicionado `jquery-ui-sortable`. Correção da conversão de formato antigo de `bm_dynamic_fields`.
+- **Ferramenta:** `write_file`
+- **Decisão:** Ciclo 3 concluído. Todos os módulos de expansão da ficha catalográfica implementados.

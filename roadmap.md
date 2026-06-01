@@ -166,6 +166,7 @@
     #### Fase 7H — Ordenação e Visibilidade de Campos
 *   **Descrição:** Permitir ocultar e reordenar campos da metabox.
 *   **Tarefas:**
-    1.  [ ] Checkbox para mostrar/ocultar cada campo (exceto Título).
-    2.  [ ] Interface para reordenar campos (arrastar ou setas).
-    3.  [ ] Salvar preferências por usuário.
+    1. [x] Checkbox para mostrar/ocultar cada campo.
+    2. [x] Interface para reordenar campos (drag and drop).
+    3. [x] Renomear campos dinâmicos com migração de dados.
+    4. [x] Tipo de campo (texto curto/longo).
