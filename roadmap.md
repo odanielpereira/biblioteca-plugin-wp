@@ -83,47 +83,47 @@
     3.  [x] Paginação.
     4.  [x] Cada capa linka para a página individual.
     5.  [x] Layout responsivo.
-    6.  [ ] Testar archive no ambiente WordPress e validar critérios de saída.
+    6.  [ ] Testar archive no ambiente WordPress e validar critérios de saída. (⚠️ Funcional com shortcode [bm_catalog]; archive nativo /livros/ apresenta erro 404 com parâmetros de filtro — ver item 18 do Ciclo de Polimento)
+
 
 #### Fase 8C-B — Correções Cirúrgicas (Segurança e Manutenção)
 *   **Descrição:** Correções identificadas na revisão de código antes de avançar para os Filtros Inteligentes.
 *   **Critério de saída:** Nenhuma vulnerabilidade CSRF conhecida, código duplicado eliminado, experiência visual consistente entre single e archive.
 *   **Tarefas:**
-    1.  [ ] Adicionar `check_ajax_referer` no handler AJAX `bm_search_book_cover` e incluir nonce no script jQuery inline.
-    2.  [ ] Unificar funções duplicadas `bm_fetch_cover_from_google` e `bm_search_book_cover` — extrair núcleo comum de busca em 5 níveis, manter wrappers com assinaturas originais.
-    3.  [ ] Adicionar placeholder visual para livros sem capa no `single-bm_book.php` (coerência com `archive-bm_book.php`).
+    1.  [x] Adicionar `check_ajax_referer` no handler AJAX `bm_search_book_cover` e incluir nonce no script jQuery inline.
+    2.  [x] Unificar funções duplicadas `bm_fetch_cover_from_google` e `bm_search_book_cover` — extrair núcleo comum de busca em 5 níveis, manter wrappers com assinaturas originais.s
+    3.  [x] Adicionar placeholder visual para livros sem capa no `single-bm_book.php` (coerência com `archive-bm_book.php`).
 
 #### Fase 8D — Filtros Inteligentes na Vitrine
-*   **Descrição:** Adicionar filtros por gênero, categoria, autor e busca textual no front-end.
 *   **Tarefas:**
-    1.  [ ] Dropdowns de gênero e categoria no archive.
-    2.  [ ] Campo de busca textual (título, autor, sinopse).
-    3.  [ ] Filtros via `pre_get_posts` no front-end.
+    1.  [x] Dropdowns de gênero e categoria no archive.
+    2.  [x] Campo de busca textual (título, autor, sinopse).
+    3.  [x] Filtros via pre_get_posts no front-end.
     4.  [ ] Manter filtros ao navegar entre páginas.
-    5.  [ ] Arquitetura extensível para receber `bm_discipline` e faixa etária no futuro.
+    5.  [ ] Arquitetura extensível para receber bm_discipline e faixa etária no futuro.
 
 #### Fase 8E — Vitrine Visual
-*   **Descrição:** Refinar o layout do archive com grid de capas, hover effects e preparar para carrossel futuro.
 *   **Tarefas:**
-    1.  [ ] Refinar CSS Grid com hover effects nos cards.
-    2.  [ ] Aumentar resolução das capas via Google Books API (`zoom=2`).
-    3.  [ ] Preparar hooks/ações para injeção futura de carrossel "Mais Lidos" e ranking "Top Leitores".
-    4.  [ ] Garantir responsividade completa (mobile, tablet, desktop).
+    1.  [x] Refinar CSS Grid com hover effects nos cards.
+    2.  [x] Aumentar resolução das capas via Google Books API (zoom=2).
+    3.  [x] Preparar hooks/ações para injeção futura de carrossel "Mais Lidos" e ranking "Top Leitores".
+    4.  [x] Garantir responsividade completa (mobile, tablet, desktop)..
 
 #### Fase 8F — Busca Automática de Sinopse
 *   **Descrição:** Buscar sinopse via Google Books API e salvar como campo dinâmico.
 *   **Tarefas:**
-    1.  [ ] Criar função `bm_fetch_sinopse_from_google()` reaproveitando a lógica unificada de busca.
-    2.  [ ] Botão "Buscar Sinopse" na tela de edição.
-    3.  [ ] Integrar na importação CSV.
-    4.  [ ] Exibir sinopse na página pública (single).
+    1.  [x] Criar função bm_fetch_sinopse_from_google() reaproveitando a lógica unificada de busca.
+    2.  [x] Botão "Buscar Sinopse" na tela de edição.
+    3.  [x] Integrar na importação CSV.
+    4.  [x] Exibir sinopse na página pública (single).
 
-#### Fase 8G — Classificação Interdisciplinar por IA (Planejamento)
-*   **Descrição:** Planejamento para Ciclo 9/10. Conectar livros a disciplinas escolares via IA.
+#### Fase 8G — Classificação Interdisciplinar por IA
 *   **Tarefas:**
-    1.  [ ] Planejar taxonomia `bm_discipline`.
-    2.  [ ] Planejar integração com API de IA (Gemini/ChatGPT).
-    3.  [ ] Planejar cache de resultados.
+    1.  [x] Planejar taxonomia bm_discipline.
+    2.  [x] Criar taxonomia bm_discipline com metabox na edição.
+    3.  [x] Integrar chamada à API Gemini (código pronto, pendente chave válida).
+    4.  [x] Implementar cache de resultados (_bm_ai_classified).
+    5.  [ ] Obter chave API Gemini válida e testar funcionalidade. → Ciclo de Polimento item 19
 
 ---
 

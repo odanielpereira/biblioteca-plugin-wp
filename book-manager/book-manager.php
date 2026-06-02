@@ -14,13 +14,38 @@
 
 defined('ABSPATH') || exit;
 
+// ==========================================
+// FASE 8B: FORÇAR TEMPLATES DO PLUGIN (SINGLE E ARCHIVE)
+// ==========================================
+function bm_force_templates($template) {
+    if (is_singular('bm_book')) {
+        $plugin_template = plugin_dir_path(__FILE__) . 'single-bm_book.php';
+        if (file_exists($plugin_template)) {
+            return $plugin_template;
+        }
+    }
+    if (is_post_type_archive('bm_book')) {
+        $plugin_template = plugin_dir_path(__FILE__) . 'archive-bm_book.php';
+        if (file_exists($plugin_template)) {
+            return $plugin_template;
+        }
+    }
+    return $template;
+}
+add_filter('template_include', 'bm_force_templates', 99);
+
+// ==========================================
+// FASE 7H: SCRIPTS DO ADMIN (DRAG AND DROP)
+// ==========================================
 function bm_admin_scripts($hook) {
     if (strpos($hook, 'bm_dynamic_fields') === false && strpos($hook, 'bm_book') === false) return;
     wp_enqueue_script('jquery-ui-sortable');
 }
 add_action('admin_enqueue_scripts', 'bm_admin_scripts');
 
-// --- FASE 1: CPT ---
+// ==========================================
+// FASE 1: CUSTOM POST TYPE
+// ==========================================
 function bm_register_book_cpt() {
     $labels = array(
         'name'               => 'Livros',
@@ -37,21 +62,26 @@ function bm_register_book_cpt() {
     );
     $args = array(
         'labels'             => $labels,
-        'public'             => false,
+        'public'             => true, // FASE 8A: Tornar CPT público
         'show_ui'            => true,
         'show_in_menu'       => true,
+        'has_archive'        => true, // FASE 8A: Habilitar archive
+        'rewrite'            => array( 'slug' => 'livros' ), // FASE 8A: Slug público
+        'show_in_rest'       => false, // FASE 8A: Segurança
+        'exclude_from_search'=> false,
         'capability_type'    => 'bm_book',
         'map_meta_cap'       => true,
         'supports'           => array( 'title', 'thumbnail' ),
         'delete_with_user'   => false,
         'menu_icon'          => 'dashicons-book',
-        'rewrite'            => false,
     );
     register_post_type( 'bm_book', $args );
 }
 add_action( 'init', 'bm_register_book_cpt' );
 
-// --- FASE 7C: Taxonomias ---
+// ==========================================
+// FASE 7C: TAXONOMIAS
+// ==========================================
 function bm_register_taxonomies() {
     register_taxonomy('bm_genre', 'bm_book', array(
         'label'        => __('Gêneros', 'book-manager'),
@@ -91,7 +121,71 @@ function bm_register_taxonomies() {
 }
 add_action('init', 'bm_register_taxonomies');
 
-// --- FASE 1: Capabilities ---
+// ==========================================
+// FASE 8G: TAXONOMIA DE DISCIPLINAS ESCOLARES
+// ==========================================
+function bm_register_discipline_taxonomy() {
+    register_taxonomy('bm_discipline', 'bm_book', array(
+        'label'        => __('Disciplinas', 'book-manager'),
+        'labels'       => array(
+            'name'              => __('Disciplinas', 'book-manager'),
+            'singular_name'     => __('Disciplina', 'book-manager'),
+            'search_items'      => __('Buscar Disciplinas', 'book-manager'),
+            'all_items'         => __('Todas as Disciplinas', 'book-manager'),
+            'parent_item'       => __('Disciplina Pai', 'book-manager'),
+            'parent_item_colon' => __('Disciplina Pai:', 'book-manager'),
+            'edit_item'         => __('Editar Disciplina', 'book-manager'),
+            'update_item'       => __('Atualizar Disciplina', 'book-manager'),
+            'add_new_item'      => __('Adicionar Nova Disciplina', 'book-manager'),
+            'new_item_name'     => __('Nome da Nova Disciplina', 'book-manager'),
+            'menu_name'         => __('Disciplinas', 'book-manager'),
+        ),
+        'rewrite'      => false,
+        'hierarchical' => true,
+        'show_ui'      => true,
+        'show_in_menu' => true,
+        'capabilities' => array(
+            'manage_terms' => 'manage_options', 'edit_terms' => 'manage_options',
+            'delete_terms' => 'manage_options', 'assign_terms' => 'manage_options',
+        ),
+    ));
+}
+add_action('init', 'bm_register_discipline_taxonomy');
+
+// Adicionar metabox de disciplinas na edição do livro
+function bm_add_discipline_metabox() {
+    add_meta_box('bm_discipline_box', __('Disciplinas', 'book-manager'), 'bm_render_discipline_metabox', 'bm_book', 'side', 'default');
+}
+add_action('add_meta_boxes', 'bm_add_discipline_metabox');
+
+function bm_render_discipline_metabox($post) {
+    wp_nonce_field('bm_discipline_nonce', 'bm_discipline_nonce_field');
+    $terms = wp_get_post_terms($post->ID, 'bm_discipline', array('fields' => 'ids'));
+    $all_terms = get_terms(array('taxonomy' => 'bm_discipline', 'hide_empty' => false));
+    if (!empty($all_terms)) {
+        echo '<div style="max-height:200px;overflow-y:auto;">';
+        foreach ($all_terms as $term) {
+            $checked = in_array($term->term_id, $terms) ? 'checked' : '';
+            echo '<label style="display:block;margin-bottom:3px;"><input type="checkbox" name="bm_discipline[]" value="' . $term->term_id . '" ' . $checked . '> ' . esc_html($term->name) . '</label>';
+        }
+        echo '</div>';
+    } else {
+        echo '<p>' . __('Nenhuma disciplina cadastrada.', 'book-manager') . '</p>';
+    }
+}
+
+function bm_save_discipline_metabox($post_id) {
+    if (!isset($_POST['bm_discipline_nonce_field']) || !wp_verify_nonce($_POST['bm_discipline_nonce_field'], 'bm_discipline_nonce')) return;
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (!current_user_can('manage_options')) return;
+    $terms = isset($_POST['bm_discipline']) ? array_map('intval', $_POST['bm_discipline']) : array();
+    wp_set_post_terms($post_id, $terms, 'bm_discipline');
+}
+add_action('save_post_bm_book', 'bm_save_discipline_metabox');
+
+// ==========================================
+// FASE 1/5: CAPABILITIES E CICLO DE VIDA
+// ==========================================
 function bm_add_admin_caps() {
     $admin_role = get_role('administrator');
     if ($admin_role) {
@@ -111,7 +205,9 @@ register_activation_hook( __FILE__, 'bm_plugin_activation' );
 function bm_plugin_deactivation() { flush_rewrite_rules(); }
 register_deactivation_hook( __FILE__, 'bm_plugin_deactivation' );
 
-// --- FASE 2: Metaboxes e Campos Personalizados ---
+// ==========================================
+// FASE 2/7A/7B/7F: METABOX DETALHES DO LIVRO
+// ==========================================
 function bm_render_book_details_metabox( $post ) {
     wp_nonce_field( 'bm_save_book_details', 'bm_book_details_nonce' );
     $fixed_fields = array(
@@ -144,6 +240,7 @@ function bm_render_book_details_metabox( $post ) {
             echo '<p><label for="'.esc_attr($meta_key).'">'.esc_html($field['label']).'</label> <input type="text" id="'.esc_attr($meta_key).'" name="'.esc_attr($meta_key).'" value="'.esc_attr($value).'" size="50" /></p>';
         }
     }
+    // FASE 7F: Histórico de Auditoria
     $audit_log = get_post_meta($post->ID, '_bm_audit_log', true);
     if (!empty($audit_log)) {
         echo '<hr><h4>'.__('Histórico de Ações','book-manager').'</h4><ul style="font-size:12px;color:#666;">';
@@ -169,7 +266,247 @@ function bm_save_book_details_metabox_data( $post_id ) {
 }
 add_action('save_post_bm_book', 'bm_save_book_details_metabox_data');
 
-// --- FASE 4: Listagem e Filtros ---
+// ==========================================
+// FASE 8D: FILTROS INTELIGENTES NO FRONT-END
+// ==========================================
+function bm_filter_books_frontend($query) {
+    if (is_admin() || !$query->is_main_query() || !$query->is_post_type_archive('bm_book')) return;
+
+    // Filtro por gênero
+    if (isset($_GET['bm_genre']) && !empty($_GET['bm_genre']) && $_GET['bm_genre'] !== '0') {
+        $tax_query = $query->get('tax_query') ?: array();
+        $tax_query[] = array(
+            'taxonomy' => 'bm_genre',
+            'field' => 'term_id',
+            'terms' => intval($_GET['bm_genre']),
+        );
+        $query->set('tax_query', $tax_query);
+    }
+
+    // Filtro por categoria
+    if (isset($_GET['bm_category']) && !empty($_GET['bm_category']) && $_GET['bm_category'] !== '0') {
+        $tax_query = $query->get('tax_query') ?: array();
+        $tax_query[] = array(
+            'taxonomy' => 'bm_category',
+            'field' => 'term_id',
+            'terms' => intval($_GET['bm_category']),
+        );
+        $query->set('tax_query', $tax_query);
+    }
+
+    // Busca textual (título nativo + metadados)
+    if (isset($_GET['bm_search']) && !empty($_GET['bm_search'])) {
+        $search = sanitize_text_field($_GET['bm_search']);
+        $query->set('s', $search);
+    }
+}
+add_action('pre_get_posts', 'bm_filter_books_frontend');
+
+// ==========================================
+// FASE 8E: HOOK PARA CARROSSEL FUTURO (MAIS LIDOS)
+// ==========================================
+function bm_after_catalog_grid() {
+    do_action('bm_after_catalog_grid');
+}
+
+// ==========================================
+// FASE 8F: BUSCA AUTOMÁTICA DE SINOPSE
+// ==========================================
+function bm_fetch_sinopse_from_google($title, $author, $isbn = '') {
+    $queries = array();
+    if (!empty($isbn)) { $c = preg_replace('/[^0-9]/', '', $isbn); if (strlen($c) >= 10) $queries[] = 'isbn:' . $c; }
+    if (!empty($title) && !empty($author)) $queries[] = $title . ' ' . $author;
+    if (!empty($title)) $queries[] = $title;
+    if (empty($queries)) return '';
+
+    $st = mb_strtolower(trim($title));
+
+    foreach ($queries as $query) {
+        $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($query) . '&key=' . BM_GOOGLE_BOOKS_API_KEY;
+        $r = wp_remote_get($url, array('timeout' => 15));
+        if (is_wp_error($r)) continue;
+        $body = json_decode(wp_remote_retrieve_body($r), true);
+        if (empty($body['items'])) continue;
+
+        $best = null;
+        foreach ($body['items'] as $item) {
+            $it = isset($item['volumeInfo']['title']) ? mb_strtolower(trim($item['volumeInfo']['title'])) : '';
+            if ($it === $st) { $best = $item; break; }
+            if (strpos($it, $st) !== false && !$best) $best = $item;
+        }
+        if (!$best) $best = $body['items'][0];
+
+        if ($best && isset($best['volumeInfo']['description'])) {
+            $mt = mb_strtolower(trim($best['volumeInfo']['title']));
+            similar_text($st, $mt, $pct);
+            $min = (mb_strlen($st) < 10) ? 30 : 50;
+            if ($pct >= $min || strpos($mt, $st) !== false || strpos($st, $mt) !== false) {
+                return wp_kses_post($best['volumeInfo']['description']);
+            }
+        }
+    }
+    return '';
+}
+
+function bm_ajax_fetch_sinopse() {
+    if (!current_user_can('manage_options')) wp_die(__('Sem permissão.','book-manager'));
+    check_ajax_referer('bm_sinopse_nonce', 'nonce');
+    $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+    $title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
+    $author = isset($_POST['author']) ? sanitize_text_field($_POST['author']) : '';
+    $isbn = isset($_POST['isbn']) ? sanitize_text_field($_POST['isbn']) : '';
+
+    if (empty($title)) wp_die(__('Preencha o título.','book-manager'));
+
+    $sinopse = bm_fetch_sinopse_from_google($title, $author, $isbn);
+    if (empty($sinopse)) wp_die(__('Nenhuma sinopse encontrada.','book-manager'));
+
+    // Salvar como campo dinâmico "Sinopse"
+    $dynamic_fields = get_option('bm_dynamic_fields', array());
+    if (!isset($dynamic_fields['Sinopse'])) {
+        $dynamic_fields['Sinopse'] = array('type' => 'textarea');
+        update_option('bm_dynamic_fields', $dynamic_fields);
+    }
+    update_post_meta($post_id, '_bm_dynamic_sinopse', $sinopse);
+    wp_die(__('Sinopse salva com sucesso!','book-manager'));
+}
+add_action('wp_ajax_bm_fetch_sinopse', 'bm_ajax_fetch_sinopse');
+
+function bm_add_sinopse_button() {
+    global $post;
+    if (!$post || 'bm_book' !== $post->post_type) return;
+    $nonce = wp_create_nonce('bm_sinopse_nonce');
+    ?>
+    <script>
+    jQuery(document).ready(function($) {
+        $('#bm_fetch_sinopse').on('click', function() {
+            var b = $(this);
+            b.prop('disabled', true).val('Buscando...');
+            $.post(ajaxurl, {
+                action: 'bm_fetch_sinopse',
+                nonce: '<?php echo $nonce; ?>',
+                post_id: $('#post_ID').val(),
+                title: $('#title').val(),
+                author: $('#_bm_author').val(),
+                isbn: $('#_bm_isbn').val()
+            }, function(r) {
+                alert(r);
+                location.reload();
+            });
+        });
+    });
+    </script>
+    <input type="button" id="bm_fetch_sinopse" class="button" value="<?php _e('Buscar Sinopse', 'book-manager'); ?>" style="margin-left:10px;" />
+    <?php
+}
+add_action('edit_form_after_title', 'bm_add_sinopse_button');
+
+// ==========================================
+// FASE 8G: CLASSIFICAÇÃO INTERDISCIPLINAR POR IA
+// ==========================================
+function bm_classify_book_with_ai($post_id) {
+    $title = get_the_title($post_id);
+    $author = get_post_meta($post_id, '_bm_author', true);
+    $sinopse = get_post_meta($post_id, '_bm_dynamic_sinopse', true);
+    $genres = wp_get_post_terms($post_id, 'bm_genre', array('fields' => 'names'));
+    $genre_list = implode(', ', $genres);
+
+    $prompt = "Com base nas informações a seguir, sugira de 1 a 3 disciplinas escolares relacionadas a este livro. Responda APENAS com os nomes das disciplinas, separados por vírgula.\n\nTítulo: " . $title . "\nAutor: " . $author . "\nGênero: " . $genre_list . "\nSinopse: " . wp_strip_all_tags($sinopse);
+
+    $api_key = defined('BM_GEMINI_API_KEY') ? BM_GEMINI_API_KEY : '';
+    if (empty($api_key)) return false;
+
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . $api_key;
+    $body = json_encode(array(
+        'contents' => array(
+            array('parts' => array(array('text' => $prompt)))
+        )
+    ));
+
+    $response = wp_remote_post($url, array(
+        'timeout' => 30,
+        'headers' => array('Content-Type' => 'application/json'),
+        'body' => $body,
+    ));
+
+    if (is_wp_error($response)) return false;
+
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+    if (empty($data['candidates'][0]['content']['parts'][0]['text'])) return false;
+
+    $disciplinas_text = trim($data['candidates'][0]['content']['parts'][0]['text']);
+    $disciplinas = array_map('trim', explode(',', $disciplinas_text));
+
+    // Criar termos se não existirem e associar ao livro
+    $term_ids = array();
+    foreach ($disciplinas as $disciplina) {
+        if (empty($disciplina)) continue;
+        $term = term_exists($disciplina, 'bm_discipline');
+        if (!$term) {
+            $term = wp_insert_term($disciplina, 'bm_discipline');
+        }
+        if (!is_wp_error($term)) {
+            $term_ids[] = is_array($term) ? $term['term_id'] : $term;
+        }
+    }
+
+    if (!empty($term_ids)) {
+        wp_set_post_terms($post_id, $term_ids, 'bm_discipline');
+        update_post_meta($post_id, '_bm_ai_classified', '1');
+        return count($term_ids);
+    }
+
+    return false;
+}
+
+// Botão "Classificar com IA" na edição
+function bm_add_ai_classify_button() {
+    global $post;
+    if (!$post || 'bm_book' !== $post->post_type) return;
+    $classified = get_post_meta($post->ID, '_bm_ai_classified', true);
+    $label = $classified ? __('Reclassificar com IA', 'book-manager') : __('Classificar com IA', 'book-manager');
+    $nonce = wp_create_nonce('bm_ai_classify_nonce');
+    ?>
+    <script>
+    jQuery(document).ready(function($) {
+        $('#bm_ai_classify').on('click', function() {
+            var b = $(this);
+            b.prop('disabled', true).val('Analisando...');
+            $.post(ajaxurl, {
+                action: 'bm_ai_classify',
+                nonce: '<?php echo $nonce; ?>',
+                post_id: $('#post_ID').val()
+            }, function(r) {
+                alert(r);
+                location.reload();
+            });
+        });
+    });
+    </script>
+    <input type="button" id="bm_ai_classify" class="button" value="<?php echo esc_attr($label); ?>" style="margin-left:10px;" />
+    <?php
+}
+add_action('edit_form_after_title', 'bm_add_ai_classify_button');
+
+// Handler AJAX
+function bm_ajax_ai_classify() {
+    if (!current_user_can('manage_options')) wp_die(__('Sem permissão.', 'book-manager'));
+    check_ajax_referer('bm_ai_classify_nonce', 'nonce');
+    $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+    if (!$post_id) wp_die(__('Livro inválido.', 'book-manager'));
+
+    $count = bm_classify_book_with_ai($post_id);
+    if ($count) {
+        wp_die(sprintf(__('%d disciplina(s) atribuída(s)!', 'book-manager'), $count));
+    } else {
+        wp_die(__('Não foi possível classificar. Verifique a chave da API Gemini.', 'book-manager'));
+    }
+}
+add_action('wp_ajax_bm_ai_classify', 'bm_ajax_ai_classify');
+
+// ==========================================
+// FASE 4/7C: LISTAGEM E FILTROS ADMIN
+// ==========================================
 function bm_manage_book_columns($columns) {
     $new = array();
     foreach ($columns as $k => $t) { $new[$k] = $t; if ($k==='title') { $new['_bm_author']=__('Autor','book-manager'); $new['_bm_publisher']=__('Editora','book-manager'); $new['taxonomy-bm_genre']=__('Gênero','book-manager'); $new['taxonomy-bm_category']=__('Categoria','book-manager'); } }
@@ -216,7 +553,11 @@ function bm_filter_books_by_metadata($query) {
 }
 add_action('pre_get_posts','bm_filter_books_by_metadata');
 
-// --- FASE 6A: Importação CSV ---
+// ==========================================
+// FASE 6A/7G: IMPORTAÇÃO CSV COM MAPEAMENTO DINÂMICO
+// FASE 8C-B: RELATÓRIO MELHORADO — CONTAGEM DE DUPLICADOS FORÇADOS
+// FASE 8F: INTEGRAÇÃO DE BUSCA AUTOMÁTICA DE SINOPSE
+// ==========================================
 function bm_add_csv_import_submenu_page() { add_submenu_page('edit.php?post_type=bm_book','Importar CSV','Importar CSV','manage_options','bm_csv_import','bm_render_csv_import_page'); }
 add_action('admin_menu','bm_add_csv_import_submenu_page');
 function bm_render_csv_import_page() {
@@ -226,7 +567,7 @@ function bm_render_csv_import_page() {
     $headers = array();
     if ('process'===$stage && isset($_POST['bm_csv_import_nonce']) && wp_verify_nonce($_POST['bm_csv_import_nonce'],'bm_csv_import_action')) {
         $skip_duplicates = isset($_POST['skip_duplicates'])&&'1'===$_POST['skip_duplicates'];
-        $imported=0; $skipped=0; $dup_skipped=0;
+        $imported=0; $skipped=0; $dup_skipped=0; $dup_forced=0;
         $mapping_raw = isset($_POST['mapping']) ? array_map('sanitize_text_field',$_POST['mapping']) : array();
         $mapping = array();
         foreach ($mapping_raw as $csv_index => $field) { if (!empty($field)) $mapping[$field] = intval($csv_index); }
@@ -240,6 +581,7 @@ function bm_render_csv_import_page() {
                 if (empty($title)) { $skipped++; continue; }
                 $exists = bm_find_duplicate_book($title,$author,$publisher);
                 if ($exists && $skip_duplicates) { $dup_skipped++; continue; }
+                if ($exists) { $dup_forced++; }
                 $post_id = wp_insert_post(array('post_type'=>'bm_book','post_title'=>$title,'post_status'=>'publish'));
                 if ($post_id && !is_wp_error($post_id)) {
                     if ($author) update_post_meta($post_id,'_bm_author',$author);
@@ -249,6 +591,7 @@ function bm_render_csv_import_page() {
                         if (isset($row[$index])&&!empty($row[$index])) update_post_meta($post_id,$field,sanitize_text_field($row[$index]));
                     }
                     $imported++;
+                    // FASE 7D: Busca automática de capa durante importação
                     $cover_url = bm_fetch_cover_from_google($title, $author, $publisher);
                     if ($cover_url) {
                         require_once ABSPATH . 'wp-admin/includes/media.php';
@@ -266,10 +609,20 @@ function bm_render_csv_import_page() {
                             }
                         }
                     }
+                    // FASE 8F: Busca automática de sinopse durante importação
+                    $sinopse = bm_fetch_sinopse_from_google($title, $author);
+                    if (!empty($sinopse)) {
+                        $dynamic_fields = get_option('bm_dynamic_fields', array());
+                        if (!isset($dynamic_fields['Sinopse'])) {
+                            $dynamic_fields['Sinopse'] = array('type' => 'textarea');
+                            update_option('bm_dynamic_fields', $dynamic_fields);
+                        }
+                        update_post_meta($post_id, '_bm_dynamic_sinopse', $sinopse);
+                    }
                 } else { $skipped++; }
             }
         }
-        $message = sprintf(__('%d importados, %d ignorados (sem título), %d duplicados pulados.','book-manager'),$imported,$skipped,$dup_skipped);
+        $message = sprintf(__('%d importados, %d ignorados (sem título), %d duplicados pulados, %d duplicados forçados.','book-manager'),$imported,$skipped,$dup_skipped,$dup_forced);
     }
     if ('map'===$stage && isset($_POST['bm_csv_import_nonce']) && wp_verify_nonce($_POST['bm_csv_import_nonce'],'bm_csv_import_action')) {
         $headers = isset($_POST['csv_headers']) ? json_decode(stripslashes($_POST['csv_headers']), true) : array();
@@ -350,7 +703,9 @@ function bm_find_duplicate_book($title,$author,$publisher) {
     return false;
 }
 
-// --- FASE 6B: Exportação CSV ---
+// ==========================================
+// FASE 6B/7E: EXPORTAÇÃO CSV FLEXÍVEL
+// ==========================================
 function bm_add_csv_export_submenu_page() { add_submenu_page('edit.php?post_type=bm_book','Exportar CSV','Exportar CSV','manage_options','bm_csv_export','bm_render_csv_export_page'); }
 add_action('admin_menu','bm_add_csv_export_submenu_page');
 function bm_handle_csv_export() {
@@ -419,7 +774,9 @@ function bm_render_csv_export_page() {
     <?php
 }
 
-// --- FASE 7B: Campos Dinâmicos ---
+// ==========================================
+// FASE 7B/7H: GERENCIAMENTO DE CAMPOS DINÂMICOS
+// ==========================================
 function bm_add_dynamic_fields_page() { add_submenu_page('edit.php?post_type=bm_book','Gerenciar Campos','Gerenciar Campos','manage_options','bm_dynamic_fields','bm_render_dynamic_fields_page'); }
 add_action('admin_menu','bm_add_dynamic_fields_page');
 function bm_render_dynamic_fields_page() {
@@ -466,7 +823,7 @@ function bm_render_dynamic_fields_page() {
                     if (isset($fields[$old_key])) {
                         $fields[$new_name] = $fields[$old_key];
                         unset($fields[$old_key]);
-                        // Migra dados nos livros
+                        // FASE 7H: Migração de meta keys ao renomear
                         $old_meta = '_bm_dynamic_' . sanitize_key($old_key);
                         $new_meta = '_bm_dynamic_' . sanitize_key($new_name);
                         $all_books = get_posts(array('post_type'=>'bm_book','posts_per_page'=>-1,'post_status'=>'any'));
@@ -553,35 +910,85 @@ function bm_render_dynamic_fields_page() {
     <?php
 }
 
-// --- FASE 7D: Capa do Livro ---
-function bm_fetch_cover_from_google($title,$author,$publisher,$isbn='') {
+// ==========================================
+// FASE 7D: BUSCA DE CAPA VIA GOOGLE BOOKS API (NÚCLEO COMUM)
+// FASE 8C-B: UNIFICADA — USADA POR CSV E AJAX
+// FASE 8E: RESOLUÇÃO DE CAPA ALTERADA PARA ZOOM=2
+// ==========================================
+function bm_google_books_search($title, $author, $publisher, $isbn = '') {
     $queries = array();
-    if (!empty($isbn)) { $c=preg_replace('/[^0-9]/','',$isbn); if(strlen($c)>=10) $queries[]='isbn:'.$c; }
-    if (!empty($title)&&!empty($author)&&!empty($publisher)) $queries[]=$title.' '.$author.' '.$publisher;
-    if (!empty($title)&&!empty($author)) $queries[]=$title.' '.$author;
-    if (!empty($title)&&!empty($publisher)) $queries[]=$title.' '.$publisher;
-    if (!empty($title)) $queries[]=$title;
+    if (!empty($isbn)) { $c = preg_replace('/[^0-9]/', '', $isbn); if (strlen($c) >= 10) $queries[] = 'isbn:' . $c; }
+    if (!empty($title) && !empty($author) && !empty($publisher)) $queries[] = $title . ' ' . $author . ' ' . $publisher;
+    if (!empty($title) && !empty($author)) $queries[] = $title . ' ' . $author;
+    if (!empty($title) && !empty($publisher)) $queries[] = $title . ' ' . $publisher;
+    if (!empty($title)) $queries[] = $title;
+    if (empty($queries)) return false;
+
+    $st = mb_strtolower(trim($title));
+    $sa = mb_strtolower(trim($author));
+
     foreach ($queries as $query) {
-        $url='https://www.googleapis.com/books/v1/volumes?q='.urlencode($query).'&key='.BM_GOOGLE_BOOKS_API_KEY;
-        $r=wp_remote_get($url,array('timeout'=>10)); if(is_wp_error($r)) continue;
-        $body=json_decode(wp_remote_retrieve_body($r),true); if(empty($body['items'])) continue;
-        $hc=false; foreach($body['items'] as $item) if(isset($item['volumeInfo']['imageLinks']['thumbnail'])){$hc=true;break;} if(!$hc) continue;
-        $st=mb_strtolower(trim($title)); $sa=mb_strtolower(trim($author)); $best=null;
-        foreach($body['items'] as $item) {
-            $it=isset($item['volumeInfo']['title'])?mb_strtolower(trim($item['volumeInfo']['title'])):''; if(!isset($item['volumeInfo']['imageLinks']['thumbnail'])) continue;
-            if($it===$st){ $ia=isset($item['volumeInfo']['authors'])?mb_strtolower(implode(' ',$item['volumeInfo']['authors'])):''; if(empty($sa)||strpos($ia,$sa)!==false){$best=$item;break;} if(!$best)$best=$item; }
-            if(strpos($it,$st)!==false&&!$best){ $ia=isset($item['volumeInfo']['authors'])?mb_strtolower(implode(' ',$item['volumeInfo']['authors'])):''; if(empty($sa)||strpos($ia,$sa)!==false)$best=$item; }
+        $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($query) . '&key=' . BM_GOOGLE_BOOKS_API_KEY;
+        $r = wp_remote_get($url, array('timeout' => 15));
+        if (is_wp_error($r)) continue;
+        $body = json_decode(wp_remote_retrieve_body($r), true);
+        if (empty($body['items'])) continue;
+
+        $hc = false;
+        foreach ($body['items'] as $item) {
+            if (isset($item['volumeInfo']['imageLinks']['thumbnail'])) { $hc = true; break; }
         }
-        if(!$best){ foreach($body['items'] as $item) if(isset($item['volumeInfo']['imageLinks']['thumbnail'])){$best=$item;break;} }
-        if($best&&isset($best['volumeInfo']['imageLinks']['thumbnail'])){
-            $mt=mb_strtolower(trim($best['volumeInfo']['title'])); similar_text($st,$mt,$pct); $min=(mb_strlen($st)<10)?30:50;
-            if($pct>=$min||strpos($mt,$st)!==false||strpos($st,$mt)!==false) return str_replace('http://','https://',$best['volumeInfo']['imageLinks']['thumbnail']);
+        if (!$hc) continue;
+
+        $best = null;
+        foreach ($body['items'] as $item) {
+            $it = isset($item['volumeInfo']['title']) ? mb_strtolower(trim($item['volumeInfo']['title'])) : '';
+            if (!isset($item['volumeInfo']['imageLinks']['thumbnail'])) continue;
+            if ($it === $st) {
+                $ia = isset($item['volumeInfo']['authors']) ? mb_strtolower(implode(' ', $item['volumeInfo']['authors'])) : '';
+                if (empty($sa) || strpos($ia, $sa) !== false) { $best = $item; break; }
+                if (!$best) $best = $item;
+            }
+            if (strpos($it, $st) !== false && !$best) {
+                $ia = isset($item['volumeInfo']['authors']) ? mb_strtolower(implode(' ', $item['volumeInfo']['authors'])) : '';
+                if (empty($sa) || strpos($ia, $sa) !== false) $best = $item;
+            }
+        }
+        if (!$best) {
+            foreach ($body['items'] as $item) {
+                if (isset($item['volumeInfo']['imageLinks']['thumbnail'])) { $best = $item; break; }
+            }
+        }
+        if ($best && isset($best['volumeInfo']['imageLinks']['thumbnail'])) {
+            $mt = mb_strtolower(trim($best['volumeInfo']['title']));
+            similar_text($st, $mt, $pct);
+            $min = (mb_strlen($st) < 10) ? 30 : 50;
+            if ($pct >= $min || strpos($mt, $st) !== false || strpos($st, $mt) !== false) {
+                // FASE 8E: Aumentar resolução — trocar zoom=1 por zoom=2
+                $thumb = str_replace('http://', 'https://', $best['volumeInfo']['imageLinks']['thumbnail']);
+                $thumb = str_replace('&zoom=1', '&zoom=2', $thumb);
+                if (strpos($thumb, '&zoom=') === false) {
+                    $thumb .= '&zoom=2';
+                }
+                return $thumb;
+            }
         }
     }
     return false;
 }
+
+// FASE 7D: Wrapper para importação CSV — retorna URL da capa
+function bm_fetch_cover_from_google($title, $author, $publisher, $isbn = '') {
+    return bm_google_books_search($title, $author, $publisher, $isbn);
+}
+
+// ==========================================
+// FASE 7D: BUSCA DE CAPA VIA AJAX (BOTÃO NA EDIÇÃO)
+// FASE 8C-B: CORREÇÃO DE SEGURANÇA — ADICIONADO NONCE
+// ==========================================
 function bm_search_book_cover() {
-    if(!current_user_can('manage_options')) wp_die(__('Sem permissão.','book-manager'));
+    if (!current_user_can('manage_options')) wp_die(__('Sem permissão.','book-manager'));
+    check_ajax_referer('bm_search_cover', 'nonce'); // FASE 8C-B: Verificação de nonce (CSRF)
     $post_id=isset($_POST['post_id'])?intval($_POST['post_id']):0; $isbn=isset($_POST['isbn'])?sanitize_text_field($_POST['isbn']):''; $title=isset($_POST['title'])?sanitize_text_field($_POST['title']):''; $author=isset($_POST['author'])?sanitize_text_field($_POST['author']):''; $publisher=isset($_POST['publisher'])?sanitize_text_field($_POST['publisher']):'';
     $queries=array(); $ln=array();
     if(!empty($isbn)){$c=preg_replace('/[^0-9]/','',$isbn); if(strlen($c)>=10){$queries[]='isbn:'.$c;$ln[]='ISBN';}}
@@ -617,14 +1024,22 @@ function bm_search_book_cover() {
     $msg=$used?sprintf(__('Capa salva via %s!','book-manager'),$used):__('Capa salva com sucesso!','book-manager'); wp_die($msg);
 }
 add_action('wp_ajax_bm_search_book_cover','bm_search_book_cover');
+
+// ==========================================
+// FASE 7D: BOTÃO "BUSCAR CAPA" NA EDIÇÃO
+// FASE 8C-B: CORREÇÃO — ENVIO DE NONCE NO AJAX
+// ==========================================
 function bm_add_cover_button() {
     global $post; if(!$post||'bm_book'!==$post->post_type) return;
-    ?><script>jQuery(document).ready(function($){$('#bm_search_cover').on('click',function(){var b=$(this);b.prop('disabled',true).val('Buscando...');$.post(ajaxurl,{action:'bm_search_book_cover',post_id:$('#post_ID').val(),isbn:$('#_bm_isbn').val(),title:$('#title').val(),author:$('#_bm_author').val(),publisher:$('#_bm_publisher').val()},function(r){alert(r);location.reload();});});});</script>
+    $nonce = wp_create_nonce('bm_search_cover'); // FASE 8C-B: Gerar nonce para o AJAX
+    ?><script>jQuery(document).ready(function($){$('#bm_search_cover').on('click',function(){var b=$(this);b.prop('disabled',true).val('Buscando...');$.post(ajaxurl,{action:'bm_search_book_cover',nonce:'<?php echo $nonce; ?>',post_id:$('#post_ID').val(),isbn:$('#_bm_isbn').val(),title:$('#title').val(),author:$('#_bm_author').val(),publisher:$('#_bm_publisher').val()},function(r){alert(r);location.reload();});});});</script>
     <input type="button" id="bm_search_cover" class="button" value="<?php _e('Buscar Capa','book-manager'); ?>" /><?php
 }
 add_action('edit_form_after_title','bm_add_cover_button');
 
-// --- FASE 7F: Soft Delete e Auditoria ---
+// ==========================================
+// FASE 7F: SOFT DELETE E AUDITORIA
+// ==========================================
 function bm_log_audit($post_id,$action) {
     $user=wp_get_current_user(); $un=$user?$user->user_login:'sistema'; $time=current_time('mysql');
     $entry=array('action'=>$action,'user'=>$un,'time'=>$time);

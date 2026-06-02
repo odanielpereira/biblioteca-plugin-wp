@@ -402,3 +402,69 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Ferramenta:** `write_file`
 - **Decisão:** Fases 8A e 8B concluídas. Fase 8C (Archive/Catálogo) a seguir.
 
+66 - Data: 2026-06-01
+- Ação: Commit e tag de atualização do planejamento do Ciclo 4.
+- Detalhes: Commit com roadmap.md e changelog.md atualizados. Fase 8C tarefas 1-5 marcadas como implementadas, adicionada tarefa 6 (teste/validação do archive), criada Fase 8C-B com 3 correções cirúrgicas (nonce no AJAX bm_search_book_cover, unificação de bm_fetch_cover_from_google e bm_search_book_cover, placeholder de capa ausente no single-bm_book.php), Fases 8D-8E ajustadas com arquitetura extensível e zoom de capas, inclusão do Ciclo de Polimento com 15 pendências mapeadas. Tag v3.3-ciclo4-planejamento-ajustado criada.
+- Ferramenta: run_terminal_command (git add, commit, tag, push)
+- Decisão: Ciclo 4 retomado com correções cirúrgicas prioritárias antes do avanço para a Fase 8D.
+
+67 - Data: 2026-06-01
+- Ação: Fase 8C-B, Tarefa 1 concluída — Correção de segurança no AJAX de busca de capa.
+- Detalhes: Adicionado check_ajax_referer('bm_search_cover', 'nonce') na função bm_search_book_cover() (linha 3). Adicionado wp_create_nonce('bm_search_cover') na função bm_add_cover_button() e enviado como parâmetro nonce no script jQuery. Corrigida vulnerabilidade CSRF no handler AJAX.
+- Ferramenta: write_file
+- Decisão: Segurança reforçada antes do avanço para a Fase 8D.
+
+69 - Data: 2026-06-01
+- Ação: Fase 8C-B, Tarefa 3 concluída — Placeholder de capa ausente no single-bm_book.php.
+- Detalhes: Adicionado bloco else ao if (has_post_thumbnail()) no template single. Livros sem capa agora exibem placeholder visual "Sem capa" com fundo cinza e texto centralizado, igual ao archive-bm_book.php. Coerência visual entre single e archive.
+- Ferramenta: write_file
+- Decisão: Experiência do visitante padronizada. Fase 8C-B concluída.
+
+70 - Data: 2026-06-01
+- Ação: Fase 8C concluída — Teste e validação do archive no WordPress.
+- Detalhes: Corrigido bug: tema Twenty Twenty-Five (FSE) ignorava archive-bm_book.php. Adicionado is_post_type_archive('bm_book') ao filtro template_include em book-manager.php, forçando o template do plugin. Renomeada função bm_force_single_template para bm_force_templates. Grid de capas, placeholders, paginação e links validados. Avisos Deprecated do tema FSE não afetam o plugin.
+- Ferramenta: write_file
+- Decisão: Vitrine pública funcional. Fase 8C concluída. Próximo passo: Fase 8D (Filtros Inteligentes).
+
+71 - Data: 2026-06-01
+- Ação: Fase 8D concluída — Filtros Inteligentes na Vitrine (MVP funcional).
+- Detalhes: Implementado sistema de filtros no front-end via pre_get_posts. Dropdowns de gênero e categoria + campo de busca textual (título e autor) funcionais individualmente. Cruzamento de filtros (gênero + busca) registrado como pendência para Ciclo de Polimento (item 18). Adicionada função bm_filter_books_frontend() no book-manager.php. Filtros aplicados no archive-bm_book.php.
+- Ferramenta: write_file
+- Decisão: MVP funcional entregue. Cruzamento de filtros será refinado no Ciclo de Polimento.
+
+72 - Data: 2026-06-01
+- Ação: Atualização do Ciclo de Polimento — consolidação de pendências com referência às fases de origem.
+- Detalhes: Organizadas 18 pendências no Ciclo de Polimento, cada uma referenciando sua fase de origem no roadmap. Itens 14 e 15 marcados como concluídos (nonce AJAX e unificação de funções de capa). Itens 3 e 16 parcialmente concluídos. Incluídos novos itens 17 (responsividade de capas) e 18 (cruzamento de filtros) identificados durante a Fase 8D. Restaurada seção FASE 4/7C (Listagem e Filtros Admin) que havia sido removida acidentalmente.
+- Ferramenta: write_file
+- Decisão: Ciclo de Polimento documentado e rastreável. Projeto pronto para avançar para Fase 8E (Vitrine Visual).
+
+73 - Data: 2026-06-01
+- Ação: Alinhamento completo dos 4 arquivos PHP — ponto de encontro oficial.
+- Detalhes: Verificados e consolidados book-manager.php (15 seções), archive-bm_book.php (loop padrão com formulário 8D), single-bm_book.php (com placeholder 8C-B) e uninstall.php. Confirmada Fase 8D como MVP parcial: filtros individuais funcionais, cruzamento pendente (item 18). Fase 8C com archive funcional sem filtros, erro 404 com parâmetros em tema FSE. Projeto alinhado e pronto para Fase 8E (Vitrine Visual).
+- Ferramenta: write_file
+- Decisão: Ponto de encontro oficial estabelecido. Próximo passo: Fase 8E.
+74 - Data: 2026-06-01
+- Ação: Fase 8E concluída — Vitrine Visual.
+- Detalhes: Adicionados hover effects nos cards do archive-bm_book.php (translateY(-4px) + box-shadow ampliada). CSS movido para <style> dedicado com classes reutilizáveis. Responsividade refinada com media query para mobile (grid 140px, altura 180px, filtros em coluna). Aumentada resolução das capas via Google Books API (zoom=1 → zoom=2) na função bm_google_books_search(). Adicionado hook bm_after_catalog_grid() com do_action('bm_after_catalog_grid') para injeção futura de carrossel "Mais Lidos".
+- Ferramenta: write_file
+- Decisão: Vitrine visual funcional. Hook preparado para Ciclo 7 (Gamificação). Próximo passo: Fase 8F (Busca Automática de Sinopse).
+
+75 - Data: 2026-06-01
+- Ação: Atualização do roadmap — Fase 8E marcada como concluída.
+- Detalhes: Marcadas como [x] as 4 tarefas da Fase 8E: hover effects nos cards, zoom=2 nas capas, hook bm_after_catalog_grid() para carrossel futuro, e responsividade mobile/tablet/desktop.
+- Ferramenta: write_file
+- Decisão: Fase 8E oficialmente concluída. Próximo passo: Fase 8F (Busca Automática de Sinopse).
+
+changelog do nosso ultimo commit
+
+77 - Data: 2026-06-01
+- Ação: Fase 8F concluída — Busca Automática de Sinopse.
+- Detalhes: Adicionada função bm_fetch_sinopse_from_google() com busca em 3 níveis (ISBN → Título+Autor → Título) e validação de similaridade. Botão "Buscar Sinopse" na tela de edição via AJAX com nonce. Integração na importação CSV: sinopse salva automaticamente como campo dinâmico "Sinopse" (textarea). Campo criado automaticamente no primeiro uso. Exibição na página pública (single) via campos dinâmicos.
+- Ferramenta: write_file
+- Decisão: Fase 8F concluída. Ciclo de Polimento atualizado (itens 4 e 6). Próximo passo: Fase 8G (Planejamento de Classificação Interdisciplinar por IA).
+
+78 - Data: 2026-06-02
+- Ação: Fase 8G concluída (parcialmente) — Classificação Interdisciplinar por IA e encerramento do desenvolvimento do Ciclo 4.
+- Detalhes: Criada taxonomia bm_discipline (hierárquica) com metabox de checkboxes na edição do livro. Implementada função bm_classify_book_with_ai() com integração à API Gemini (Gemini 2.0 Flash) para sugerir disciplinas com base em título, autor, gênero e sinopse. Botão "Classificar com IA" na edição via AJAX com nonce. Cache de resultados via metadado _bm_ai_classified para evitar chamadas repetidas. Chave API Gemini pendente de obtenção (movida para item 19 do Ciclo de Polimento). Fase 8D com MVP parcial (filtros individuais funcionais, cruzamento pendente — item 18). Fase 8C com archive funcional sem filtros, erro 404 com parâmetros em tema FSE. Ciclo 4 encerrado com desenvolvimento concluído; pendências registradas no Ciclo de Polimento.
+- Ferramenta: write_file
+- Decisão: Desenvolvimento do Ciclo 4 finalizado. Pendências mapeadas para o Ciclo de Polimento. Aguardando novo escopo geral para definir próximos passos.
