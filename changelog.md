@@ -468,3 +468,27 @@ changelog do nosso ultimo commit
 - Detalhes: Criada taxonomia bm_discipline (hierárquica) com metabox de checkboxes na edição do livro. Implementada função bm_classify_book_with_ai() com integração à API Gemini (Gemini 2.0 Flash) para sugerir disciplinas com base em título, autor, gênero e sinopse. Botão "Classificar com IA" na edição via AJAX com nonce. Cache de resultados via metadado _bm_ai_classified para evitar chamadas repetidas. Chave API Gemini pendente de obtenção (movida para item 19 do Ciclo de Polimento). Fase 8D com MVP parcial (filtros individuais funcionais, cruzamento pendente — item 18). Fase 8C com archive funcional sem filtros, erro 404 com parâmetros em tema FSE. Ciclo 4 encerrado com desenvolvimento concluído; pendências registradas no Ciclo de Polimento.
 - Ferramenta: write_file
 - Decisão: Desenvolvimento do Ciclo 4 finalizado. Pendências mapeadas para o Ciclo de Polimento. Aguardando novo escopo geral para definir próximos passos.
+
+79 - Data: 2026-06-02
+- Ação: Alinhamento dos 4 arquivos PHP para o Ciclo 5 e atualização da engenharia de contexto.
+- Detalhes: Verificados e consolidados book-manager.php (19 seções, ~850 linhas), archive-bm_book.php (com estilos 8E e filtros 8D), single-bm_book.php (com placeholder 8C-B) e uninstall.php. Confirmadas todas as fases do Ciclo 4 implementadas: 8A (CPT público), 8B (single), 8C (archive), 8C-B (correções), 8D (filtros MVP), 8E (vitrine visual), 8F (sinopse), 8G (IA com código pronto). Atualizados escopo.md (Seção 9 — Ciclo 5: Usuários, Reservas e Empréstimos; Seção 10 — Barreiras) e roadmap.md (Ciclo 4 marcado como CONCLUÍDO, Ciclo 5 detalhado com Fases 9A-9G). Commit e tag v4.0-ciclo4-concluido criados.
+- Ferramenta: write_file, git add/commit/tag/push
+- Decisão: Ponto de encontro oficial estabelecido. Engenharia de contexto atualizada para o Ciclo 5. Próximo passo: Fase 9A (Perfis de Usuário).
+
+80 - Data: 2026-06-02
+- Ação: Fase 9A concluída — Perfis de Usuário (Roles Customizadas).
+- Detalhes: Criadas 4 roles via add_role(): bm_student (Aluno), bm_teacher (Professor), bm_librarian (Gestor), bm_super_admin (Super Admin). Cada role com capabilities específicas. Adicionada função bm_register_roles() no activation hook e bm_remove_roles() para remoção futura. Criadas funções auxiliares: bm_user_can_manage_books(), bm_user_can_view_admin_data(), bm_is_student(), bm_is_teacher(). Atualizado single-bm_book.php para usar bm_user_can_view_admin_data() em vez de current_user_can('manage_options') para controle de dados administrativos. Item 22 adicionado ao Ciclo de Polimento (visibilidade configurável por campo).
+- Ferramenta: write_file
+- Decisão: Base de perfis implementada. Pendência de configuração de visibilidade movida para Ciclo de Polimento. Próximo passo: Fase 9B (Autocadastro e Aprovação).
+
+81 - Data: 2026-06-02
+- Ação: Fase 9B concluída — Autocadastro e Aprovação.
+- Detalhes: Criado shortcode [bm_register] com formulário de autocadastro para Aluno e Professor. Campos: nome completo, e-mail, senha, perfil, série/disciplina, telefone/WhatsApp. Usuários criados como "subscriber" temporário com metadado bm_approval_status = 'pending'. Página de aprovação em Usuários > Aprovar Cadastros (acesso: admin e bm_librarian). Gestor pode aprovar (role definitiva atribuída) ou rejeitar. Metadados registrados: bm_full_name, bm_requested_role, bm_info, bm_phone, bm_approved_by, bm_approved_date. Itens 23, 24 e 25 adicionados ao Ciclo de Polimento (formulário dinâmico, revisão de hierarquia, menu centralizado).
+- Ferramenta: write_file
+- Decisão: Sistema de autocadastro funcional. Próximo passo: Fase 9C (Sistema de Reservas).
+
+82 - Data: 2026-06-02
+- Ação: Fase 9C concluída — Sistema de Reservas.
+- Detalhes: Implementada função bm_reserve_book() com validação de limite (3 para estudantes), fila de espera, posição e prazo de 24h. Botão "Reservar" no single e archive para usuários logados e deslogados (modal). Toggle Reservar/Cancelar: botão muda de cor (verde/vermelho) e texto conforme estado. Função bm_cancel_reservation() recalcula posições da fila. Professor/Gestor/Admin podem reservar para si ou para aluno (prompt com ID). Modal nativo substituindo alert() para mensagens. Itens 26-28 adicionados ao Ciclo de Polimento (popups elegantes, toggle, busca de aluno).
+- Ferramenta: write_file
+- Decisão: MVP de reservas funcional. Polimento visual e funcional pendente para Ciclo de Polimento. Próximo passo: Fase 9D (Empréstimos e Devoluções).

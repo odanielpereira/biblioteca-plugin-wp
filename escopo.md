@@ -6,7 +6,7 @@
 - **Text Domain:** `book-manager`
 - **Prefixo de funções:** `bm_`
 - **Prefixo de meta keys:** `_bm_`
-- **Versão atual:** 3.0.0
+- **Versão atual:** 4.0.0
 
 ## 2. REFERÊNCIA ÚNICA
 - 100% do código deve seguir: https://developer.wordpress.org/
@@ -28,19 +28,28 @@
   - `wp_check_filetype()` → https://developer.wordpress.org/reference/functions/wp_check_filetype/
   - `wp_remote_get()` → https://developer.wordpress.org/reference/functions/wp_remote_get/
   - `fgetcsv()` → https://www.php.net/manual/pt_BR/function.fgetcsv.php
+  - `wp_insert_user()` → https://developer.wordpress.org/reference/functions/wp_insert_user/
+  - `wp_update_user()` → https://developer.wordpress.org/reference/functions/wp_update_user/
+  - `get_users()` → https://developer.wordpress.org/reference/functions/get_users/
+  - `add_role()` → https://developer.wordpress.org/reference/functions/add_role/
+  - `wp_cron()` → https://developer.wordpress.org/reference/functions/wp_cron/
+  - `wp_schedule_event()` → https://developer.wordpress.org/reference/functions/wp_schedule_event/
 
-## 3. FUNCIONALIDADES EXISTENTES (CONSOLIDADO — Ciclos 1, 2 e 3)
+## 3. FUNCIONALIDADES EXISTENTES (CONSOLIDADO — Ciclos 1, 2, 3 e 4)
 
 ### 3.1 Custom Post Type
 - **Slug do CPT:** `bm_book`
-- `public` → false (será alterado para true no Ciclo 4)
+- `public` → true
 - `supports` → title, thumbnail
 - `capability_type` → `bm_book` com `map_meta_cap` → true
-- `delete_with_user` → false, `menu_icon` → `dashicons-book`, `rewrite` → false
+- `delete_with_user` → false, `menu_icon` → `dashicons-book`
+- `rewrite` → `['slug' => 'livros']`
+- `has_archive` → true
 
 ### 3.2 Taxonomias
 - `bm_genre` (Gêneros) — hierárquica
 - `bm_category` (Categorias) — hierárquica
+- `bm_discipline` (Disciplinas) — hierárquica
 
 ### 3.3 Campos
 - **Fixos:** `_bm_author`, `_bm_publisher`, `_bm_isbn`, `_bm_location`, `_bm_copies`
@@ -52,6 +61,7 @@
 - Detecção de duplicados por Título + Autor + Editora
 - Opção de pular ou forçar importação de duplicados
 - Busca automática de capas durante importação (Google Books API)
+- Busca automática de sinopse durante importação (Google Books API)
 
 ### 3.5 Exportação CSV
 - Flexível: filtros dinâmicos (campo + operador + valor), múltiplos com E/OU
@@ -62,6 +72,7 @@
 - Upload manual via thumbnail
 - Busca automática via Google Books API com 5 níveis hierárquicos
 - Fallback em cascata: ISBN → Título+Autor+Editora → Título+Autor → Título+Editora → Título
+- Resolução aumentada: zoom=2
 
 ### 3.7 Auditoria
 - Log de criação, edição, lixeira e restauração
@@ -74,9 +85,24 @@
 - Deactivation: flush apenas
 - Uninstall: remove posts, meta keys, capabilities
 
+### 3.9 Vitrine Pública
+- Página individual do livro (single-bm_book.php) com controle de visibilidade por perfil
+- Catálogo (archive-bm_book.php) com grid de capas, paginação e responsividade
+- Filtros inteligentes: dropdowns de gênero e categoria, busca textual por título
+- Vitrine visual com hover effects nos cards
+- Placeholder para livros sem capa
+- Hook para carrossel futuro (bm_after_catalog_grid)
+
+### 3.10 Sinopse e Classificação por IA
+- Busca automática de sinopse via Google Books API
+- Botão "Buscar Sinopse" na edição + integração na importação CSV
+- Taxonomia bm_discipline com metabox de checkboxes
+- Integração com API Gemini para classificação interdisciplinar (código pronto, chave pendente)
+- Cache de resultados via _bm_ai_classified
+
 ## 4. IMPORTAÇÃO CSV (Fase 6A) ← CONCLUÍDO (Ciclo 2)
 
-> **Status:** Implementado e expandido no Ciclo 3 com mapeamento dinâmico de colunas, detecção de duplicados e busca de capas. Ver changelog entradas 42-49.
+> **Status:** Implementado e expandido nos Ciclos 3 e 4 com mapeamento dinâmico de colunas, detecção de duplicados, busca de capas e sinopses. Ver changelog entradas 42-49, 65.
 
 ### 4.1 Interface
 - Subpágina "Importar CSV" dentro do menu "Livros" (`add_submenu_page`)
@@ -88,18 +114,18 @@
 ### 4.2 Processamento
 - Delimitador: `;` (ponto e vírgula)
 - Codificação esperada: UTF-8
-- Cabeçalho: primeira linha ignorada
-- Colunas na ordem fixa: Título, Autor, Editora
+- Cabeçalho: primeira linha lida para mapeamento dinâmico
 - Título é obrigatório. Linhas sem título são ignoradas e contabilizadas.
 - Sanitização: `sanitize_text_field()` em todos os campos
-- Inserção: `wp_insert_post()` para criar o `bm_book` + `update_post_meta()` para Autor e Editora
+- Inserção: `wp_insert_post()` para criar o `bm_book` + `update_post_meta()` para metadados
 - Status do post: `publish`
 
 ### 4.3 Relatório
 - Após processamento, exibir:
   - "X livros importados com sucesso."
   - "Y linhas ignoradas (sem título)."
-  - "Z linhas processadas no total."
+  - "Z duplicados pulados."
+  - "W duplicados forçados."
 
 ## 5. EXPORTAÇÃO CSV (Fase 6B) ← CONCLUÍDO (Ciclo 2)
 
@@ -147,71 +173,101 @@
 ### 7.7 Mapeamento Dinâmico de Colunas (7G) ✅
 ### 7.8 Gerenciamento de Campos (7H) ✅
 
-## 8. CICLO 4 — VITRINE PÚBLICA E PÁGINA DO LIVRO ← EM PLANEJAMENTO
+## 8. CICLO 4 — VITRINE PÚBLICA E PÁGINA DO LIVRO ← CONCLUÍDO
 
-### 8.0 Requisitos de Segurança (OBRIGATÓRIO)
-- **Controle de exibição:** A página pública deve usar `current_user_can('manage_options')` para decidir o que mostrar.
-- **Dados SENSÍVEIS (apenas admin):** ISBN, Localização, Número de exemplares, Histórico de auditoria (`_bm_audit_log`).
-- **Dados PÚBLICOS (visitantes):** Título, Autor, Editora, Capa, Gênero, Categoria, Sinopse (se cadastrada), Campos dinâmicos públicos.
-- **REST API:** Não expor endpoints customizados para o CPT `bm_book`. A REST API nativa do WordPress para CPTs públicos deve ser avaliada — se necessário, desabilitar via `show_in_rest => false`.
-- **Indexação:** O arquivo `archive` e as páginas `single` podem ser indexados por mecanismos de busca. Adicionar `noindex` se a escola preferir manter o acervo privado (opção futura de configuração).
-- **Feeds RSS:** O WordPress gera feeds automaticamente para CPTs públicos. Avaliar se devem ser desabilitados.
+> **Status:** Ciclo 4 concluído. Ver changelog entradas 63-78.
 
-### 8.1 Tornar CPT Público
-- Alterar `public` → true
-- Adicionar `has_archive` → true
-- Adicionar `rewrite` → `['slug' => 'livros']`
-- Manter `show_in_rest` → false (barreira de segurança)
-- Manter `exclude_from_search` → false (permitir busca interna, avaliar indexação externa)
+### 8.1 Tornar CPT Público (8A) ✅
+### 8.2 Página Individual do Livro — Single (8B) ✅
+### 8.3 Página de Catálogo — Archive (8C) ✅
+### 8.4 Filtros Inteligentes na Vitrine (8D) ✅ (MVP parcial, cruzamento pendente)
+### 8.5 Vitrine Visual (8E) ✅
+### 8.6 Busca Automática de Sinopse (8F) ✅
+### 8.7 Classificação Interdisciplinar por IA (8G) ✅ (código pronto, chave API pendente)
 
-### 8.2 Página Individual do Livro (Single)
-- Template para exibir ficha completa
-- Visitantes veem: capa, título, autor, editora, gêneros, sinopse, campos dinâmicos públicos
-- Admin logado vê adicionalmente: ISBN, localização, exemplares, histórico de auditoria
-- Exibir apenas campos que possuem valor
-- Botão de reserva aparecerá no futuro (Ciclo 5 ou 6)
+## 9. CICLO 5 — USUÁRIOS, RESERVAS E EMPRÉSTIMOS ← EM PLANEJAMENTO
 
-### 8.3 Página de Catálogo (Archive)
-- Grid de capas com informações básicas (título, autor)
-- Paginação
-- Ordenação por título, autor, data de cadastro
-- Cada capa linka para a página individual do livro
+### 9.0 Requisitos de Segurança (OBRIGATÓRIO)
+- **Hierarquia de acesso:** O sistema deve implementar 4 perfis de usuário com privilégios distintos.
+- **Autenticação:** Login via portal centralizado. Autocadastro pendente de aprovação.
+- **Dados sensíveis:** Contatos de alunos (telefone/WhatsApp) visíveis apenas para Professor e Gestor.
+- **Nonces:** Todos os formulários e ações AJAX devem ter verificação de nonce.
+- **Sanitização:** Todos os inputs devem passar por `sanitize_text_field()` ou equivalente.
+- **Capabilities:** Cada role deve ter capabilities específicas — não usar `manage_options` para novos perfis.
 
-### 8.4 Filtros Inteligentes na Vitrine
-- Por gênero, categoria (dropdowns)
-- Por autor, editora (campos de texto com autocomplete)
-- Busca textual (título, autor, sinopse)
-- Filtros funcionam via `pre_get_posts` no front-end
+### 9.1 Perfis de Usuário (Roles Customizadas)
+- **Roles:**
+  - `bm_student` (Aluno) — acesso básico
+  - `bm_teacher` (Professor/Funcionário) — acesso pedagógico
+  - `bm_librarian` (Gestor da Biblioteca) — acesso operacional
+  - `bm_super_admin` (Super Administrador) — acesso total
+- **Registro via `add_role()`** no activation hook
+- **Remoção de roles** no uninstall
+- **Página de instalação (primeiro acesso):** obriga criação do primeiro Super Admin e cadastro do nome da escola. Autodestrói após uso.
+- **Portal de login:** redirecionamento por perfil após autenticação
 
-### 8.5 Vitrine Visual
-- Grid de capas responsivo
-- Hover com informações básicas
-- Preparação para futuro carrossel de "Mais Lidos" (Ciclo 7 — Gamificação)
+### 9.2 Autocadastro e Aprovação
+- **Formulário de autocadastro:** alunos e professores podem se registrar
+- **Campos do cadastro:** nome, e-mail, senha, série/ano (aluno), disciplina (professor), telefone/WhatsApp
+- **Status pendente:** cadastros ficam como `pending` até aprovação do Gestor
+- **Aprovação:** Gestor ou Super Admin aprovam via painel admin
+- **Notificação:** e-mail ou mensagem após aprovação
 
-### 8.6 Busca Automática de Sinopse
-- Aproveitar a Google Books API para buscar o campo `description` (sinopse)
-- Salvar como campo dinâmico do tipo textarea (`_bm_dynamic_sinopse` ou nome definido pelo usuário)
-- Integrar na importação CSV (junto com a busca de capa)
-- Exibir na página pública do livro (visitantes podem ler a sinopse)
-- A busca é opcional e não bloqueia o cadastro/importação
+### 9.3 Sistema de Reservas
+- **Regras de reserva:**
+  - Estudante (`bm_student`): pode reservar até 3 livros simultaneamente
+  - Professor, Gestor e Super Admin: podem reservar quantos quiserem, inclusive em nome de um estudante
+- **Botão "Reservar"** visível em todas as páginas públicas (archive, taxonomias, single)
+- **Usuário deslogado:** vê o botão, ao clicar recebe mensagem: "Faça login ou crie uma conta para poder reservar"
+- **Usuário logado (estudante):** reserva válida se tiver menos de 3 reservas/empréstimos ativos
+- **Prazo da reserva:** 24 horas. Se não houver retirada física, expira automaticamente via wp_cron
+- **Reserva para terceiros:** Professor/Gestor pode reservar para um aluno e notificá-lo
+- **Lista de espera (fila):**
+  - Múltiplos alunos podem reservar o mesmo livro
+  - Ordem: primeiro a reservar = primeiro da fila
+  - Livros emprestados também podem ser reservados
+  - Mensagem ao reservar: "Reserva confirmada! Você é o Xº da lista de espera."
+  - Quando o livro é devolvido, o próximo da fila é notificado
 
-### 8.7 Classificação Interdisciplinar por IA (Planejamento Futuro — Ciclo 9/10)
-- **Objetivo:** Conectar o acervo às disciplinas escolares, tornando a biblioteca um recurso pedagógico interdisciplinar.
-- **Taxonomia:** Criar `bm_discipline` (Disciplinas) — hierárquica (ex: Ciências da Natureza > Biologia, Física, Química).
-- **Relação livro-disciplina:** Um livro pode pertencer a múltiplas disciplinas.
-- **Motor de IA:**
-  - Enviar metadados do livro (título, autor, sinopse, gênero) para API de IA (Gemini/ChatGPT)
-  - A IA retorna: disciplinas sugeridas + justificativa + sugestões de atividades
-  - Resultado salvo como metadado para não repetir chamadas (cache)
-- **Processamento em lote:** Classificar todo o acervo com controle de custos de API.
-- **Interface do Professor:** Dashboard com busca de livros por disciplina e atividades sugeridas.
-- **Dependências:** Vitrine pública (Ciclo 4), Usuários e perfis (Ciclo 5), Integração com IA externa.
+### 9.4 Empréstimos e Devoluções
+- **Confirmação de retirada:** Gestor transforma reserva ativa em empréstimo
+- **Prazo padrão:** 14 dias para empréstimo
+- **Prazos flexíveis:** opção de alteração global (recessos/férias) ou manual por caso
+- **Devolução:** Gestor registra devolução, atualiza estoque, notifica próximo da fila
+- **Histórico:** registro de empréstimos por aluno e por livro
+- **Atrasos:** aba de tarefas do Gestor destaca alunos com mais de 14 dias
 
-## 9. BARREIRAS DO ESCOPO (Proibido)
-- ❌ Alterar a estrutura do CPT existente (exceto `public` e `rewrite` para o Ciclo 4)
+### 9.5 Controle de Estoque Matemático
+- **Exibição clara:** total de exemplares, quantos emprestados, quantos disponíveis
+- **Atualização em tempo real:** ao registrar empréstimo/devolução
+- **Exibição no single:** visitantes veem disponibilidade, alunos veem botão de reserva
+
+### 9.6 Integração com WhatsApp
+- **Botão WhatsApp Web:** abre chat com mensagem pré-programada
+- **Disponível para:** Professor e Gestor (contato com alunos)
+- **Mensagens pré-programadas:** cobrança de devolução, notificação de reserva disponível
+- **Link:** `https://wa.me/55XXXXXXXXXXX?text=MENSAGEM`
+
+### 9.7 Dashboards por Perfil
+- **Dashboard do Aluno:** pontos (XP), medalhas, histórico de leituras, prazo de devolução, ferramenta de resenha
+- **Dashboard do Professor:** monitoramento de alunos, WhatsApp, gerador de atividades por IA
+- **Dashboard do Gestor:** controle de fluxo (empréstimos/devoluções), aba de atrasos, gestão de acervo
+- **Painel do Super Admin:** configuração da escola, aprovação de gestores, virada de ano letivo
+
+### 9.8 Estrutura de Dados para Reservas e Empréstimos
+- **Meta keys no livro (`_bm_book`):**
+  - `_bm_reservations` — Array de reservas (user_id, data, status, posição na fila)
+  - `_bm_borrowed_count` — Quantos exemplares estão emprestados no momento
+- **Meta keys no usuário:**
+  - `_bm_active_reservations` — Array de IDs de livros reservados
+  - `_bm_borrowed_books` — Array de IDs de livros emprestados
+  - `_bm_reservation_count` — Total de reservas ativas (máx 3 para estudante)
+
+## 10. BARREIRAS DO ESCOPO (Proibido)
+- ❌ Alterar a estrutura do CPT existente
 - ❌ Modificar os hooks de activation/deactivation/uninstall
 - ❌ Usar bibliotecas externas (Laravel-Excel, PhpSpreadsheet, etc.)
-- ❌ Criar tabelas customizadas no banco
+- ❌ Criar tabelas customizadas no banco (usar post meta e user meta)
 - ❌ Shortcodes, widgets ou blocos Gutenberg (para a vitrine)
 - ❌ REST API endpoints customizados
 - ❌ Qualquer dependência de composer, npm ou CDN externo
