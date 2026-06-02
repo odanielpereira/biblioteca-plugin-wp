@@ -10,7 +10,6 @@ get_header();
                     <?php the_post_thumbnail('medium', array('style' => 'width:100%;height:auto;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.15);')); ?>
                 </div>
             <?php else: ?>
-                <!-- FASE 8C-B: Placeholder para livros sem capa -->
                 <div class="bm-book-no-cover" style="flex:0 0 200px;height:280px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999;font-size:14px;border-radius:4px;text-align:center;padding:10px;">
                     <?php _e('Sem capa', 'book-manager'); ?>
                 </div>
@@ -28,7 +27,13 @@ get_header();
                 <?php if ($genres): ?><p><strong>Gênero:</strong> <?php echo esc_html(implode(', ', $genres)); ?></p><?php endif; ?>
                 <?php if ($categories): ?><p><strong>Categoria:</strong> <?php echo esc_html(implode(', ', $categories)); ?></p><?php endif; ?>
 
-                <?php if (current_user_can('manage_options')): ?>
+                <!-- FASE 9E: Informações de estoque -->
+                <?php if (function_exists('bm_display_stock_info')) echo bm_display_stock_info(); ?>
+
+                <!-- FASE 9C: Botão de reserva -->
+                <?php if (function_exists('bm_reserve_button')) bm_reserve_button(); ?>
+
+                <?php if (function_exists('bm_user_can_view_admin_data') && bm_user_can_view_admin_data()): ?>
                     <hr>
                     <h3>Informações Administrativas</h3>
                     <?php

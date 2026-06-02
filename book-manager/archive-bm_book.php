@@ -2,7 +2,6 @@
 get_header();
 ?>
 
-<!-- FASE 8E: Estilos da vitrine visual -->
 <style>
 .bm-catalog { max-width:1000px; margin:0 auto; padding:20px; }
 .bm-filters { display:flex; gap:10px; flex-wrap:wrap; margin:20px 0; align-items:end; }
@@ -23,6 +22,8 @@ get_header();
 .bm-btn-filter:hover { background:#333; }
 .bm-btn-clear { padding:6px 15px; background:#eee; color:#333; text-decoration:none; border-radius:4px; font-size:14px; }
 .bm-btn-clear:hover { background:#ddd; }
+.bm-btn-reserve { padding:4px 10px; background:#111; color:#fff; border:none; border-radius:3px; cursor:pointer; font-size:12px; margin-top:5px; }
+.bm-btn-reserve:hover { background:#333; }
 @media (max-width:600px) {
     .bm-book-grid { grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:12px; }
     .bm-card-cover img, .bm-card-no-cover { height:180px; }
@@ -34,7 +35,6 @@ get_header();
 <div class="bm-catalog">
     <h1><?php _e('Catálogo de Livros', 'book-manager'); ?></h1>
 
-    <!-- FASE 8D: Filtros Inteligentes -->
     <form method="get" class="bm-filters">
         <div>
             <label><?php _e('Buscar', 'book-manager'); ?></label>
@@ -73,7 +73,6 @@ get_header();
     <?php if (have_posts()): ?>
         <div class="bm-book-grid">
             <?php while (have_posts()): the_post(); ?>
-                <!-- FASE 8E: Card com hover effect -->
                 <div class="bm-book-card">
                     <a href="<?php the_permalink(); ?>">
                         <?php if (has_post_thumbnail()): ?>
@@ -93,6 +92,8 @@ get_header();
                             <?php endif; ?>
                         </div>
                     </a>
+                    <!-- FASE 9C: Botão de reserva no card -->
+                    <?php if (function_exists('bm_reserve_button')) bm_reserve_button(); ?>
                 </div>
             <?php endwhile; ?>
         </div>

@@ -492,3 +492,21 @@ changelog do nosso ultimo commit
 - Detalhes: Implementada função bm_reserve_book() com validação de limite (3 para estudantes), fila de espera, posição e prazo de 24h. Botão "Reservar" no single e archive para usuários logados e deslogados (modal). Toggle Reservar/Cancelar: botão muda de cor (verde/vermelho) e texto conforme estado. Função bm_cancel_reservation() recalcula posições da fila. Professor/Gestor/Admin podem reservar para si ou para aluno (prompt com ID). Modal nativo substituindo alert() para mensagens. Itens 26-28 adicionados ao Ciclo de Polimento (popups elegantes, toggle, busca de aluno).
 - Ferramenta: write_file
 - Decisão: MVP de reservas funcional. Polimento visual e funcional pendente para Ciclo de Polimento. Próximo passo: Fase 9D (Empréstimos e Devoluções).
+
+83 - Data: 2026-06-02
+- Ação: Commit e tag v4.1-dev-ciclo5-reservas — Ciclo 5 em andamento com Perfis, Autocadastro e Reservas.
+- Detalhes: Commit com book-manager.php (22 seções, ~950 linhas), archive-bm_book.php, single-bm_book.php e uninstall.php. Implementadas Fases 9A (roles customizadas), 9B (autocadastro com shortcode [bm_register] e aprovação) e 9C (sistema de reservas com fila de espera, limite de 3 para estudantes, toggle Reservar/Cancelar e modal). Pendências mapeadas para Ciclo de Polimento (itens 22-28). Roadmap e changelog atualizados.
+- Ferramenta: git add/commit/tag/push
+- Decisão: Desenvolvimento do Ciclo 5 iniciado. Próximo passo: Fase 9D (Empréstimos e Devoluções).
+
+84 - Data: 2026-06-02
+- Ação: Fase 9D concluída — Empréstimos e Devoluções.
+- Detalhes: Implementadas funções bm_confirm_loan() (reserva → empréstimo, prazo configurável), bm_return_book() (devolução com notificação do próximo da fila) e bm_undo_loan() (desfazer empréstimo, volta para reservado). Página "Empréstimos" no menu Livros com tabela de reservas ativas e empréstimos. Cores por estado: amarelo (reservado), azul (emprestado), verde (devolver), vermelho (desfazer). Atrasos destacados com fundo rosado e texto vermelho. Campo de dias de empréstimo aumentado para 70px. Histórico salvo em _bm_reservations (livro) e _bm_loan_history (usuário). Toggle visual com feedback claro após cada ação.
+- Ferramenta: write_file
+- Decisão: Controle de fluxo físico funcional. Histórico completo será abordado na Fase 9F. Próximo passo: Fase 9E (Controle de Estoque Matemático).
+
+85 - Data: 2026-06-02
+- Ação: Fase 9E concluída — Controle de Estoque Matemático.
+- Detalhes: Implementada função bm_get_stock_info() que retorna total de exemplares, emprestados, disponíveis e na fila. Função bm_display_stock_info() exibe bloco visual no single do livro com cores: verde (disponível), vermelho (emprestado), amarelo (na fila). Atualização automática ao reservar, confirmar empréstimo e devolver. Exibição integrada ao single-bm_book.php entre metadados e botão de reserva. Item 29 adicionado ao Ciclo de Polimento (melhorar clareza visual do estoque).
+- Ferramenta: write_file
+- Decisão: Controle de estoque funcional. Próximo passo: Fase 9F (WhatsApp e Histórico de Empréstimos).

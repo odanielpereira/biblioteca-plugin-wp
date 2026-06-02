@@ -177,13 +177,27 @@
     4.  [ ] Histórico de empréstimos por aluno (`_bm_loan_history`) e por livro.
     5.  [ ] Aba de tarefas do Gestor: alunos com mais de 14 dias de atraso.
 
-#### Fase 9E — Controle de Estoque Matemático
+#### Fase 9D — Empréstimos e Devoluções
+*   **Descrição:** Gestor confirma retirada (reserva → empréstimo) e registra devolução.
+*   **Tarefas:**
+    1.  [x] Função bm_confirm_loan(): transforma reserva em empréstimo com prazo configurável.
+    2.  [x] Função bm_return_book(): registra devolução, atualiza estoque e notifica próximo da fila.
+    3.  [x] Função bm_undo_loan(): desfaz empréstimo, volta para estado reservado.
+    4.  [x] Prazos flexíveis: campo de dias configurável (1-60) na confirmação.
+    5.  [x] Histórico salvo em _bm_loan_history (usuário) e _bm_reservations (livro).
+    6.  [x] Página "Empréstimos" no menu Livros com toggle visual (cores por estado).
+    7.  [x] Destaque visual para atrasos (fundo rosado + texto vermelho).
+    8.  [ ] Aba de tarefas do Gestor: alunos com mais de 14 dias de atraso. → Fase 9F
+
+    #### Fase 9E — Controle de Estoque Matemático
 *   **Descrição:** Exibição clara de exemplares totais, emprestados e disponíveis.
 *   **Tarefas:**
-    1.  [ ] Função `bm_get_stock_info($post_id)`: retorna total, emprestados, disponíveis.
-    2.  [ ] Exibir no single do livro (visitantes veem disponibilidade).
-    3.  [ ] Atualizar em tempo real ao registrar empréstimo/devolução.
-    4.  [ ] Integrar com `_bm_copies` para cálculo correto.
+    1.  [x] Função bm_get_stock_info($post_id): retorna total, emprestados, disponíveis, fila.
+    2.  [x] Função bm_display_stock_info(): exibe bloco visual com cores por estado.
+    3.  [x] Exibir no single do livro (visitantes veem disponibilidade).
+    4.  [x] Atualizar em tempo real ao registrar empréstimo/devolução/reserva.
+    5.  [x] Integrar com _bm_copies e _bm_borrowed_count para cálculo correto.
+    6.  [ ] Melhorar clareza visual dos números de estoque. → Ciclo de Polimento item 29
 
 #### Fase 9F — Integração com WhatsApp
 *   **Descrição:** Botão WhatsApp Web com mensagens pré-programadas para Professor e Gestor.
