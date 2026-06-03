@@ -520,3 +520,21 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - Detalhes: Implementada função bm_whatsapp_link() para gerar links wa.me com DDI 55. Botão WhatsApp na página de Empréstimos com mensagens pré-programadas (atraso e lembrete) e contador de mensagens enviadas via AJAX. Função bm_get_loan_message() com 4 tipos de mensagem (overdue, reminder, available, reserved_for_student). Contador regressivo na coluna Prazo com 4 cores: verde (4+ dias), laranja (3-1 dias), amarelo forte (0 dias = vence hoje), vermelho (atrasado). Prazo mínimo do empréstimo alterado para 0 dias (empréstimo no dia). Itens 30 e 31 adicionados ao Ciclo de Polimento (contador regressivo e contador de mensagens).
 - Ferramenta: write_file
 - Decisão: WhatsApp integrado à gestão de empréstimos. Próximo passo: Fase 9G (Dashboards por Perfil).
+
+88 - Data: 2026-06-02
+- Ação: Fase 9G concluída — Dashboards por Perfil (Aluno e Professor).
+- Detalhes: Implementado shortcode [bm_dashboard] com detecção automática de perfil via bm_get_user_role(). Dashboard do Aluno: cards de estatísticas (empréstimos ativos, reservas na fila, reservas disponíveis), tabela de empréstimos com contador regressivo colorido e tabela de reservas com posição na fila. Dashboard do Professor: cards de estatísticas (total de alunos, empréstimos ativos, em atraso, acervo), tabela de monitoramento com nome do aluno, livro, prazos e botão WhatsApp. Funções do WhatsApp extraídas da FASE 9D para seção independente (FASE 9F: FUNÇÕES DO WHATSAPP). Corrigida função bm_is_student() e bm_is_teacher() para verificar roles diretamente. Adicionada função bm_get_user_role() para roteamento de dashboards. Itens 34-36 adicionados ao Ciclo de Polimento (limites configuráveis, correção de bug, refinar monitoramento do professor).
+- Ferramenta: write_file
+- Decisão: Dashboards do Aluno e Professor funcionais. Dashboard do Gestor e modularização pendentes para próxima fase.
+
+89 - Data: 2026-06-03
+- Ação: Fase 9G concluída — Dashboards por Perfil (Aluno, Professor e Gestor).
+- Detalhes: Implementado Dashboard do Gestor com cards de estatísticas (acervo, empréstimos ativos, atrasos, reservas pendentes, cadastros pendentes), links rápidos para ações (Gerenciar Livros, Empréstimos, Aprovar Cadastros, Importar CSV), tabela de atrasados com WhatsApp e tabela de reservas pendentes. Corrigida função bm_get_user_role() para reconhecer roles com nomes variados (gestor_biblioteca, professor, aluno). Removida verificação de bm_super_admin — Administrator do WordPress é o super-admin nativo. Itens 37 e 38 adicionados ao Ciclo de Polimento (limpar roles sujas e remover bm_super_admin). Dashboard do Professor registrado com item 36 (refinar monitoramento).
+- Ferramenta: write_file
+- Decisão: Ciclo 5 (Fases 9A-9G) concluído. Próximo passo: Modularização (Fase 9H) ou Ciclo de Polimento.
+
+90 - Data: 2026-06-03
+- Ação: Fase 9H concluída — Modularização do plugin.
+- Detalhes: book-manager.php desmembrado em 4 arquivos. Arquivo principal mantém cabeçalho, CPT, taxonomias, capabilities, activation hooks e auditoria. Criados 3 módulos em includes/: admin.php (metaboxes, listagem, filtros admin, importação/exportação CSV, campos dinâmicos), frontend.php (templates, filtros da vitrine, capas via Google Books API, sinopse, IA), users.php (roles, autocadastro, reservas, empréstimos, estoque, WhatsApp, dashboards). Nenhuma funcionalidade alterada. Estrutura pronta para Ciclo de Polimento com arquivos menores e independentes.
+- Ferramenta: write_file
+- Decisão: Projeto modularizado. Ciclo 5 oficialmente encerrado. Próximo passo: Ciclo de Polimento (38 itens).

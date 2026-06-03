@@ -207,12 +207,11 @@
     4.  [x] Integrar na aba de atrasos do Gestor.
 
 #### Fase 9G — Dashboards por Perfil
-*   **Descrição:** Interfaces personalizadas para cada role.
 *   **Tarefas:**
-    1.  [ ] Dashboard do Aluno: XP, medalhas, histórico, prazo de devolução.
-    2.  [ ] Dashboard do Professor: monitoramento, WhatsApp, gerador de atividades.
-    3.  [ ] Dashboard do Gestor: controle de fluxo, atrasos, gestão de acervo.
-    4.  [ ] Painel do Super Admin: configuração da escola, aprovação de gestores, virada de ano.
+    1.  [x] Dashboard do Aluno: XP, medalhas, histórico, prazo de devolução.
+    2.  [x] Dashboard do Professor: monitoramento de alunos, WhatsApp, gerador de atividades.
+    3.  [x] Dashboard do Gestor: controle de fluxo, tarefas de atraso, gestão de acervo.
+    4.  [x] Painel do Super Admin: configuração da escola, aprovação de gestores, virada de ano. (Substituído por Administrator nativo do WP)
 
 ---
 
