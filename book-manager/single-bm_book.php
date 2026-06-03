@@ -27,10 +27,7 @@ get_header();
                 <?php if ($genres): ?><p><strong>Gênero:</strong> <?php echo esc_html(implode(', ', $genres)); ?></p><?php endif; ?>
                 <?php if ($categories): ?><p><strong>Categoria:</strong> <?php echo esc_html(implode(', ', $categories)); ?></p><?php endif; ?>
 
-                <!-- FASE 9E: Informações de estoque -->
                 <?php if (function_exists('bm_display_stock_info')) echo bm_display_stock_info(); ?>
-
-                <!-- FASE 9C: Botão de reserva -->
                 <?php if (function_exists('bm_reserve_button')) bm_reserve_button(); ?>
 
                 <?php if (function_exists('bm_user_can_view_admin_data') && bm_user_can_view_admin_data()): ?>
@@ -75,7 +72,115 @@ get_header();
                 }
             }
         }
+
+        // FASE 10C: Resenha oficial do Gestor/Admin com embed de vídeo
+        $official_review = get_post_meta(get_the_ID(), '_bm_official_review', true);
+        $official_link = get_post_meta(get_the_ID(), '_bm_official_link', true);
+        $official_embed = '';
+        if (!empty($official_link)) {
+            if (strpos($official_link, 'youtube.com') !== false || strpos($official_link, 'youtu.be') !== false) {
+                preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/', $official_link, $matches);
+                if (!empty($matches[1])) $official_embed = 'https://www.youtube.com/embed/' . $matches[1];
+            } elseif (strpos($official_link, 'tiktok.com') !== false) {
+                preg_match('/video\/(\d+)/', $official_link, $matches);
+                if (!empty($matches[1])) $official_embed = 'https://www.tiktok.com/embed/v2/' . $matches[1];
+            } elseif (strpos($official_link, 'instagram.com') !== false) {
+                $official_embed = $official_link . 'embed/';
+            }
+        }
+        if (!empty($official_review) || !empty($official_link)):
         ?>
+            <hr>
+            <h2><?php _e('Resenha da Biblioteca', 'book-manager'); ?></h2>
+            <div style="background:#fff8e1;padding:20px;border-radius:8px;border-left:4px solid #ffc107;margin-bottom:20px;">
+                <?php if (!empty($official_embed)): ?>
+                    <iframe src="<?php echo esc_url($official_embed); ?>" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px;margin-bottom:15px;" allowfullscreen></iframe>
+                <?php elseif (!empty($official_link)): ?>
+                    <p style="margin-bottom:10px;"><a href="<?php echo esc_url($official_link); ?>" target="_blank" style="color:#111;font-weight:bold;">🔗 <?php _e('Link oficial', 'book-manager'); ?></a></p>
+                <?php endif; ?>
+                <?php if (!empty($official_review)): ?>
+                    <p style="margin:0;font-style:italic;color:#555;"><?php echo nl2br(esc_html($official_review)); ?></p>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php
+        // FASE 10C: Exibir resenhas e vídeo-resenhas aprovadas dos alunos
+        $book_id = get_the_ID();
+        $all_users = get_users(array('role__in' => array('bm_student', 'bm_teacher')));
+        $approved_reviews = array();
+        $has_videos = false;
+
+        foreach ($all_users as $user) {
+            $reading_log = get_user_meta($user->ID, '_bm_reading_log', true) ?: array();
+            foreach ($reading_log as $log) {
+                if ($log['book_id'] == $book_id && $log['status'] === 'approved') {
+                    $log['user_name'] = $user->display_name;
+                    $log['user_avatar'] = get_avatar_url($user->ID, array('size' => 40));
+                    $approved_reviews[] = $log;
+                    if (!empty($log['video_url'])) $has_videos = true;
+                }
+            }
+        }
+
+        if (!empty($approved_reviews)):
+            $approved_reviews = array_reverse($approved_reviews);
+        ?>
+            <hr>
+            <h2><?php _e('Resenhas dos Leitores', 'book-manager'); ?></h2>
+            
+            <?php if ($has_videos): ?>
+                <h3>🎬 <?php _e('Vídeo-Resenhas', 'book-manager'); ?></h3>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;margin-bottom:20px;">
+                    <?php foreach ($approved_reviews as $review): ?>
+                        <?php if (!empty($review['video_url'])): ?>
+                            <div style="background:#f9f9f9;padding:10px;border-radius:8px;">
+                                <?php
+                                $embed_url = '';
+                                if (strpos($review['video_url'], 'youtube.com') !== false || strpos($review['video_url'], 'youtu.be') !== false) {
+                                    preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/', $review['video_url'], $matches);
+                                    if (!empty($matches[1])) $embed_url = 'https://www.youtube.com/embed/' . $matches[1];
+                                } elseif (strpos($review['video_url'], 'tiktok.com') !== false) {
+                                    preg_match('/video\/(\d+)/', $review['video_url'], $matches);
+                                    if (!empty($matches[1])) $embed_url = 'https://www.tiktok.com/embed/v2/' . $matches[1];
+                                } elseif (strpos($review['video_url'], 'instagram.com') !== false) {
+                                    $embed_url = $review['video_url'] . 'embed/';
+                                }
+                                ?>
+                                <?php if ($embed_url): ?>
+                                    <iframe src="<?php echo esc_url($embed_url); ?>" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px;" allowfullscreen></iframe>
+                                <?php else: ?>
+                                    <p><a href="<?php echo esc_url($review['video_url']); ?>" target="_blank" style="font-size:14px;">🔗 <?php _e('Ver vídeo', 'book-manager'); ?></a></p>
+                                <?php endif; ?>
+                                <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                                    <?php if ($review['user_avatar']): ?>
+                                        <img src="<?php echo esc_url($review['user_avatar']); ?>" style="width:30px;height:30px;border-radius:50%;" alt="" />
+                                    <?php endif; ?>
+                                    <small style="color:#666;"><?php echo esc_html($review['user_name']); ?></small>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <h3>📝 <?php _e('Resenhas', 'book-manager'); ?></h3>
+            <?php foreach ($approved_reviews as $review): ?>
+                <div style="background:#f9f9f9;padding:15px;border-radius:8px;margin-bottom:10px;">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;">
+                        <?php if ($review['user_avatar']): ?>
+                            <img src="<?php echo esc_url($review['user_avatar']); ?>" style="width:30px;height:30px;border-radius:50%;" alt="" />
+                        <?php endif; ?>
+                        <strong><?php echo esc_html($review['user_name']); ?></strong>
+                        <span style="color:#ffc107;">
+                            <?php echo str_repeat('★', $review['rating']) . str_repeat('☆', 5 - $review['rating']); ?>
+                        </span>
+                        <small style="color:#999;"><?php echo date('d/m/Y', strtotime($review['date'])); ?></small>
+                    </div>
+                    <p style="margin:5px 0;color:#444;"><?php echo esc_html($review['review']); ?></p>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     <?php endwhile; ?>
 </div>
 

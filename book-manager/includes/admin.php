@@ -76,6 +76,45 @@ function bm_save_book_details_metabox_data( $post_id ) {
 add_action('save_post_bm_book', 'bm_save_book_details_metabox_data');
 
 // ==========================================
+// FASE 10C: RESENHA OFICIAL DO GESTOR/ADMIN
+// ==========================================
+function bm_add_official_review_metabox() {
+    add_meta_box('bm_official_review', __('Resenha Oficial', 'book-manager'), 'bm_render_official_review_metabox', 'bm_book', 'normal', 'high');
+}
+add_action('add_meta_boxes', 'bm_add_official_review_metabox');
+
+function bm_render_official_review_metabox($post) {
+    wp_nonce_field('bm_official_review_nonce', 'bm_official_review_nonce_field');
+    $review = get_post_meta($post->ID, '_bm_official_review', true);
+    $link = get_post_meta($post->ID, '_bm_official_link', true);
+    ?>
+    <p>
+        <label><strong><?php _e('Resenha oficial da biblioteca:', 'book-manager'); ?></strong></label>
+        <textarea name="bm_official_review" rows="5" style="width:100%;max-width:600px;margin-top:5px;"><?php echo esc_textarea($review); ?></textarea>
+    </p>
+    <p>
+        <label><strong><?php _e('Link oficial (vídeo ou site):', 'book-manager'); ?></strong></label>
+        <input type="url" name="bm_official_link" value="<?php echo esc_attr($link); ?>" style="width:100%;max-width:600px;margin-top:5px;" placeholder="https://..." />
+    </p>
+    <p class="description"><?php _e('Esta resenha e link aparecerão com destaque na página pública do livro.', 'book-manager'); ?></p>
+    <?php
+}
+
+function bm_save_official_review($post_id) {
+    if (!isset($_POST['bm_official_review_nonce_field']) || !wp_verify_nonce($_POST['bm_official_review_nonce_field'], 'bm_official_review_nonce')) return;
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) return;
+    
+    if (isset($_POST['bm_official_review'])) {
+        update_post_meta($post_id, '_bm_official_review', sanitize_textarea_field($_POST['bm_official_review']));
+    }
+    if (isset($_POST['bm_official_link'])) {
+        update_post_meta($post_id, '_bm_official_link', esc_url_raw($_POST['bm_official_link']));
+    }
+}
+add_action('save_post_bm_book', 'bm_save_official_review');
+
+// ==========================================
 // FASE 4/7C: LISTAGEM E FILTROS ADMIN
 // ==========================================
 function bm_manage_book_columns($columns) {

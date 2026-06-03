@@ -70,38 +70,38 @@
 #### Fase 10A — Ranking de Leitores
 *   **Descrição:** Vitrine com os alunos que mais leram, por período.
 *   **Tarefas:**
-    1.  [ ] Criar shortcode `[bm_ranking]` para exibir ranking em qualquer página.
-    2.  [ ] Query para contar empréstimos devolvidos por aluno (`_bm_loan_history` com status 'returned').
-    3.  [ ] Filtro por período: semana, mês, bimestre, ano (parâmetro do shortcode).
-    4.  [ ] Exibição: foto do aluno (avatar), nome, quantidade de livros lidos.
-    5.  [ ] Top 10 com destaque visual (medalhas 🥇🥈🥉 para os 3 primeiros).
-    6.  [ ] Integrar hook `bm_after_catalog_grid()` para carrossel de "Mais Lidos".
+    1.  [x] Criar shortcode [bm_ranking] para exibir ranking em qualquer página.
+    2.  [x] Query para contar empréstimos devolvidos por aluno.
+    3.  [x] Filtro por período: semana, mês, bimestre, ano.
+    4.  [x] Exibição: foto do aluno (avatar), nome, quantidade de livros lidos.
+    5.  [x] Top 10 com destaque visual (medalhas 🥇🥈🥉 para os 3 primeiros).
+    6.  [ ] Integrar hook bm_after_catalog_grid() para carrossel de "Mais Lidos". → Ciclo de Polimento
 
 #### Fase 10B — Ficha de Leitura
 *   **Descrição:** Formulário para o aluno preencher após ler um livro.
 *   **Tarefas:**
-    1.  [ ] Criar shortcode `[bm_reading_log]` com formulário.
-    2.  [ ] Campos: nota (estrelas 1-5), resenha (textarea), data da leitura (auto).
-    3.  [ ] Selecionar livro dentre os já devolvidos pelo aluno.
-    4.  [ ] Salvar como metadado do usuário (`_bm_reading_log`).
-    5.  [ ] Opção de aprovação pelo Gestor para liberar XP.
+    1.  [x] Criar shortcode [bm_reading_log] com formulário.
+    2.  [x] Campos: nota (estrelas 1-5), resenha (textarea), data da leitura (auto).
+    3.  [x] Selecionar livro dentre os já devolvidos pelo aluno.
+    4.  [x] Salvar como metadado do usuário (_bm_reading_log).
+    5.  [x] Opção de aprovação pelo Gestor para liberar XP.
 
 #### Fase 10C — Vídeo-Resenha
 *   **Descrição:** Campo de link de vídeo na ficha de leitura.
 *   **Tarefas:**
-    1.  [ ] Adicionar campo de URL de vídeo na ficha de leitura.
-    2.  [ ] Exibir vídeos aprovados na página individual do livro.
-    3.  [ ] Suporte a YouTube, TikTok, Instagram (embed ou link).
+    1.  [x] Adicionar campo de URL de vídeo na ficha de leitura.
+    2.  [x] Exibir vídeos aprovados na página individual do livro.
+    3.  [x] Suporte a YouTube, TikTok, Instagram (embed ou link).
 
 #### Fase 10D — XP e Medalhas (Badges)
 *   **Descrição:** Sistema de pontos e conquistas automáticas.
 *   **Tarefas:**
-    1.  [ ] Função `bm_add_xp($user_id, $amount, $reason)`.
-    2.  [ ] Regras: livro lido = 10 XP, resenha = 5 XP, vídeo = 10 XP.
-    3.  [ ] Função `bm_check_badges($user_id)` — verifica e concede medalhas.
-    4.  [ ] Medalhas: Rato de Biblioteca (5 livros), Leitor Voraz (15), Mestre das Ciências (10 de disciplina), Crítico de Cinema (5 vídeos).
-    5.  [ ] Exibição no dashboard do aluno e no ranking.
-    6.  [ ] Shortcode `[bm_badges]` para exibir medalhas do aluno logado.
+    1.  [x] Função bm_add_xp($user_id, $amount, $reason).
+    2.  [x] Regras: livro lido = 10 XP, resenha = 5 XP, vídeo = 10 XP.
+    3.  [x] Função bm_check_badges($user_id) — verifica e concede medalhas.
+    4.  [x] Medalhas: Rato de Biblioteca, Leitor Voraz, Mestre das Ciências, Crítico de Cinema.
+    5.  [x] Exibição no dashboard do aluno e no ranking.
+    6.  [x] Shortcode [bm_badges] para exibir medalhas do aluno logado.
 
 ---
 

@@ -544,3 +544,27 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - Detalhes: Verificados e consolidados 10 arquivos: claude.md (inalterado), escopo.md (v5.0.0, Ciclos 1-5 concluídos, 6-8 planejados), roadmap.md (Ciclos 1-5 concluídos, 6-8 planejados, 38 itens no polimento), changelog.md (90 entradas sequenciais), book-manager.php (carregador + CPT + taxonomias + caps + auditoria), archive-bm_book.php (grid + filtros + reserva), single-bm_book.php (placeholder + estoque + admin condicional), uninstall.php, includes/admin.php (metaboxes + CSV + campos), includes/frontend.php (templates + capas + sinopse + IA), includes/users.php (roles + reservas + empréstimos + WhatsApp + dashboards). Nenhuma divergência encontrada. Projeto 100% alinhado para início do Ciclo 6.
 - Ferramenta: write_file
 - Decisão: Engenharia de contexto validada e versionada. Próximo passo: Fase 10A (Ranking de Leitores).
+
+92 - Data: 2026-06-03
+- Ação: Fase 10A concluída — Ranking de Leitores.
+- Detalhes: Criado shortcode [bm_ranking] com parâmetros period (week, month, bimester, year) e limit. Função bm_get_ranking() conta empréstimos devolvidos no período agrupados por aluno. Exibição com avatar, nome, quantidade de livros lidos. Top 3 com medalhas (🥇🥈🥉) e destaque visual (bordas coloridas, fundo diferenciado). Alunos sem avatar exibem placeholder 👤. Períodos em português (semana, mês, bimestre, ano). Itens 42-44 adicionados ao Ciclo de Polimento (ranking no dashboard, filtros configuráveis, perfil público do leitor).
+- Ferramenta: write_file
+- Decisão: Ranking funcional. Próximo passo: Fase 10B (Ficha de Leitura).
+
+93 - Data: 2026-06-03
+- Ação: Fase 10B concluída — Ficha de Leitura.
+- Detalhes: Criado shortcode [bm_reading_log] com formulário completo: seleção de livro (dentre os devolvidos), nota com estrelas (1-5) via JavaScript interativo, resenha (textarea), campo opcional de URL de vídeo-resenha. Fichas salvas como _bm_reading_log no usuário com status 'pending'. Página "Aprovar Fichas" no menu Livros para Gestor aprovar ou rejeitar. Aluno vê histórico de fichas com status colorido (aprovada/pendente), nota em estrelas e link do vídeo. Validação impede duplicata de ficha para o mesmo livro. Itens 45-49 adicionados ao Ciclo de Polimento (exibição de resenhas no single, perfil público, curadoria, ranking de livros, vídeo-resenhas via CSV).
+- Ferramenta: write_file
+- Decisão: Ficha de leitura funcional. Próximo passo: Fase 10C (Vídeo-Resenha) — parcialmente implementada na 10B.
+
+94 - Data: 2026-06-03
+- Ação: Fase 10C concluída — Vídeo-Resenha e Resenha Oficial.
+- Detalhes: Criada metabox "Resenha Oficial" na edição do livro com campos de resenha e link oficial (vídeo ou site). Exibição com destaque (fundo amarelo) no single-bm_book.php. Embed automático de vídeos do YouTube, TikTok e Instagram para link oficial e resenhas de alunos. Seção "Resenhas dos Leitores" exibe resenhas e vídeo-resenhas aprovadas com avatar do aluno, nota em estrelas e data. Itens 53-57 adicionados ao Ciclo de Polimento (Instagram Reels, CSV com vídeo, resenha oficial, estrelas opcionais, correção de embed).
+- Ferramenta: write_file
+- Decisão: Fase 10C concluída. Próximo passo: Fase 10D (XP e Medalhas).
+
+95 - Data: 2026-06-03
+- Ação: Fase 10D concluída — XP e Medalhas (Badges). Ciclo 6 encerrado.
+- Detalhes: Implementado sistema de XP com função bm_add_xp() e histórico em _bm_xp_history. Sistema de medalhas automáticas: Rato de Biblioteca (5 livros), Leitor Voraz (15), Mestre das Ciências (10 de mesma disciplina), Crítico de Cinema (5 vídeos). Shortcode [bm_badges] exibe medalhas do aluno. XP concedido automaticamente ao aprovar ficha: 10 (base) + 5 (resenha) + 10 (vídeo) + bônus manual do Gestor. Campo de bônus XP na tela de aprovação de fichas. Modal de avaliação com estrelas ao enviar ficha sem nota (Avaliar agora / Agora não). Card de XP e seção de medalhas no dashboard do aluno. Itens 58-61 adicionados ao Ciclo de Polimento.
+- Ferramenta: write_file
+- Decisão: Ciclo 6 (Fases 10A-10D) concluído com sucesso. Plugin atinge versão 6.0.0. Próximo passo: Ciclo 7 (Ferramentas Pedagógicas) ou Ciclo de Polimento.

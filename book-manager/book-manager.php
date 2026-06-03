@@ -266,3 +266,4 @@ function bm_audit_trashed($post_id) { if('bm_book'===get_post_type($post_id)) bm
 add_action('trashed_post','bm_audit_trashed');
 function bm_audit_untrashed($post_id) { if('bm_book'===get_post_type($post_id)) bm_log_audit($post_id,'Restaurado da lixeira'); }
 add_action('untrashed_post','bm_audit_untrashed');
+
