@@ -455,7 +455,11 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - Ferramenta: write_file
 - Decisão: Fase 8E oficialmente concluída. Próximo passo: Fase 8F (Busca Automática de Sinopse).
 
-changelog do nosso ultimo commit
+76 - Data: 2026-06-01
+- Ação: Commit v3.4 — Vitrine Visual (Fase 8E concluída) e alinhamento dos 4 arquivos PHP.
+- Detalhes: Commit com book-manager.php (zoom=2, hook carrossel), archive-bm_book.php (hover effects, CSS reutilizável, responsividade), single-bm_book.php (placeholder 8C-B) e uninstall.php. Fase 8E concluída com 4 tarefas. Fase 8D mantida como MVP parcial. Roadmap e changelog atualizados.
+- Ferramenta: git add/commit/tag/push
+- Decisão: Projeto versionado e alinhado. Próximo passo: Fase 8F (Busca Automática de Sinopse).
 
 77 - Data: 2026-06-01
 - Ação: Fase 8F concluída — Busca Automática de Sinopse.
@@ -510,3 +514,9 @@ changelog do nosso ultimo commit
 - Detalhes: Implementada função bm_get_stock_info() que retorna total de exemplares, emprestados, disponíveis e na fila. Função bm_display_stock_info() exibe bloco visual no single do livro com cores: verde (disponível), vermelho (emprestado), amarelo (na fila). Atualização automática ao reservar, confirmar empréstimo e devolver. Exibição integrada ao single-bm_book.php entre metadados e botão de reserva. Item 29 adicionado ao Ciclo de Polimento (melhorar clareza visual do estoque).
 - Ferramenta: write_file
 - Decisão: Controle de estoque funcional. Próximo passo: Fase 9F (WhatsApp e Histórico de Empréstimos).
+
+86 - Data: 2026-06-02
+- Ação: Fase 9F concluída — Integração com WhatsApp e Contador Regressivo.
+- Detalhes: Implementada função bm_whatsapp_link() para gerar links wa.me com DDI 55. Botão WhatsApp na página de Empréstimos com mensagens pré-programadas (atraso e lembrete) e contador de mensagens enviadas via AJAX. Função bm_get_loan_message() com 4 tipos de mensagem (overdue, reminder, available, reserved_for_student). Contador regressivo na coluna Prazo com 4 cores: verde (4+ dias), laranja (3-1 dias), amarelo forte (0 dias = vence hoje), vermelho (atrasado). Prazo mínimo do empréstimo alterado para 0 dias (empréstimo no dia). Itens 30 e 31 adicionados ao Ciclo de Polimento (contador regressivo e contador de mensagens).
+- Ferramenta: write_file
+- Decisão: WhatsApp integrado à gestão de empréstimos. Próximo passo: Fase 9G (Dashboards por Perfil).

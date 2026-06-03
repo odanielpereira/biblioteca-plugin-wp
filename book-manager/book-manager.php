@@ -471,6 +471,7 @@ add_action('wp_footer', 'bm_reserve_scripts');
 
 // ==========================================
 // FASE 9D: EMPRÉSTIMOS E DEVOLUÇÕES
+// FASE 9F: BOTÃO WHATSAPP E CONTADOR REGRESSIVO (4 CORES)
 // ==========================================
 
 function bm_confirm_loan($book_id, $user_id, $days = 14) {
@@ -483,6 +484,7 @@ function bm_confirm_loan($book_id, $user_id, $days = 14) {
             $reservations[$key]['status'] = 'active';
             $reservations[$key]['loan_date'] = current_time('mysql');
             $reservations[$key]['due_date'] = date('Y-m-d H:i:s', strtotime("+$days days"));
+            $reservations[$key]['loan_id'] = $book_id . '-' . $user_id . '-' . time();
             $found = true;
             break;
         }
@@ -596,6 +598,13 @@ function bm_undo_loan($book_id, $user_id) {
     return array('success' => true, 'message' => __('Empréstimo desfeito.', 'book-manager'));
 }
 
+function bm_get_days_remaining($due_date) {
+    $due = strtotime($due_date);
+    $now = current_time('timestamp');
+    $diff = $due - $now;
+    return intval(ceil($diff / DAY_IN_SECONDS));
+}
+
 function bm_add_loans_page() {
     add_submenu_page('edit.php?post_type=bm_book', __('Empréstimos', 'book-manager'), __('Empréstimos', 'book-manager'), 'edit_bm_books', 'bm_loans', 'bm_render_loans_page');
 }
@@ -642,6 +651,17 @@ function bm_render_loans_page() {
         }
     }
     
+    usort($active_reservations, function($a, $b) {
+        if ($a['status'] === 'active' && $b['status'] !== 'active') return -1;
+        if ($a['status'] !== 'active' && $b['status'] === 'active') return 1;
+        if ($a['status'] === 'active' && $b['status'] === 'active') {
+            $due_a = isset($a['due_date']) ? strtotime($a['due_date']) : PHP_INT_MAX;
+            $due_b = isset($b['due_date']) ? strtotime($b['due_date']) : PHP_INT_MAX;
+            return $due_a - $due_b;
+        }
+        return strtotime($b['date']) - strtotime($a['date']);
+    });
+    
     ?>
     <div class="wrap">
         <h1><?php _e('Gestão de Empréstimos', 'book-manager'); ?></h1>
@@ -657,7 +677,8 @@ function bm_render_loans_page() {
                         <th><?php _e('Usuário', 'book-manager'); ?></th>
                         <th><?php _e('Status', 'book-manager'); ?></th>
                         <th><?php _e('Reserva em', 'book-manager'); ?></th>
-                        <th><?php _e('Devolução', 'book-manager'); ?></th>
+                        <th><?php _e('Prazo', 'book-manager'); ?></th>
+                        <th><?php _e('WhatsApp', 'book-manager'); ?></th>
                         <th><?php _e('Ação', 'book-manager'); ?></th>
                     </tr>
                 </thead>
@@ -665,25 +686,65 @@ function bm_render_loans_page() {
                     <?php foreach ($active_reservations as $r): 
                         $user = get_userdata($r['user_id']);
                         $user_name = $user ? $user->display_name : '#' . $r['user_id'];
+                        $user_phone = $user ? get_user_meta($user->ID, 'bm_phone', true) : '';
                         $is_active = $r['status'] === 'active';
                         $status_label = $is_active ? __('Emprestado', 'book-manager') : __('Reservado', 'book-manager');
                         $status_color = $is_active ? '#0073aa' : '#f0ad4e';
+                        
+                        // FASE 9F: Contador regressivo com 4 cores
+                        $days_remaining = '';
+                        $countdown_style = '';
+                        if ($is_active && isset($r['due_date'])) {
+                            $days = bm_get_days_remaining($r['due_date']);
+                            if ($days > 3) {
+                                $days_remaining = $days . ' ' . __('dias restantes', 'book-manager');
+                                $countdown_style = 'color:#46b450;font-weight:bold;';
+                            } elseif ($days >= 1) {
+                                $days_remaining = $days . ' ' . ($days == 1 ? __('dia restante', 'book-manager') : __('dias restantes', 'book-manager'));
+                                $countdown_style = 'color:#f0ad4e;font-weight:bold;';
+                            } elseif ($days == 0) {
+                                $days_remaining = __('Vence hoje!', 'book-manager');
+                                $countdown_style = 'color:#e6c300;font-weight:bold;font-size:13px;';
+                            } else {
+                                $days_remaining = abs($days) . ' ' . (abs($days) == 1 ? __('dia atrasado', 'book-manager') : __('dias atrasados', 'book-manager'));
+                                $countdown_style = 'color:#dc3545;font-weight:bold;';
+                            }
+                        }
+                        
                         $due_date = isset($r['due_date']) ? date('d/m/Y', strtotime($r['due_date'])) : '—';
                         $is_overdue = isset($r['due_date']) && strtotime($r['due_date']) < time();
+                        $loan_id = isset($r['loan_id']) ? $r['loan_id'] : '';
+                        
+                        $wa_overdue_msg = bm_get_loan_message($user_name, $r['book_title'], $due_date, 'overdue');
+                        $wa_reminder_msg = bm_get_loan_message($user_name, $r['book_title'], $due_date, 'reminder');
                     ?>
-                        <tr style="<?php echo $is_overdue ? 'background:#fff3f3;' : ''; ?>">
+                        <tr style="<?php echo $is_overdue && $is_active ? 'background:#fff3f3;' : ''; ?>">
                             <td><strong><?php echo esc_html($r['book_title']); ?></strong></td>
                             <td><?php echo esc_html($user_name); ?></td>
                             <td><span style="background:<?php echo $status_color; ?>;color:#fff;padding:2px 8px;border-radius:3px;font-size:12px;"><?php echo $status_label; ?></span></td>
                             <td><?php echo esc_html(date('d/m/Y', strtotime($r['date']))); ?></td>
-                            <td style="<?php echo $is_overdue ? 'color:red;font-weight:bold;' : ''; ?>"><?php echo $due_date; ?></td>
+                            <td>
+                                <span style="display:block;<?php echo $countdown_style; ?>"><?php echo $due_date; ?></span>
+                                <?php if ($days_remaining): ?>
+                                    <span style="font-size:11px;<?php echo $countdown_style; ?>"><?php echo $days_remaining; ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if ($user_phone && $is_active): ?>
+                                    <?php echo bm_whatsapp_button($user_phone, $is_overdue ? $wa_overdue_msg : $wa_reminder_msg, 'WhatsApp', $loan_id); ?>
+                                <?php elseif (!$user_phone && $is_active): ?>
+                                    <span style="color:#999;font-size:11px;"><?php _e('Sem telefone', 'book-manager'); ?></span>
+                                <?php else: ?>
+                                    <span style="color:#999;">—</span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <form method="post" style="display:inline;">
                                     <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
                                     <input type="hidden" name="book_id" value="<?php echo $r['book_id']; ?>">
                                     <input type="hidden" name="user_id" value="<?php echo $r['user_id']; ?>">
                                     <?php if (!$is_active): ?>
-                                        <input type="number" name="loan_days" value="14" min="1" max="60" style="width:70px;padding:4px 8px;font-size:14px;text-align:center;" title="<?php _e('Dias de empréstimo', 'book-manager'); ?>" />
+                                        <input type="number" name="loan_days" value="14" min="0" max="60" style="width:70px;padding:4px 8px;font-size:14px;text-align:center;" title="<?php _e('Dias de empréstimo', 'book-manager'); ?>" />
                                         <input type="hidden" name="bm_loan_action" value="confirm">
                                         <button type="submit" class="button button-primary" style="background:#0073aa;color:#fff;border-color:#0073aa;"><?php _e('Confirmar', 'book-manager'); ?></button>
                                     <?php else: ?>
@@ -761,6 +822,87 @@ function bm_display_stock_info($book_id = null) {
     $html .= '</div>';
     
     return $html;
+}
+
+// ==========================================
+// FASE 9F: INTEGRAÇÃO COM WHATSAPP
+// ==========================================
+function bm_whatsapp_link($phone, $message = '') {
+    $phone = preg_replace('/[^0-9]/', '', $phone);
+    if (empty($phone)) return '';
+    $url = 'https://wa.me/55' . $phone;
+    if (!empty($message)) $url .= '?text=' . urlencode($message);
+    return $url;
+}
+
+function bm_get_whatsapp_count($loan_id) {
+    return intval(get_post_meta($loan_id, '_bm_whatsapp_count', true));
+}
+
+function bm_increment_whatsapp_count($loan_id) {
+    $count = bm_get_whatsapp_count($loan_id);
+    update_post_meta($loan_id, '_bm_whatsapp_count', $count + 1);
+}
+
+function bm_whatsapp_button($phone, $message = '', $label = '', $loan_id = null) {
+    if (empty($phone)) return '';
+    $url = bm_whatsapp_link($phone, $message);
+    if (empty($label)) $label = __('WhatsApp', 'book-manager');
+    
+    $count_html = '';
+    if ($loan_id) {
+        $count = bm_get_whatsapp_count($loan_id);
+        if ($count > 0) {
+            $count_html = ' <span style="background:#25d366;color:#fff;border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px;">' . $count . '</span>';
+        }
+    }
+    
+    $onclick = '';
+    if ($loan_id) {
+        $onclick = ' onclick="bmTrackWhatsapp(this, ' . $loan_id . ')"';
+    }
+    
+    return '<a href="' . esc_url($url) . '" target="_blank" rel="noopener" class="bm-whatsapp-btn" style="display:inline-block;padding:4px 10px;background:#25d366;color:#fff;border-radius:3px;text-decoration:none;font-size:12px;"' . $onclick . '>' . esc_html($label) . $count_html . '</a>';
+}
+
+function bm_whatsapp_tracking_script() {
+    if (!is_admin()) return;
+    ?>
+    <script>
+    function bmTrackWhatsapp(link, loanId) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.send('action=bm_track_whatsapp&loan_id=' + loanId + '&nonce=<?php echo wp_create_nonce('bm_whatsapp_nonce'); ?>');
+        setTimeout(function() {
+            var span = link.querySelector('span');
+            if (span) {
+                var count = parseInt(span.textContent) || 0;
+                span.textContent = count + 1;
+            }
+        }, 500);
+    }
+    </script>
+    <?php
+}
+add_action('admin_footer', 'bm_whatsapp_tracking_script');
+
+function bm_ajax_track_whatsapp() {
+    check_ajax_referer('bm_whatsapp_nonce', 'nonce');
+    $loan_id = isset($_POST['loan_id']) ? intval($_POST['loan_id']) : 0;
+    if ($loan_id) bm_increment_whatsapp_count($loan_id);
+    wp_die();
+}
+add_action('wp_ajax_bm_track_whatsapp', 'bm_ajax_track_whatsapp');
+
+function bm_get_loan_message($user_name, $book_title, $due_date, $type = 'overdue') {
+    $messages = array(
+        'overdue' => sprintf(__('Olá %s! O livro "%s" estava com devolução prevista para %s e está atrasado. Poderia devolvê-lo? Obrigado!', 'book-manager'), $user_name, $book_title, $due_date),
+        'reminder' => sprintf(__('Olá %s! Lembramos que o livro "%s" deve ser devolvido até %s. Obrigado!', 'book-manager'), $user_name, $book_title, $due_date),
+        'available' => sprintf(__('Olá %s! O livro "%s" que você reservou já está disponível para retirada. Passe na biblioteca!', 'book-manager'), $user_name, $book_title),
+        'reserved_for_student' => sprintf(__('Olá! O professor reservou o livro "%s" para você. Passe na biblioteca para retirá-lo!', 'book-manager'), $book_title),
+    );
+    return isset($messages[$type]) ? $messages[$type] : $messages['overdue'];
 }
 
 // ==========================================

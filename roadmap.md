@@ -200,12 +200,11 @@
     6.  [ ] Melhorar clareza visual dos números de estoque. → Ciclo de Polimento item 29
 
 #### Fase 9F — Integração com WhatsApp
-*   **Descrição:** Botão WhatsApp Web com mensagens pré-programadas para Professor e Gestor.
 *   **Tarefas:**
-    1.  [ ] Função `bm_whatsapp_link($phone, $message)`: gera link wa.me.
-    2.  [ ] Botão no perfil do aluno (visível para Professor e Gestor).
-    3.  [ ] Mensagens pré-programadas: cobrança de devolução, notificação de reserva.
-    4.  [ ] Integrar na aba de atrasos do Gestor.
+    1.  [x] Função bm_whatsapp_link($phone, $message): gera link wa.me.
+    2.  [x] Botão no perfil do aluno (visível para Professor e Gestor).
+    3.  [x] Mensagens pré-programadas: cobrança de devolução, notificação de reserva.
+    4.  [x] Integrar na aba de atrasos do Gestor.
 
 #### Fase 9G — Dashboards por Perfil
 *   **Descrição:** Interfaces personalizadas para cada role.
