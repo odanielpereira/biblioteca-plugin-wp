@@ -538,3 +538,9 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - Detalhes: book-manager.php desmembrado em 4 arquivos. Arquivo principal mantém cabeçalho, CPT, taxonomias, capabilities, activation hooks e auditoria. Criados 3 módulos em includes/: admin.php (metaboxes, listagem, filtros admin, importação/exportação CSV, campos dinâmicos), frontend.php (templates, filtros da vitrine, capas via Google Books API, sinopse, IA), users.php (roles, autocadastro, reservas, empréstimos, estoque, WhatsApp, dashboards). Nenhuma funcionalidade alterada. Estrutura pronta para Ciclo de Polimento com arquivos menores e independentes.
 - Ferramenta: write_file
 - Decisão: Projeto modularizado. Ciclo 5 oficialmente encerrado. Próximo passo: Ciclo de Polimento (38 itens).
+
+91 - Data: 2026-06-03
+- Ação: Alinhamento completo da engenharia de contexto para o Ciclo 6 — verificação de todos os arquivos .md e .php.
+- Detalhes: Verificados e consolidados 10 arquivos: claude.md (inalterado), escopo.md (v5.0.0, Ciclos 1-5 concluídos, 6-8 planejados), roadmap.md (Ciclos 1-5 concluídos, 6-8 planejados, 38 itens no polimento), changelog.md (90 entradas sequenciais), book-manager.php (carregador + CPT + taxonomias + caps + auditoria), archive-bm_book.php (grid + filtros + reserva), single-bm_book.php (placeholder + estoque + admin condicional), uninstall.php, includes/admin.php (metaboxes + CSV + campos), includes/frontend.php (templates + capas + sinopse + IA), includes/users.php (roles + reservas + empréstimos + WhatsApp + dashboards). Nenhuma divergência encontrada. Projeto 100% alinhado para início do Ciclo 6.
+- Ferramenta: write_file
+- Decisão: Engenharia de contexto validada e versionada. Próximo passo: Fase 10A (Ranking de Leitores).

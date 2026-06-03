@@ -6,7 +6,7 @@
 - **Text Domain:** `book-manager`
 - **Prefixo de funções:** `bm_`
 - **Prefixo de meta keys:** `_bm_`
-- **Versão atual:** 4.0.0
+- **Versão atual:** 5.0.0
 
 ## 2. REFERÊNCIA ÚNICA
 - 100% do código deve seguir: https://developer.wordpress.org/
@@ -185,7 +185,7 @@
 ### 8.6 Busca Automática de Sinopse (8F) ✅
 ### 8.7 Classificação Interdisciplinar por IA (8G) ✅ (código pronto, chave API pendente)
 
-## 9. CICLO 5 — USUÁRIOS, RESERVAS E EMPRÉSTIMOS ← EM PLANEJAMENTO
+## 9. CICLO 5 — USUÁRIOS, RESERVAS E EMPRÉSTIMOS ← CONCLUÍDO
 
 ### 9.0 Requisitos de Segurança (OBRIGATÓRIO)
 - **Hierarquia de acesso:** O sistema deve implementar 4 perfis de usuário com privilégios distintos.
@@ -263,7 +263,105 @@
   - `_bm_borrowed_books` — Array de IDs de livros emprestados
   - `_bm_reservation_count` — Total de reservas ativas (máx 3 para estudante)
 
-## 10. BARREIRAS DO ESCOPO (Proibido)
+  ## 10. CICLO 6 — GAMIFICAÇÃO E ENGAJAMENTO ← EM PLANEJAMENTO
+
+> **Status:** Ciclo 6 em planejamento. Foco em engajamento dos alunos com ranking, fichas de leitura e medalhas.
+
+### 10.0 Requisitos de Segurança (OBRIGATÓRIO)
+- **Dados de alunos:** Nomes e fotos (avatar) no ranking público. Avaliar consentimento/LGPD.
+- **Conteúdo de resenhas:** Texto e vídeos passam por aprovação do Gestor antes de exibição pública.
+- **Nonces:** Todos os formulários de ficha de leitura devem ter verificação de nonce.
+
+### 10.1 Ranking de Leitores (Fase 10A)
+- **Shortcode:** `[bm_ranking]` para exibir ranking em qualquer página
+- **Parâmetros:** `period` (week, month, bimester, year), `limit` (padrão 10)
+- **Cálculo:** Contar empréstimos com status 'returned' no período, agrupados por usuário
+- **Exibição:** Avatar, nome, quantidade de livros lidos
+- **Destaque:** Medalhas 🥇🥈🥉 para os 3 primeiros
+- **Integração:** Hook `bm_after_catalog_grid()` para carrossel de "Mais Lidos"
+
+### 10.2 Ficha de Leitura (Fase 10B)
+- **Shortcode:** `[bm_reading_log]` — formulário para aluno preencher após leitura
+- **Campos:** Selecionar livro (dentre os devolvidos), nota (1-5 estrelas), resenha (textarea)
+- **Metadado:** Salvo como `_bm_reading_log` no usuário (array de fichas)
+- **Aprovação:** Opcional — Gestor aprova para liberar XP
+
+### 10.3 Vídeo-Resenha (Fase 10C)
+- **Campo:** URL de vídeo (YouTube, TikTok, Instagram) na ficha de leitura
+- **Exibição:** Vídeos aprovados aparecem na página individual do livro
+- **Metadado:** Integrado ao `_bm_reading_log`
+
+### 10.4 XP e Medalhas (Fase 10D)
+- **XP:** Pontos por ação (ler livro = 10 XP, resenha = 5 XP, vídeo = 10 XP)
+- **Função:** `bm_add_xp($user_id, $amount, $reason)`
+- **Medalhas:** Concedidas automaticamente por `bm_check_badges($user_id)`
+- **Badges:**
+  - 🐭 Rato de Biblioteca: 5 livros lidos
+  - 📚 Leitor Voraz: 15 livros lidos
+  - 🏆 Mestre das Ciências: 10 livros de uma mesma disciplina
+  - 🎬 Crítico de Cinema: 5 vídeo-resenhas
+- **Exibição:** Dashboard do aluno + shortcode `[bm_badges]`
+
+## 11. CICLO 7 — FERRAMENTAS PEDAGÓGICAS ← PLANEJADO
+
+> **Status:** Ciclo 7 planejado. Foco em ferramentas de apoio ao professor e catalogação avançada.
+
+### 11.0 Requisitos de Segurança (OBRIGATÓRIO)
+- **API Gemini:** Chave configurável na página de configurações (Fase 12A)
+- **Cache:** Resultados de IA salvos como metadado para evitar chamadas repetidas
+- **Nonces:** Presentes em todos os botões de ação AJAX
+
+### 11.1 Gerador de Atividades por IA (Fase 11A)
+- **Acesso:** Exclusivo para Professor (bm_teacher) e superior
+- **Gatilho:** Botão "Gerar Atividade" no dashboard do Professor
+- **Prompt:** Enviar título, autor, sinopse e disciplina para Gemini
+- **Resposta:** 3 sugestões de atividades pedagógicas
+- **Cache:** Salvo como `_bm_activities` no livro
+
+### 11.2 CDU e Cutter (Fase 11B)
+- **CDU:** IA sugere código de Classificação Decimal Universal
+- **Cutter:** Cálculo automático da Tabela Cutter-Sanborn (autor + título)
+- **Campos:** `_bm_cdu` e `_bm_cutter`
+- **Cache:** `_bm_cdu_cached` para evitar rechamadas
+
+### 11.3 Geração de Etiquetas (Fase 11C)
+- **Página:** "Etiquetas" no menu Livros
+- **Seleção:** Checkboxes para escolher livros
+- **Layout:** Código de barras, CDU, Cutter, título, autor
+- **Impressão:** CSS @media print para folha A4
+
+## 12. CICLO 8 — INFRAESTRUTURA E CONFIGURAÇÕES ← PLANEJADO
+
+> **Status:** Ciclo 8 planejado. Foco em adaptabilidade, white label e virada de ano.
+
+### 12.0 Requisitos de Segurança (OBRIGATÓRIO)
+- **Configurações:** Acesso restrito a `manage_options` (apenas Admin)
+- **Virada de ano:** Confirmação dupla antes de executar ação irreversível
+- **API Keys:** Salvas com sanitização adequada
+
+### 12.1 Página de Configurações (Fase 12A)
+- **Subpágina:** "Configurações" no menu Livros
+- **Campos:** API Key Google Books, API Key Gemini
+- **Limites:** Máximo de reservas por aluno (padrão 3), máximo de empréstimos (padrão 1), prazo padrão (padrão 14)
+- **Armazenamento:** `get_option('bm_settings')` — array associativo
+
+### 12.2 White Label (Fase 12B)
+- **Nome da escola:** Substitui "Catálogo de Livros" no título
+- **Logo:** Upload via WordPress media uploader
+- **Cores:** Primária e secundária (aplicadas via CSS inline)
+- **Anos letivos:** Configuráveis (ex: 1º Ano EM, 2º Ano EM...)
+
+### 12.3 Virada de Ano Letivo (Fase 12C)
+- **Acesso:** Exclusivo Admin (manage_options)
+- **Ações:** Arquivar rankings, resetar XP (opcional), limpar reservas, ativar recadastramento
+- **Segurança:** Confirmação dupla com senha do admin
+
+### 12.4 Integração Google Drive (Fase 12D)
+- **Campo:** URL pública do Google Sheets na importação CSV
+- **Download:** `wp_remote_get()` para baixar como CSV
+- **Processamento:** Mesmo fluxo de mapeamento dinâmico existente
+
+## 13. BARREIRAS DO ESCOPO (Proibido)
 - ❌ Alterar a estrutura do CPT existente
 - ❌ Modificar os hooks de activation/deactivation/uninstall
 - ❌ Usar bibliotecas externas (Laravel-Excel, PhpSpreadsheet, etc.)
