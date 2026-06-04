@@ -29,6 +29,7 @@ get_header();
 
                 <?php if (function_exists('bm_display_stock_info')) echo bm_display_stock_info(); ?>
                 <?php if (function_exists('bm_reserve_button')) bm_reserve_button(); ?>
+                <?php if (function_exists('bm_label_button')) bm_label_button(); ?>
 
                 <?php if (function_exists('bm_user_can_view_admin_data') && bm_user_can_view_admin_data()): ?>
                     <hr>
@@ -145,6 +146,9 @@ get_header();
         <?php endif; ?>
 
         <?php
+        // FASE 11B: Exibir Número de Chamada
+        if (function_exists('bm_display_call_number')) echo bm_display_call_number();
+
         // FASE 11B: Exibir disciplinas relacionadas e justificativas
         $disciplines = wp_get_post_terms(get_the_ID(), 'bm_discipline', array('fields' => 'all'));
         $justifications = get_post_meta(get_the_ID(), '_bm_discipline_justifications', true);
@@ -168,11 +172,6 @@ get_header();
                 </div>
             <?php endif; ?>
         <?php endif; ?>
-
-        <?php
-        // FASE 11B: Exibir Número de Chamada (visível para todos)
-        if (function_exists('bm_display_call_number')) echo bm_display_call_number();
-        ?>
 
         <?php
         // FASE 10C: Resenhas dos leitores

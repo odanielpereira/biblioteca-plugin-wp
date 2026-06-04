@@ -109,11 +109,15 @@
 #### Fase 11C — Geração de Etiquetas
 *   **Descrição:** Impressão de etiquetas para lombada dos livros.
 *   **Tarefas:**
-    1.  [ ] Página "Etiquetas" no menu Livros.
-    2.  [ ] Selecionar livros via checkboxes.
-    3.  [ ] Gerar folha A4 com etiquetas formatadas.
-    4.  [ ] Layout: código de barras, CDU, Cutter, título, autor.
-    5.  [ ] CSS @media print para impressão direta.
+     **Tarefas:**
+    1.  [x] Página "Etiquetas" no menu Livros.
+    2.  [x] Selecionar livros via checkboxes com filtros.
+    3.  [x] Gerar folha A4 com etiquetas formatadas (3 colunas × 8 linhas).
+    4.  [x] Layout: autor, título, classificação, cutter, edição, exemplar, código de barras.
+    5.  [x] CSS @media print para impressão direta.
+    6.  [x] Carrinho persistente via sessão PHP.
+    7.  [x] Botão "Adicionar etiqueta" na página individual do livro.
+    8.  [x] Suporte a múltiplos exemplares (Ex. 1/56).
 
 #### Fase 11E — Chatbot da Biblioteca ← CONCLUÍDA
 *   **Tarefas:**

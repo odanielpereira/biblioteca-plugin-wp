@@ -629,3 +629,311 @@ function bm_render_api_settings_page() {
     </div>
     <?php
 }
+
+// ==========================================
+// FASE 11C: GERAÇÃO DE ETIQUETAS
+// ==========================================
+
+function bm_add_labels_page() {
+    add_submenu_page('edit.php?post_type=bm_book', __('Etiquetas', 'book-manager'), __('Etiquetas', 'book-manager'), 'edit_bm_books', 'bm_labels', 'bm_render_labels_page');
+}
+add_action('admin_menu', 'bm_add_labels_page');
+
+function bm_labels_init_session() {
+    if (!session_id() && !headers_sent()) session_start();
+    if (!isset($_SESSION['bm_labels_cart'])) $_SESSION['bm_labels_cart'] = array();
+}
+add_action('init', 'bm_labels_init_session');
+
+function bm_ajax_toggle_label() {
+    if (!session_id()) session_start();
+    if (!isset($_SESSION['bm_labels_cart'])) $_SESSION['bm_labels_cart'] = array();
+    
+    $book_id = isset($_POST['book_id']) ? intval($_POST['book_id']) : 0;
+    if (!$book_id) wp_die(json_encode(array('success' => false)));
+    
+    if (in_array($book_id, $_SESSION['bm_labels_cart'])) {
+        $_SESSION['bm_labels_cart'] = array_diff($_SESSION['bm_labels_cart'], array($book_id));
+        $action = 'removed';
+    } else {
+        $_SESSION['bm_labels_cart'][] = $book_id;
+        $action = 'added';
+    }
+    
+    wp_die(json_encode(array('success' => true, 'action' => $action, 'count' => count($_SESSION['bm_labels_cart']))));
+}
+add_action('wp_ajax_bm_toggle_label', 'bm_ajax_toggle_label');
+
+function bm_label_button() {
+    if (!is_singular('bm_book')) return;
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $book_id = get_the_ID();
+    if (!session_id()) session_start();
+    $in_cart = isset($_SESSION['bm_labels_cart']) && in_array($book_id, $_SESSION['bm_labels_cart']);
+    $label = $in_cart ? '➖ ' . __('Remover etiqueta', 'book-manager') : '➕ ' . __('Adicionar etiqueta', 'book-manager');
+    $color = $in_cart ? '#dc3545' : '#111';
+    ?>
+    <div style="margin:10px 0;">
+        <button type="button" class="bm-label-toggle" data-book="<?php echo $book_id; ?>" style="padding:6px 12px;background:<?php echo $color; ?>;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">
+            <?php echo $label; ?>
+        </button>
+    </div>
+    <script>
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('bm-label-toggle')) {
+            var btn = e.target;
+            var bookId = btn.getAttribute('data-book');
+            btn.disabled = true;
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                var r = JSON.parse(xhr.responseText);
+                if (r.success) {
+                    btn.textContent = r.action === 'added' ? '➖ Remover etiqueta' : '➕ Adicionar etiqueta';
+                    btn.style.background = r.action === 'added' ? '#dc3545' : '#111';
+                }
+                btn.disabled = false;
+            };
+            xhr.send('action=bm_toggle_label&book_id=' + bookId);
+        }
+    });
+    </script>
+    <?php
+}
+
+function bm_render_labels_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    if (!session_id()) session_start();
+    $cart = isset($_SESSION['bm_labels_cart']) ? $_SESSION['bm_labels_cart'] : array();
+    
+    if (isset($_POST['clear_cart'])) {
+        $_SESSION['bm_labels_cart'] = array();
+        $cart = array();
+        echo '<div class="notice notice-success"><p>' . __('Etiquetas removidas.', 'book-manager') . '</p></div>';
+    }
+    
+    $filter_genre = isset($_GET['filter_genre']) ? intval($_GET['filter_genre']) : 0;
+    $filter_discipline = isset($_GET['filter_discipline']) ? intval($_GET['filter_discipline']) : 0;
+    $filter_cdu = isset($_GET['filter_cdu']) ? sanitize_text_field($_GET['filter_cdu']) : '';
+    $filter_search = isset($_GET['filter_search']) ? sanitize_text_field($_GET['filter_search']) : '';
+    
+    $args = array('post_type' => 'bm_book', 'posts_per_page' => 50, 'post_status' => 'publish');
+    if ($filter_genre) { $args['tax_query'][] = array('taxonomy' => 'bm_genre', 'field' => 'term_id', 'terms' => $filter_genre); }
+    if ($filter_discipline) { $args['tax_query'][] = array('taxonomy' => 'bm_discipline', 'field' => 'term_id', 'terms' => $filter_discipline); }
+    if ($filter_search) $args['s'] = $filter_search;
+    if ($filter_cdu) { $args['meta_query'][] = array('key' => '_bm_cdu', 'value' => $filter_cdu, 'compare' => 'LIKE'); }
+    
+    $books = get_posts($args);
+    
+    if (isset($_POST['add_selected']) && isset($_POST['book_ids'])) {
+        foreach ($_POST['book_ids'] as $id) {
+            if (!in_array($id, $cart)) $cart[] = intval($id);
+        }
+        $_SESSION['bm_labels_cart'] = $cart;
+    }
+    
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Geração de Etiquetas', 'book-manager'); ?></h1>
+        
+        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:400px;">
+                <h2><?php _e('Selecionar Livros', 'book-manager'); ?></h2>
+                
+                <form method="get" style="margin-bottom:15px;">
+                    <input type="hidden" name="post_type" value="bm_book">
+                    <input type="hidden" name="page" value="bm_labels">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
+                        <div><label><?php _e('Buscar', 'book-manager'); ?></label><input type="text" name="filter_search" value="<?php echo esc_attr($filter_search); ?>" placeholder="<?php _e('Título ou autor', 'book-manager'); ?>" style="padding:4px 8px;" /></div>
+                        <div><label><?php _e('Gênero', 'book-manager'); ?></label><?php wp_dropdown_categories(array('show_option_all' => __('Todos', 'book-manager'), 'taxonomy' => 'bm_genre', 'name' => 'filter_genre', 'selected' => $filter_genre, 'hide_empty' => true)); ?></div>
+                        <div><label><?php _e('Disciplina', 'book-manager'); ?></label><?php wp_dropdown_categories(array('show_option_all' => __('Todas', 'book-manager'), 'taxonomy' => 'bm_discipline', 'name' => 'filter_discipline', 'selected' => $filter_discipline, 'hide_empty' => true)); ?></div>
+                        <div><label><?php _e('Classif.', 'book-manager'); ?></label><input type="text" name="filter_cdu" value="<?php echo esc_attr($filter_cdu); ?>" style="width:80px;padding:4px 8px;" /></div>
+                        <div><button type="submit" class="button"><?php _e('Filtrar', 'book-manager'); ?></button></div>
+                    </div>
+                </form>
+                
+                <form method="post">
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <th style="width:30px;"><input type="checkbox" id="bm-select-all" /></th>
+                                <th><?php _e('Título', 'book-manager'); ?></th>
+                                <th><?php _e('Autor', 'book-manager'); ?></th>
+                                <th><?php _e('Classif.', 'book-manager'); ?></th>
+                                <th><?php _e('Ex.', 'book-manager'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($books as $book): 
+                                $author = get_post_meta($book->ID, '_bm_author', true);
+                                $cdu = get_post_meta($book->ID, '_bm_cdu', true);
+                                $copies = max(1, intval(get_post_meta($book->ID, '_bm_copies', true)));
+                            ?>
+                                <tr>
+                                    <td><input type="checkbox" name="book_ids[]" value="<?php echo $book->ID; ?>" <?php checked(in_array($book->ID, $cart)); ?> /></td>
+                                    <td><?php echo esc_html($book->post_title); ?></td>
+                                    <td><?php echo esc_html($author); ?></td>
+                                    <td><?php echo esc_html($cdu); ?></td>
+                                    <td><?php echo $copies; ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <p style="margin-top:10px;">
+                        <button type="submit" name="add_selected" class="button button-primary"><?php _e('Adicionar etiquetas', 'book-manager'); ?></button>
+                    </p>
+                </form>
+                
+                <script>
+                document.getElementById('bm-select-all').addEventListener('change', function() {
+                    var checks = document.querySelectorAll('input[name="book_ids[]"]');
+                    checks.forEach(function(c) { c.checked = this.checked; }.bind(this));
+                });
+                </script>
+            </div>
+            
+            <div style="flex:0 0 350px;">
+                <h2>🖨️ <?php _e('Etiquetas selecionadas', 'book-manager'); ?> (<?php echo count($cart); ?>)</h2>
+                
+                <?php if (empty($cart)): ?>
+                    <p><?php _e('Nenhuma etiqueta selecionada.', 'book-manager'); ?></p>
+                <?php else: ?>
+                    <ul style="max-height:400px;overflow-y:auto;list-style:none;padding:0;margin:0;">
+                        <?php 
+                        $cart_books = get_posts(array('post_type' => 'bm_book', 'post__in' => $cart, 'posts_per_page' => -1, 'orderby' => 'post__in'));
+                        foreach ($cart_books as $book): 
+                            $author = get_post_meta($book->ID, '_bm_author', true);
+                            $cdu = get_post_meta($book->ID, '_bm_cdu', true);
+                            $cutter = get_post_meta($book->ID, '_bm_cutter', true);
+                            $copies = max(1, intval(get_post_meta($book->ID, '_bm_copies', true)));
+                        ?>
+                            <li style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #eee;">
+                                <button type="button" class="bm-remove-label" data-book="<?php echo $book->ID; ?>" style="background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1;">✕</button>
+                                <div style="flex:1;font-size:12px;">
+                                    <strong><?php echo esc_html($book->post_title); ?></strong>
+                                    <?php if ($author): ?><br><small><?php echo esc_html($author); ?></small><?php endif; ?>
+                                    <?php if ($cdu): ?><br><small>Class: <?php echo esc_html($cdu); ?> | Cutter: <?php echo esc_html($cutter); ?></small><?php endif; ?>
+                                    <br><small><?php printf(__('%d exemplares', 'book-manager'), $copies); ?></small>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    
+                    <form method="post" style="margin-top:10px;display:flex;gap:10px;">
+                        <button type="submit" name="clear_cart" class="button"><?php _e('Limpar etiquetas', 'book-manager'); ?></button>
+                        <button type="button" id="bm-preview-labels" class="button button-primary">🖨️ <?php _e('Visualizar Impressão', 'book-manager'); ?></button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('bm-remove-label')) {
+            var bookId = e.target.getAttribute('data-book');
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() { location.reload(); };
+            xhr.send('action=bm_toggle_label&book_id=' + bookId);
+        }
+    });
+    
+    var previewBtn = document.getElementById('bm-preview-labels');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function() {
+            var cart = <?php echo json_encode(array_values($cart)); ?>;
+            if (cart.length === 0) { alert('<?php _e("Nenhuma etiqueta selecionada.", "book-manager"); ?>'); return; }
+            var url = '<?php echo admin_url("admin-ajax.php"); ?>?action=bm_print_labels&ids=' + cart.join(',');
+            window.open(url, '_blank');
+        });
+    }
+    </script>
+    <?php
+}
+
+function bm_ajax_print_labels() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die('Sem permissão.');
+    
+    $ids = isset($_GET['ids']) ? explode(',', sanitize_text_field($_GET['ids'])) : array();
+    if (empty($ids)) wp_die('Nenhum livro selecionado.');
+    
+    $books = get_posts(array('post_type' => 'bm_book', 'post__in' => $ids, 'posts_per_page' => -1, 'orderby' => 'post__in'));
+    
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title><?php _e('Etiquetas — Visualização', 'book-manager'); ?></title>
+        <style>
+            @page { size: A4; margin: 1cm 0.5cm; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+            .labels-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.2cm; padding: 0; }
+            .label { border: 1px dashed #ccc; padding: 0.3cm 0.2cm; text-align: center; height: 2.7cm; display: flex; flex-direction: column; justify-content: center; page-break-inside: avoid; }
+            .label .author { font-weight: bold; font-size: 12px; text-transform: uppercase; margin-bottom: 2px; }
+            .label .title { font-size: 10px; margin-bottom: 3px; }
+            .label .cdu { font-weight: bold; font-size: 16px; margin-bottom: 2px; }
+            .label .cutter { font-weight: bold; font-size: 16px; margin-bottom: 2px; }
+            .label .info { font-size: 9px; color: #666; }
+            .label .barcode { font-size: 9px; letter-spacing: 2px; margin-top: 3px; }
+            .no-print { text-align: center; margin: 20px; }
+            @media print {
+                .no-print { display: none; }
+                .label { border: none; }
+                body { margin: 0; padding: 0; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="no-print" style="padding:20px;background:#f9f9f9;margin-bottom:20px;">
+            <h2><?php _e('Visualização de Etiquetas', 'book-manager'); ?> (<?php echo count($books); ?> livros)</h2>
+            <p><?php _e('Pressione Ctrl+P para imprimir. Ajuste as margens para "Mínimo".', 'book-manager'); ?></p>
+            <button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ <?php _e('Imprimir Agora', 'book-manager'); ?></button>
+        </div>
+        
+        <div class="labels-grid">
+            <?php foreach ($books as $book): 
+                $author = get_post_meta($book->ID, '_bm_author', true);
+                $cdu = get_post_meta($book->ID, '_bm_cdu', true);
+                $cutter = get_post_meta($book->ID, '_bm_cutter', true);
+                $edition = get_post_meta($book->ID, '_bm_edition', true);
+                $isbn = get_post_meta($book->ID, '_bm_isbn', true);
+                $copies = max(1, intval(get_post_meta($book->ID, '_bm_copies', true)));
+                
+                $author_formatted = '';
+                if ($author) {
+                    $parts = explode(' ', trim($author));
+                    $author_formatted = count($parts) > 1 ? mb_strtoupper(array_pop($parts)) . ', ' . implode(' ', $parts) : mb_strtoupper($author);
+                }
+                
+                $max_labels = max(1, $copies);
+                for ($i = 1; $i <= $max_labels; $i++):
+            ?>
+                <div class="label">
+                    <div class="author"><?php echo esc_html($author_formatted); ?></div>
+                    <div class="title"><?php echo esc_html($book->post_title); ?></div>
+                    <div class="cdu"><?php echo esc_html($cdu); ?></div>
+                    <div class="cutter"><?php echo esc_html($cutter); ?></div>
+                    <div class="info">
+                        <?php if ($edition) echo esc_html($edition) . ' '; ?>
+                        <?php if ($copies > 1) printf(__('Ex. %d/%d', 'book-manager'), $i, $copies); ?>
+                    </div>
+                    <?php if ($isbn): ?>
+                        <div class="barcode">|||<?php echo esc_html($isbn); ?>|||</div>
+                    <?php endif; ?>
+                </div>
+            <?php 
+                endfor;
+            endforeach; ?>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+add_action('wp_ajax_bm_print_labels', 'bm_ajax_print_labels');

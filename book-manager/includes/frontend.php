@@ -893,7 +893,7 @@ function bm_render_call_number_metabox($post) {
     $history = get_post_meta($post->ID, '_bm_cutter_history', true) ?: array();
     $edition = get_post_meta($post->ID, '_bm_edition', true);
     $volume = get_post_meta($post->ID, '_bm_volume', true);
-    $copies = intval(get_post_meta($post->ID, '_bm_copies', true));
+    $copies = max(1, intval(get_post_meta($post->ID, '_bm_copies', true)));
     $readonly = $locked ? 'readonly' : '';
     
     $author_formatted = '';
@@ -908,7 +908,7 @@ function bm_render_call_number_metabox($post) {
     <p><label><strong><?php _e('Cutter:', 'book-manager'); ?></strong></label><input type="text" name="bm_cutter" value="<?php echo esc_attr($cutter); ?>" style="width:100%;" <?php echo $readonly; ?> /></p>
     <p><label><strong><?php _e('Volume:', 'book-manager'); ?></strong></label><input type="text" name="bm_volume" value="<?php echo esc_attr($volume); ?>" style="width:100%;" placeholder="v.1" /></p>
     <p><label><strong><?php _e('Edição:', 'book-manager'); ?></strong></label><input type="text" name="bm_edition" value="<?php echo esc_attr($edition); ?>" style="width:100%;" placeholder="3.ed." /></p>
-    <p><label><strong><?php _e('Exemplares:', 'book-manager'); ?></strong></label><input type="text" value="<?php echo $copies; ?>" style="width:100%;" readonly /></p>
+    <p><label><strong><?php _e('Exemplares:', 'book-manager'); ?></strong></label><input type="text" name="bm_copies" value="<?php echo $copies; ?>" style="width:100%;" /></p>
     
     <button type="button" id="bm-generate-call" class="button" style="width:100%;margin-top:5px;">🤖 <?php echo ($cdu && $cutter) ? __('Regenerar Número de Chamada', 'book-manager') : __('Gerar Número de Chamada', 'book-manager'); ?></button>
     
@@ -1000,6 +1000,7 @@ function bm_save_call_number_metabox($post_id) {
     if (isset($_POST['bm_cutter'])) update_post_meta($post_id, '_bm_cutter', sanitize_text_field($_POST['bm_cutter']));
     if (isset($_POST['bm_volume'])) update_post_meta($post_id, '_bm_volume', sanitize_text_field($_POST['bm_volume']));
     if (isset($_POST['bm_edition'])) update_post_meta($post_id, '_bm_edition', sanitize_text_field($_POST['bm_edition']));
+    if (isset($_POST['bm_copies'])) update_post_meta($post_id, '_bm_copies', absint($_POST['bm_copies']));
 }
 add_action('save_post_bm_book', 'bm_save_call_number_metabox');
 
@@ -1042,7 +1043,7 @@ function bm_display_call_number($book_id = null) {
     $author = get_post_meta($book_id, '_bm_author', true);
     $edition = get_post_meta($book_id, '_bm_edition', true);
     $volume = get_post_meta($book_id, '_bm_volume', true);
-    $copies = intval(get_post_meta($book_id, '_bm_copies', true));
+    $copies = max(1, intval(get_post_meta($book_id, '_bm_copies', true)));
     
     $author_formatted = '';
     if ($author) {
