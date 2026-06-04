@@ -73,7 +73,7 @@ get_header();
             }
         }
 
-        // FASE 10C: Resenha oficial do Gestor/Admin com embed de vídeo
+        // FASE 10C: Resenha oficial
         $official_review = get_post_meta(get_the_ID(), '_bm_official_review', true);
         $official_link = get_post_meta(get_the_ID(), '_bm_official_link', true);
         $official_embed = '';
@@ -96,7 +96,7 @@ get_header();
                 <?php if (!empty($official_embed)): ?>
                     <iframe src="<?php echo esc_url($official_embed); ?>" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px;margin-bottom:15px;" allowfullscreen></iframe>
                 <?php elseif (!empty($official_link)): ?>
-                    <p style="margin-bottom:10px;"><a href="<?php echo esc_url($official_link); ?>" target="_blank" style="color:#111;font-weight:bold;">🔗 <?php _e('Link oficial', 'book-manager'); ?></a></p>
+                    <p><a href="<?php echo esc_url($official_link); ?>" target="_blank">🔗 Link oficial</a></p>
                 <?php endif; ?>
                 <?php if (!empty($official_review)): ?>
                     <p style="margin:0;font-style:italic;color:#555;"><?php echo nl2br(esc_html($official_review)); ?></p>
@@ -105,7 +105,77 @@ get_header();
         <?php endif; ?>
 
         <?php
-        // FASE 10C: Exibir resenhas e vídeo-resenhas aprovadas dos alunos
+        // FASE 11A: Botão e exibição de atividades pedagógicas
+        if (current_user_can('edit_bm_book') || current_user_can('manage_options')):
+            $activities = get_post_meta(get_the_ID(), '_bm_activities', true);
+            $btn_label = $activities ? __('Regenerar Atividades', 'book-manager') : __('Gerar Atividades', 'book-manager');
+            $nonce = wp_create_nonce('bm_activities_nonce');
+        ?>
+            <hr>
+            <h2>📝 <?php _e('Atividades Pedagógicas', 'book-manager'); ?></h2>
+            <?php if ($activities): ?>
+                <div style="background:#f0f7ff;padding:20px;border-radius:8px;border-left:4px solid #2196f3;margin-bottom:10px;">
+                    <?php echo nl2br(esc_html($activities)); ?>
+                </div>
+            <?php endif; ?>
+            <button type="button" id="bm-gen-activities" class="bm-btn-filter" style="padding:8px 16px;background:#2196f3;color:#fff;border:none;border-radius:4px;cursor:pointer;">
+                🤖 <?php echo $btn_label; ?>
+            </button>
+            <span id="bm-gen-loading" style="display:none;margin-left:10px;color:#666;">Gerando...</span>
+            <script>
+            document.getElementById('bm-gen-activities').addEventListener('click', function() {
+                var btn = this;
+                btn.disabled = true;
+                document.getElementById('bm-gen-loading').style.display = 'inline';
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                xhr.onload = function() {
+                    document.getElementById('bm-gen-loading').style.display = 'none';
+                    if (xhr.responseText.indexOf('sucesso') !== -1) {
+                        location.reload();
+                    } else {
+                        alert(xhr.responseText);
+                        btn.disabled = false;
+                    }
+                };
+                xhr.send('action=bm_generate_activities&nonce=<?php echo $nonce; ?>&post_id=<?php echo get_the_ID(); ?>');
+            });
+            </script>
+        <?php endif; ?>
+
+        <?php
+        // FASE 11B: Exibir disciplinas relacionadas e justificativas
+        $disciplines = wp_get_post_terms(get_the_ID(), 'bm_discipline', array('fields' => 'all'));
+        $justifications = get_post_meta(get_the_ID(), '_bm_discipline_justifications', true);
+        if (!empty($disciplines)):
+        ?>
+            <hr>
+            <h2>📚 <?php _e('Relação com as Disciplinas', 'book-manager'); ?></h2>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:15px;">
+                <?php foreach ($disciplines as $discipline): ?>
+                    <div style="background:#e3f2fd;padding:8px 15px;border-radius:20px;font-size:14px;font-weight:bold;color:#1565c0;">
+                        <?php echo esc_html($discipline->name); ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <?php if (!empty($justifications)): ?>
+                <div style="background:#f9f9f9;padding:15px;border-radius:8px;">
+                    <h3 style="margin-top:0;"><?php _e('Por que este livro se relaciona com cada disciplina?', 'book-manager'); ?></h3>
+                    <?php foreach ($justifications as $discipline_name => $justification): ?>
+                        <p style="margin:5px 0;"><strong><?php echo esc_html($discipline_name); ?>:</strong> <?php echo esc_html($justification); ?></p>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        <?php endif; ?>
+
+        <?php
+        // FASE 11B: Exibir Número de Chamada (visível para todos)
+        if (function_exists('bm_display_call_number')) echo bm_display_call_number();
+        ?>
+
+        <?php
+        // FASE 10C: Resenhas dos leitores
         $book_id = get_the_ID();
         $all_users = get_users(array('role__in' => array('bm_student', 'bm_teacher')));
         $approved_reviews = array();
@@ -150,7 +220,7 @@ get_header();
                                 <?php if ($embed_url): ?>
                                     <iframe src="<?php echo esc_url($embed_url); ?>" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px;" allowfullscreen></iframe>
                                 <?php else: ?>
-                                    <p><a href="<?php echo esc_url($review['video_url']); ?>" target="_blank" style="font-size:14px;">🔗 <?php _e('Ver vídeo', 'book-manager'); ?></a></p>
+                                    <p><a href="<?php echo esc_url($review['video_url']); ?>" target="_blank">🔗 Ver vídeo</a></p>
                                 <?php endif; ?>
                                 <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
                                     <?php if ($review['user_avatar']): ?>

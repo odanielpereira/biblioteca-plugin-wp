@@ -167,6 +167,8 @@ add_action('pre_get_posts','bm_filter_books_by_metadata');
 // FASE 6A/7G: IMPORTAÇÃO CSV COM MAPEAMENTO DINÂMICO
 // FASE 8C-B: RELATÓRIO MELHORADO
 // FASE 8F: INTEGRAÇÃO DE BUSCA AUTOMÁTICA DE SINOPSE
+// FASE 11A-B: CLASSIFICAÇÃO POR IA DURANTE IMPORTAÇÃO
+// FASE 11B: GERAÇÃO DE NÚMERO DE CHAMADA (RESPEITA CSV)
 // ==========================================
 function bm_add_csv_import_submenu_page() { add_submenu_page('edit.php?post_type=bm_book','Importar CSV','Importar CSV','manage_options','bm_csv_import','bm_render_csv_import_page'); }
 add_action('admin_menu','bm_add_csv_import_submenu_page');
@@ -177,6 +179,8 @@ function bm_render_csv_import_page() {
     $headers = array();
     if ('process'===$stage && isset($_POST['bm_csv_import_nonce']) && wp_verify_nonce($_POST['bm_csv_import_nonce'],'bm_csv_import_action')) {
         $skip_duplicates = isset($_POST['skip_duplicates'])&&'1'===$_POST['skip_duplicates'];
+        $classify_with_ai = isset($_POST['classify_with_ai']) && '1' === $_POST['classify_with_ai'];
+        $generate_call_number = isset($_POST['generate_call_number']) && '1' === $_POST['generate_call_number'];
         $imported=0; $skipped=0; $dup_skipped=0; $dup_forced=0;
         $mapping_raw = isset($_POST['mapping']) ? array_map('sanitize_text_field',$_POST['mapping']) : array();
         $mapping = array();
@@ -227,6 +231,38 @@ function bm_render_csv_import_page() {
                         }
                         update_post_meta($post_id, '_bm_dynamic_sinopse', $sinopse);
                     }
+                    if ($classify_with_ai) {
+                        $groq_key = bm_get_api_key('groq');
+                        if (!empty($groq_key)) {
+                            bm_classify_book_with_ai($post_id);
+                        }
+                    }
+                    if ($generate_call_number) {
+                        // Verificar se CDU e Cutter já vieram do CSV
+                        $csv_cdu = get_post_meta($post_id, '_bm_cdu', true);
+                        $csv_cutter = get_post_meta($post_id, '_bm_cutter', true);
+                        
+                        // Se AMBOS já foram preenchidos pelo CSV, não chama IA
+                        if (!empty($csv_cdu) && !empty($csv_cutter)) {
+                            // Já tem — apenas travar
+                            update_post_meta($post_id, '_bm_cutter_cached', '1');
+                            update_post_meta($post_id, '_bm_cutter_locked', '1');
+                        } else {
+                            // Faltando um ou ambos — chamar IA
+                            $groq_key = bm_get_api_key('groq');
+                            if (!empty($groq_key)) {
+                                $result = bm_generate_call_number($post_id);
+                                // Se o CSV já tinha CDU, preservar o CDU do CSV
+                                if (!empty($csv_cdu) && $result) {
+                                    update_post_meta($post_id, '_bm_cdu', $csv_cdu);
+                                }
+                                // Se o CSV já tinha Cutter, preservar o Cutter do CSV
+                                if (!empty($csv_cutter) && $result) {
+                                    update_post_meta($post_id, '_bm_cutter', $csv_cutter);
+                                }
+                            }
+                        }
+                    }
                 } else { $skipped++; }
             }
         }
@@ -265,6 +301,10 @@ function bm_render_csv_import_page() {
         '_bm_isbn'=>'ISBN',
         '_bm_location'=>__('Localização','book-manager'),
         '_bm_copies'=>__('Exemplares','book-manager'),
+        '_bm_cdu'=>__('Classificação (CDU/CDD)','book-manager'),
+        '_bm_cutter'=>__('Cutter','book-manager'),
+        '_bm_edition'=>__('Edição','book-manager'),
+        '_bm_volume'=>__('Volume','book-manager'),
     );
     $dynamic_fields = get_option('bm_dynamic_fields', array());
     foreach ($dynamic_fields as $df => $info) $system_fields['_bm_dynamic_'.sanitize_key($df)] = $df.' ('.__('dinâmico','book-manager').')';
@@ -289,6 +329,11 @@ function bm_render_csv_import_page() {
                         <?php endforeach; ?>
                     </select></p>
                 <?php endforeach; ?>
+                <p><strong><?php _e('Classificação por IA:','book-manager'); ?></strong>
+                    <label><input type="checkbox" name="classify_with_ai" value="1" checked> <?php _e('Classificar livros por disciplina (Groq)', 'book-manager'); ?></label></p>
+                <p><strong><?php _e('Número de Chamada:','book-manager'); ?></strong>
+                    <label><input type="checkbox" name="generate_call_number" value="1" checked> <?php _e('Gerar Classificação/Cutter via IA (Groq)', 'book-manager'); ?></label>
+                    <br><small><?php _e('Se o CSV já tiver Classificação e Cutter, a IA não será chamada.', 'book-manager'); ?></small></p>
                 <p><strong><?php _e('Duplicados:','book-manager'); ?></strong>
                     <label><input type="radio" name="skip_duplicates" value="1" checked> <?php _e('Pular','book-manager'); ?></label>
                     <label><input type="radio" name="skip_duplicates" value="0"> <?php _e('Importar mesmo assim','book-manager'); ?></label></p>
@@ -514,5 +559,73 @@ function bm_render_dynamic_fields_page() {
         </form>
     </div>
     <script>jQuery(document).ready(function($){$('#bm-fields-table tbody').sortable({handle:'.dashicons-menu'});});</script>
+    <?php
+}
+
+// ==========================================
+// FASE 10E: CENTRAL DE APIS E CONFIGURAÇÕES
+// ==========================================
+function bm_get_api_keys() {
+    $saved = get_option('bm_api_settings', array());
+    if (!is_array($saved)) $saved = array();
+    if (!isset($saved['google_books_key'])) $saved['google_books_key'] = '';
+    if (!isset($saved['groq_key'])) $saved['groq_key'] = '';
+    if (!isset($saved['groq_active'])) $saved['groq_active'] = '1';
+    return $saved;
+}
+
+function bm_get_api_key($provider) {
+    $keys = bm_get_api_keys();
+    if ($provider === 'google_books' && defined('BM_GOOGLE_BOOKS_API_KEY') && empty($keys['google_books_key'])) {
+        return BM_GOOGLE_BOOKS_API_KEY;
+    }
+    return isset($keys[$provider . '_key']) ? $keys[$provider . '_key'] : '';
+}
+
+function bm_add_api_settings_page() {
+    add_submenu_page('edit.php?post_type=bm_book', 'APIs', 'APIs', 'manage_options', 'bm_api_settings', 'bm_render_api_settings_page');
+}
+add_action('admin_menu', 'bm_add_api_settings_page');
+
+function bm_render_api_settings_page() {
+    if (!current_user_can('manage_options')) return;
+    
+    $msg = '';
+    $keys = bm_get_api_keys();
+    
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_keys'])) {
+        $new = array();
+        $new['google_books_key'] = trim(sanitize_text_field($_POST['google_books_key']));
+        $new['groq_key'] = trim(sanitize_text_field($_POST['groq_key']));
+        $new['groq_active'] = isset($_POST['groq_active']) ? '1' : '0';
+        
+        update_option('bm_api_settings', $new);
+        $keys = $new;
+        $msg = '<div class="notice notice-success"><p>Salvo! Groq: ' . (empty($new['groq_key']) ? 'VAZIO' : 'OK') . ' | Ativo: ' . $new['groq_active'] . '</p></div>';
+    }
+    
+    $groq_status = !empty($keys['groq_key']) && $keys['groq_active'] === '1' ? 'Groq ✅' : 'Nenhuma IA ativa';
+    ?>
+    <div class="wrap">
+        <h1>APIs e Configurações</h1>
+        <?php echo $msg; ?>
+        
+        <div style="background:#f9f9f9;padding:10px 15px;border-radius:4px;margin-bottom:15px;">
+            <strong>IA Ativa:</strong> <?php echo $groq_status; ?>
+        </div>
+        
+        <form method="post">
+            <h2>📚 Google Books API</h2>
+            <p><input type="text" name="google_books_key" value="<?php echo esc_attr($keys['google_books_key']); ?>" style="width:100%;" placeholder="AIza..." /></p>
+            <p class="description">Busca automática de capas e sinopses.</p>
+            
+            <h2>🤖 Groq (IA Gratuita)</h2>
+            <p><input type="text" name="groq_key" value="<?php echo esc_attr($keys['groq_key']); ?>" style="width:100%;" placeholder="gsk_..." /></p>
+            <p><label><input type="checkbox" name="groq_active" <?php checked($keys['groq_active'], '1'); ?> /> Ativar Groq</label></p>
+            <p class="description">1.500 req/dia grátis · Llama 3 · <a href="https://console.groq.com" target="_blank">console.groq.com</a></p>
+            
+            <p><input type="submit" name="save_keys" class="button button-primary" value="Salvar" /></p>
+        </form>
+    </div>
     <?php
 }

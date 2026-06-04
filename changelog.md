@@ -568,3 +568,21 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - Detalhes: Implementado sistema de XP com função bm_add_xp() e histórico em _bm_xp_history. Sistema de medalhas automáticas: Rato de Biblioteca (5 livros), Leitor Voraz (15), Mestre das Ciências (10 de mesma disciplina), Crítico de Cinema (5 vídeos). Shortcode [bm_badges] exibe medalhas do aluno. XP concedido automaticamente ao aprovar ficha: 10 (base) + 5 (resenha) + 10 (vídeo) + bônus manual do Gestor. Campo de bônus XP na tela de aprovação de fichas. Modal de avaliação com estrelas ao enviar ficha sem nota (Avaliar agora / Agora não). Card de XP e seção de medalhas no dashboard do aluno. Itens 58-61 adicionados ao Ciclo de Polimento.
 - Ferramenta: write_file
 - Decisão: Ciclo 6 (Fases 10A-10D) concluído com sucesso. Plugin atinge versão 6.0.0. Próximo passo: Ciclo 7 (Ferramentas Pedagógicas) ou Ciclo de Polimento.
+
+96 - Data: 2026-06-04
+- Ação: Fases 10E, 11A e 11B concluídas — Central de APIs, Gerador de Atividades e Classificação por Disciplina com Groq.
+- Detalhes: Criada central de APIs (Livros > APIs e Configurações) com campos para Google Books e Groq. Substituída integração Gemini por Groq (Llama 3.3 70B Versatile) — gratuito, 1.500 req/dia. Fase 11A: botão "Gerar Atividades" na edição e na vitrine do livro (Professor/Gestor/Admin). Atividades salvas em _bm_activities e exibidas em metabox própria e na página pública. Fase 11B: função bm_classify_book_with_ai() reescrita para Groq — analisa cada disciplina da taxonomia e retorna JSON binário (Sim/Não) com justificativas pedagógicas. Disciplinas marcadas automaticamente via wp_set_post_terms(). Justificativas salvas em _bm_discipline_justifications. Exibição na página do livro com pills azuis e seção "Por que este livro se relaciona com cada disciplina?". Integração na importação CSV com checkbox "Classificar por IA" e ordem correta (sinopse → classificação). Itens 62-66 adicionados ao Ciclo de Polimento.
+- Ferramenta: write_file
+- Decisão: Ciclo 7 parcialmente concluído. Próxima fase: 11C (CDU e Cutter).
+
+97 - Data: 2026-06-04
+- Ação: Fase 11E concluída — Chatbot da Biblioteca e documentação de código morto.
+- Detalhes: Implementado chatbot flutuante no frontend (botão 💬 no canto inferior direito). Usa Groq (Llama 3.3 70B) para responder perguntas sobre o acervo, disponibilidade e recomendações. Acesso via AJAX para visitantes e logados. Prompt inclui catálogo resumido com títulos, autores, localização e disponibilidade em tempo real. Criado documento "POSSÍVEIS LIXOS" com 10 itens de código potencialmente obsoleto (blocos 8G, 11A DeepSeek, bm_super_admin, constantes wp-config) a serem removidos na Fase 12E. Itens 67-68 adicionados ao Ciclo de Polimento.
+- Ferramenta: write_file
+- Decisão: Ciclo 7 próximo da conclusão. Próxima fase: 11C (CDU e Cutter).
+
+98 - Data: 2026-06-04
+- Ação: Fase 11B concluída — Número de Chamada (CDU + Cutter).
+- Detalhes: Implementada metabox "Número de Chamada" na edição do livro com campos: Título (readonly), Autor formatado (SOBRENOME, Nome), Classificação (CDU/CDD), Cutter, Volume, Edição e Exemplares (readonly). Botão "Gerar Número de Chamada" via AJAX com JavaScript vanilla (sem jQuery). Integração com Groq (Llama 3.3 70B) para gerar Classificação e Cutter-Sanborn seguindo manual UFSM. Sistema de bloqueio de edição com aviso e opção de desbloqueio. Histórico de versões com restauração. Resolução de conflitos de Cutter com sufixo numérico. Exibição na vitrine como "Número de Chamada". Integração na importação CSV com checkbox dedicado e lógica de prioridade: CSV > IA > Manual. Se CSV tem Classificação e Cutter, IA não é chamada. Se CSV tem apenas um, IA complementa o outro. Campos _bm_cdu, _bm_cutter, _bm_edition, _bm_volume adicionados ao mapeamento dinâmico. Funções auxiliares bm_generate_cdu_only() e bm_generate_cutter_only() para importação parcial. Rótulo "CDU" renomeado para "Classificação" (neutro para CDU/CDD). Widget de disciplina duplicado removido do book-manager.php. Itens 69-72 adicionados ao Ciclo de Polimento (seletor CDU/CDD, importação dedicada, reordenação, unificação de campos).
+- Ferramenta: write_file
+- Decisão: Fase 11B concluída. Próximo passo: Fase 11C (Geração de Etiquetas).

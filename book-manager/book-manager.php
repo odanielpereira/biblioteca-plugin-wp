@@ -130,36 +130,6 @@ function bm_register_discipline_taxonomy() {
 }
 add_action('init', 'bm_register_discipline_taxonomy');
 
-function bm_add_discipline_metabox() {
-    add_meta_box('bm_discipline_box', __('Disciplinas', 'book-manager'), 'bm_render_discipline_metabox', 'bm_book', 'side', 'default');
-}
-add_action('add_meta_boxes', 'bm_add_discipline_metabox');
-
-function bm_render_discipline_metabox($post) {
-    wp_nonce_field('bm_discipline_nonce', 'bm_discipline_nonce_field');
-    $terms = wp_get_post_terms($post->ID, 'bm_discipline', array('fields' => 'ids'));
-    $all_terms = get_terms(array('taxonomy' => 'bm_discipline', 'hide_empty' => false));
-    if (!empty($all_terms)) {
-        echo '<div style="max-height:200px;overflow-y:auto;">';
-        foreach ($all_terms as $term) {
-            $checked = in_array($term->term_id, $terms) ? 'checked' : '';
-            echo '<label style="display:block;margin-bottom:3px;"><input type="checkbox" name="bm_discipline[]" value="' . $term->term_id . '" ' . $checked . '> ' . esc_html($term->name) . '</label>';
-        }
-        echo '</div>';
-    } else {
-        echo '<p>' . __('Nenhuma disciplina cadastrada.', 'book-manager') . '</p>';
-    }
-}
-
-function bm_save_discipline_metabox($post_id) {
-    if (!isset($_POST['bm_discipline_nonce_field']) || !wp_verify_nonce($_POST['bm_discipline_nonce_field'], 'bm_discipline_nonce')) return;
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-    if (!current_user_can('manage_options')) return;
-    $terms = isset($_POST['bm_discipline']) ? array_map('intval', $_POST['bm_discipline']) : array();
-    wp_set_post_terms($post_id, $terms, 'bm_discipline');
-}
-add_action('save_post_bm_book', 'bm_save_discipline_metabox');
-
 // ==========================================
 // FASE 1/5: CAPABILITIES E CICLO DE VIDA
 // ==========================================
@@ -266,4 +236,3 @@ function bm_audit_trashed($post_id) { if('bm_book'===get_post_type($post_id)) bm
 add_action('trashed_post','bm_audit_trashed');
 function bm_audit_untrashed($post_id) { if('bm_book'===get_post_type($post_id)) bm_log_audit($post_id,'Restaurado da lixeira'); }
 add_action('untrashed_post','bm_audit_untrashed');
-
