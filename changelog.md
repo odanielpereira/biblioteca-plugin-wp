@@ -650,3 +650,8 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Ação:** Fase 12E-T7 concluída — Visibilidade configurável de campos administrativos por perfil.
 - **Detalhes:** Adicionado array `field_visibility` no `bm_get_settings()` com defaults: Aluno e Professor não veem ISBN nem Histórico; Professor vê Localização; Gestor vê tudo. Interface na página de Configurações com grid de checkboxes (Aluno | Professor | Gestor) para cada campo: ISBN, Localização, Exemplares, Histórico de Ações. Salvamento processa array associativo com 0/1 por campo e perfil. No `single-bm_book.php`, substituída a verificação binária `bm_user_can_view_admin_data()` por função anônima `$can_see()` que consulta a visibilidade por campo e perfil. Admin sempre vê tudo. Se nenhum campo estiver visível para o perfil, a seção "Informações Administrativas" não é exibida.
 - **Ferramenta:** `write_file` (manual pelo usuário)
+
+**112 - Data:** 2026-06-05
+- **Ação:** Fase 12F movida para o Ciclo de Polimento.
+- **Detalhes:** A tarefa "Status e Diagnóstico" (página de status, contador de chamadas API, logs de erro) foi removida da Fase 12F e adicionada ao Ciclo de Polimento. Motivo: é uma funcionalidade puramente informativa, sem dependência para as fases seguintes (12G-12K). Será implementada como refinamento futuro.
+- **Ferramenta:** Decisão do usuário

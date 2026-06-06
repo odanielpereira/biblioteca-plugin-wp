@@ -1,5 +1,6 @@
 <?php
 get_header();
+$wl = bm_get_white_label();
 ?>
 
 <style>
@@ -33,7 +34,7 @@ get_header();
 </style>
 
 <div class="bm-catalog">
-    <h1><?php _e('Catálogo de Livros', 'book-manager'); ?></h1>
+    <h1><?php echo ($wl['enabled'] === '1' && !empty($wl['school_name'])) ? esc_html($wl['school_name']) : __('Catálogo de Livros', 'book-manager'); ?></h1>
 
     <form method="get" class="bm-filters">
         <div>
@@ -92,7 +93,6 @@ get_header();
                             <?php endif; ?>
                         </div>
                     </a>
-                    <!-- FASE 9C: Botão de reserva no card -->
                     <?php if (function_exists('bm_reserve_button')) bm_reserve_button(); ?>
                 </div>
             <?php endwhile; ?>

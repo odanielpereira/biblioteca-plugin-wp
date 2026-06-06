@@ -1,8 +1,15 @@
 <?php
 get_header();
+$wl = bm_get_white_label();
 ?>
 
 <div class="bm-book-single" style="max-width:800px;margin:0 auto;padding:20px;">
+    <?php if ($wl['enabled'] === '1' && !empty($wl['school_logo'])): ?>
+        <div style="text-align:center;margin-bottom:15px;">
+            <img src="<?php echo esc_url($wl['school_logo']); ?>" style="max-width:200px;max-height:80px;" alt="<?php echo esc_attr($wl['school_name']); ?>" />
+        </div>
+    <?php endif; ?>
+
     <?php while (have_posts()): the_post(); ?>
         <div class="bm-book-header" style="display:flex;gap:30px;margin-bottom:30px;flex-wrap:wrap;">
             <?php if (has_post_thumbnail()): ?>
@@ -31,21 +38,34 @@ get_header();
                 <?php if (function_exists('bm_reserve_button')) bm_reserve_button(); ?>
                 <?php if (function_exists('bm_label_button')) bm_label_button(); ?>
 
-                <?php if (function_exists('bm_user_can_view_admin_data') && bm_user_can_view_admin_data()): ?>
+                <?php
+                $user_role = function_exists('bm_get_user_role') ? bm_get_user_role() : 'guest';
+                $settings = function_exists('bm_get_settings') ? bm_get_settings() : array();
+                $visibility = isset($settings['field_visibility']) ? $settings['field_visibility'] : array();
+                
+                $can_see = function($field) use ($user_role, $visibility) {
+                    if ($user_role === 'admin') return true;
+                    $role_map = array('student' => 'student', 'teacher' => 'teacher', 'librarian' => 'librarian');
+                    $mapped_role = isset($role_map[$user_role]) ? $role_map[$user_role] : 'guest';
+                    if ($mapped_role === 'guest') return false;
+                    return isset($visibility[$field][$mapped_role]) && $visibility[$field][$mapped_role];
+                };
+                
+                $isbn = get_post_meta(get_the_ID(), '_bm_isbn', true);
+                $location = get_post_meta(get_the_ID(), '_bm_location', true);
+                $copies = get_post_meta(get_the_ID(), '_bm_copies', true);
+                $audit_log = get_post_meta(get_the_ID(), '_bm_audit_log', true);
+                
+                $has_visible = ($isbn && $can_see('isbn')) || ($location && $can_see('location')) || ($copies && $can_see('copies')) || (!empty($audit_log) && $can_see('audit_log'));
+                ?>
+                <?php if ($has_visible): ?>
                     <hr>
                     <h3>Informações Administrativas</h3>
-                    <?php
-                    $isbn = get_post_meta(get_the_ID(), '_bm_isbn', true);
-                    $location = get_post_meta(get_the_ID(), '_bm_location', true);
-                    $copies = get_post_meta(get_the_ID(), '_bm_copies', true);
-                    ?>
-                    <?php if ($isbn): ?><p><strong>ISBN:</strong> <?php echo esc_html($isbn); ?></p><?php endif; ?>
-                    <?php if ($location): ?><p><strong>Localização:</strong> <?php echo esc_html($location); ?></p><?php endif; ?>
-                    <?php if ($copies): ?><p><strong>Exemplares:</strong> <?php echo esc_html($copies); ?></p><?php endif; ?>
+                    <?php if ($isbn && $can_see('isbn')): ?><p><strong>ISBN:</strong> <?php echo esc_html($isbn); ?></p><?php endif; ?>
+                    <?php if ($location && $can_see('location')): ?><p><strong>Localização:</strong> <?php echo esc_html($location); ?></p><?php endif; ?>
+                    <?php if ($copies && $can_see('copies')): ?><p><strong>Exemplares:</strong> <?php echo esc_html($copies); ?></p><?php endif; ?>
 
-                    <?php
-                    $audit_log = get_post_meta(get_the_ID(), '_bm_audit_log', true);
-                    if (!empty($audit_log)): ?>
+                    <?php if (!empty($audit_log) && $can_see('audit_log')): ?>
                         <h4>Histórico de Ações</h4>
                         <ul style="font-size:12px;color:#666;">
                             <?php foreach (array_reverse($audit_log) as $entry): ?>
@@ -74,7 +94,6 @@ get_header();
             }
         }
 
-        // FASE 10C: Resenha oficial
         $official_review = get_post_meta(get_the_ID(), '_bm_official_review', true);
         $official_link = get_post_meta(get_the_ID(), '_bm_official_link', true);
         $official_embed = '';
@@ -106,7 +125,6 @@ get_header();
         <?php endif; ?>
 
         <?php
-        // FASE 11A: Botão e exibição de atividades pedagógicas
         if (current_user_can('edit_bm_book') || current_user_can('manage_options')):
             $activities = get_post_meta(get_the_ID(), '_bm_activities', true);
             $btn_label = $activities ? __('Regenerar Atividades', 'book-manager') : __('Gerar Atividades', 'book-manager');
@@ -133,23 +151,17 @@ get_header();
                 xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
                 xhr.onload = function() {
                     document.getElementById('bm-gen-loading').style.display = 'none';
-                    if (xhr.responseText.indexOf('sucesso') !== -1) {
-                        location.reload();
-                    } else {
-                        alert(xhr.responseText);
-                        btn.disabled = false;
-                    }
+                    if (xhr.responseText.indexOf('sucesso') !== -1) { location.reload(); }
+                    else { alert(xhr.responseText); btn.disabled = false; }
                 };
                 xhr.send('action=bm_generate_activities&nonce=<?php echo $nonce; ?>&post_id=<?php echo get_the_ID(); ?>');
             });
             </script>
         <?php endif; ?>
 
-        <?php
-        // FASE 11B: Exibir Número de Chamada
-        if (function_exists('bm_display_call_number')) echo bm_display_call_number();
+        <?php if (function_exists('bm_display_call_number')) echo bm_display_call_number(); ?>
 
-        // FASE 11B: Exibir disciplinas relacionadas e justificativas
+        <?php
         $disciplines = wp_get_post_terms(get_the_ID(), 'bm_discipline', array('fields' => 'all'));
         $justifications = get_post_meta(get_the_ID(), '_bm_discipline_justifications', true);
         if (!empty($disciplines)):
@@ -174,12 +186,10 @@ get_header();
         <?php endif; ?>
 
         <?php
-        // FASE 10C: Resenhas dos leitores
         $book_id = get_the_ID();
         $all_users = get_users(array('role__in' => array('bm_student', 'bm_teacher')));
         $approved_reviews = array();
         $has_videos = false;
-
         foreach ($all_users as $user) {
             $reading_log = get_user_meta($user->ID, '_bm_reading_log', true) ?: array();
             foreach ($reading_log as $log) {
@@ -191,13 +201,11 @@ get_header();
                 }
             }
         }
-
         if (!empty($approved_reviews)):
             $approved_reviews = array_reverse($approved_reviews);
         ?>
             <hr>
             <h2><?php _e('Resenhas dos Leitores', 'book-manager'); ?></h2>
-            
             <?php if ($has_videos): ?>
                 <h3>🎬 <?php _e('Vídeo-Resenhas', 'book-manager'); ?></h3>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;margin-bottom:20px;">
@@ -232,7 +240,6 @@ get_header();
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-
             <h3>📝 <?php _e('Resenhas', 'book-manager'); ?></h3>
             <?php foreach ($approved_reviews as $review): ?>
                 <div style="background:#f9f9f9;padding:15px;border-radius:8px;margin-bottom:10px;">
@@ -241,9 +248,7 @@ get_header();
                             <img src="<?php echo esc_url($review['user_avatar']); ?>" style="width:30px;height:30px;border-radius:50%;" alt="" />
                         <?php endif; ?>
                         <strong><?php echo esc_html($review['user_name']); ?></strong>
-                        <span style="color:#ffc107;">
-                            <?php echo str_repeat('★', $review['rating']) . str_repeat('☆', 5 - $review['rating']); ?>
-                        </span>
+                        <span style="color:#ffc107;"><?php echo str_repeat('★', $review['rating']) . str_repeat('☆', 5 - $review['rating']); ?></span>
                         <small style="color:#999;"><?php echo date('d/m/Y', strtotime($review['date'])); ?></small>
                     </div>
                     <p style="margin:5px 0;color:#444;"><?php echo esc_html($review['review']); ?></p>

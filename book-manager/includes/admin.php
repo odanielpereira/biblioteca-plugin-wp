@@ -58,11 +58,61 @@ function bm_render_book_details_metabox( $post ) {
     }
 }
 function bm_add_book_details_metabox() { add_meta_box('bm_book_details', __('Detalhes do Livro','book-manager'), 'bm_render_book_details_metabox', 'bm_book', 'normal', 'high'); }
+
+// FASE 12E-T2: Metaboxes para taxonomias dinâmicas
+function bm_add_dynamic_taxonomy_metaboxes() {
+    $taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!is_array($taxonomies)) return;
+    foreach ($taxonomies as $slug => $info) {
+        add_meta_box(
+            'bm_tax_' . $slug,
+            $info['label'],
+            'bm_render_dynamic_taxonomy_metabox',
+            'bm_book',
+            'side',
+            'default',
+            array('slug' => $slug, 'label' => $info['label'])
+        );
+    }
+}
+add_action('add_meta_boxes', 'bm_add_dynamic_taxonomy_metaboxes');
+
+function bm_render_dynamic_taxonomy_metabox($post, $box) {
+    $slug = $box['args']['slug'];
+    $terms = wp_get_post_terms($post->ID, $slug, array('fields' => 'ids'));
+    $all_terms = get_terms(array('taxonomy' => $slug, 'hide_empty' => false));
+    ?>
+    <div style="max-height:150px;overflow-y:auto;">
+        <?php foreach ($all_terms as $term): ?>
+            <label style="display:block;margin:3px 0;">
+                <input type="checkbox" name="bm_tax_<?php echo esc_attr($slug); ?>[]" value="<?php echo $term->term_id; ?>" <?php checked(in_array($term->term_id, $terms)); ?> />
+                <?php echo esc_html($term->name); ?>
+            </label>
+        <?php endforeach; ?>
+    </div>
+    <?php
+}
+
+function bm_save_dynamic_taxonomy_terms($post_id) {
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) return;
+    
+    $taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!is_array($taxonomies)) return;
+    
+    foreach ($taxonomies as $slug => $info) {
+        $field = 'bm_tax_' . $slug;
+        $terms = isset($_POST[$field]) ? array_map('intval', $_POST[$field]) : array();
+        wp_set_post_terms($post_id, $terms, $slug);
+    }
+}
+add_action('save_post_bm_book', 'bm_save_dynamic_taxonomy_terms');
+
 add_action('add_meta_boxes', 'bm_add_book_details_metabox');
 function bm_save_book_details_metabox_data( $post_id ) {
     if (!isset($_POST['bm_book_details_nonce']) || !wp_verify_nonce($_POST['bm_book_details_nonce'],'bm_save_book_details')) return;
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-    if (!current_user_can('manage_options')) return;
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     foreach (array('_bm_author','_bm_publisher','_bm_isbn','_bm_location') as $f) {
         if (isset($_POST[$f])) update_post_meta($post_id, $f, sanitize_text_field($_POST[$f]));
     }
@@ -144,8 +194,19 @@ function bm_add_book_filter_form() {
     <p><label for="_bm_author"><?php _e('Autor:','book-manager'); ?></label><input type="text" id="_bm_author" name="_bm_author" value="<?php echo esc_attr($fa); ?>" placeholder="<?php _e('Filtrar por autor','book-manager'); ?>"></p>
     <p><label for="_bm_publisher"><?php _e('Editora:','book-manager'); ?></label><input type="text" id="_bm_publisher" name="_bm_publisher" value="<?php echo esc_attr($fp); ?>" placeholder="<?php _e('Filtrar por editora','book-manager'); ?>"></p>
     <?php
+  
     wp_dropdown_categories(array('show_option_all'=>__('Todos os Gêneros','book-manager'),'taxonomy'=>'bm_genre','name'=>'bm_genre_filter','selected'=>isset($_GET['bm_genre_filter'])?$_GET['bm_genre_filter']:''));
     wp_dropdown_categories(array('show_option_all'=>__('Todas as Categorias','book-manager'),'taxonomy'=>'bm_category','name'=>'bm_category_filter','selected'=>isset($_GET['bm_category_filter'])?$_GET['bm_category_filter']:''));
+    $dynamic_taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!is_array($dynamic_taxonomies)) $dynamic_taxonomies = array();
+    foreach ($dynamic_taxonomies as $slug => $info) {
+        wp_dropdown_categories(array(
+            'show_option_all' => $info['label'],
+            'taxonomy' => $slug,
+            'name' => $slug . '_filter',
+            'selected' => isset($_GET[$slug . '_filter']) ? $_GET[$slug . '_filter'] : '',
+        ));
+    }
     ?>
     <input type="submit" name="filter_action" class="button" value="<?php _e('Filtrar','book-manager'); ?>">
     <a href="<?php echo admin_url('edit.php?post_type=bm_book'); ?>" class="button"><?php _e('Limpar Filtros','book-manager'); ?></a>
@@ -160,6 +221,16 @@ function bm_filter_books_by_metadata($query) {
     if (!empty($meta)) { $meta['relation']='AND'; $query->set('meta_query',$meta); }
     if (isset($_GET['bm_genre_filter'])&&!empty($_GET['bm_genre_filter'])) { $tq=$query->get('tax_query')?:array(); $tq[]=array('taxonomy'=>'bm_genre','field'=>'term_id','terms'=>intval($_GET['bm_genre_filter'])); $query->set('tax_query',$tq); }
     if (isset($_GET['bm_category_filter'])&&!empty($_GET['bm_category_filter'])) { $tq=$query->get('tax_query')?:array(); $tq[]=array('taxonomy'=>'bm_category','field'=>'term_id','terms'=>intval($_GET['bm_category_filter'])); $query->set('tax_query',$tq); }
+
+    $dynamic_taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!is_array($dynamic_taxonomies)) $dynamic_taxonomies = array();
+    foreach ($dynamic_taxonomies as $slug => $info) {
+        if (isset($_GET[$slug . '_filter']) && !empty($_GET[$slug . '_filter'])) {
+            $tq = $query->get('tax_query') ?: array();
+            $tq[] = array('taxonomy' => $slug, 'field' => 'term_id', 'terms' => intval($_GET[$slug . '_filter']));
+            $query->set('tax_query', $tq);
+        }
+    }
 }
 add_action('pre_get_posts','bm_filter_books_by_metadata');
 
@@ -170,10 +241,12 @@ add_action('pre_get_posts','bm_filter_books_by_metadata');
 // FASE 11A-B: CLASSIFICAÇÃO POR IA DURANTE IMPORTAÇÃO
 // FASE 11B: GERAÇÃO DE NÚMERO DE CHAMADA (RESPEITA CSV)
 // ==========================================
+
 function bm_add_csv_import_submenu_page() { add_submenu_page('edit.php?post_type=bm_book','Importar CSV','Importar CSV','manage_options','bm_csv_import','bm_render_csv_import_page'); }
+
 add_action('admin_menu','bm_add_csv_import_submenu_page');
 function bm_render_csv_import_page() {
-    if (!current_user_can('manage_options')) return;
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     $message = ''; $preview = array(); $duplicates = array();
     $stage = isset($_POST['import_stage']) ? $_POST['import_stage'] : '';
     $headers = array();
@@ -359,10 +432,12 @@ function bm_find_duplicate_book($title,$author,$publisher) {
 // ==========================================
 // FASE 6B/7E: EXPORTAÇÃO CSV FLEXÍVEL
 // ==========================================
+
 function bm_add_csv_export_submenu_page() { add_submenu_page('edit.php?post_type=bm_book','Exportar CSV','Exportar CSV','manage_options','bm_csv_export','bm_render_csv_export_page'); }
+
 add_action('admin_menu','bm_add_csv_export_submenu_page');
 function bm_handle_csv_export() {
-    if (!current_user_can('manage_options')) return;
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     if (!isset($_POST['bm_csv_export_nonce'])||!wp_verify_nonce($_POST['bm_csv_export_nonce'],'bm_csv_export_action')) return;
     $args = array('post_type'=>'bm_book','posts_per_page'=>-1,'post_status'=>'any');
     $meta_query = array(); $tax_query = array();
@@ -430,10 +505,12 @@ function bm_render_csv_export_page() {
 // ==========================================
 // FASE 7B/7H: GERENCIAMENTO DE CAMPOS DINÂMICOS
 // ==========================================
+
 function bm_add_dynamic_fields_page() { add_submenu_page('edit.php?post_type=bm_book','Gerenciar Campos','Gerenciar Campos','manage_options','bm_dynamic_fields','bm_render_dynamic_fields_page'); }
+
 add_action('admin_menu','bm_add_dynamic_fields_page');
 function bm_render_dynamic_fields_page() {
-    if (!current_user_can('manage_options')) return;
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     $message = '';
     $dynamic_fields = get_option('bm_dynamic_fields', array());
     if (!empty($dynamic_fields) && isset(array_values($dynamic_fields)[0]) && is_string(array_values($dynamic_fields)[0])) {
@@ -582,9 +659,11 @@ function bm_get_api_key($provider) {
     return isset($keys[$provider . '_key']) ? $keys[$provider . '_key'] : '';
 }
 
+
 function bm_add_api_settings_page() {
     add_submenu_page('edit.php?post_type=bm_book', 'APIs', 'APIs', 'manage_options', 'bm_api_settings', 'bm_render_api_settings_page');
 }
+
 add_action('admin_menu', 'bm_add_api_settings_page');
 
 function bm_render_api_settings_page() {
@@ -637,6 +716,7 @@ function bm_render_api_settings_page() {
 function bm_add_labels_page() {
     add_submenu_page('edit.php?post_type=bm_book', __('Etiquetas', 'book-manager'), __('Etiquetas', 'book-manager'), 'edit_bm_books', 'bm_labels', 'bm_render_labels_page');
 }
+
 add_action('admin_menu', 'bm_add_labels_page');
 
 function bm_labels_init_session() {
@@ -948,6 +1028,132 @@ function bm_ajax_print_labels() {
 add_action('wp_ajax_bm_print_labels', 'bm_ajax_print_labels');
 
 // ==========================================
+// FASE 12E-T2: CRIADOR DE TAXONOMIAS DINÂMICAS
+// ==========================================
+function bm_register_dynamic_taxonomies() {
+    $taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!is_array($taxonomies)) return;
+    
+    foreach ($taxonomies as $slug => $info) {
+        register_taxonomy($slug, 'bm_book', array(
+            'label'        => $info['label'],
+            'rewrite'      => false,
+            'hierarchical' => !empty($info['hierarchical']),
+            'show_ui'      => true,
+            'show_in_menu' => true,
+            'capabilities' => array(
+                'manage_terms' => 'manage_options',
+                'edit_terms'   => 'manage_options',
+                'delete_terms' => 'manage_options',
+                'assign_terms' => 'manage_options',
+            ),
+        ));
+    }
+}
+add_action('init', 'bm_register_dynamic_taxonomies', 11);
+
+function bm_add_taxonomies_page() {
+    add_submenu_page('edit.php?post_type=bm_book', __('Taxonomias', 'book-manager'), __('Taxonomias', 'book-manager'), 'edit_bm_books', 'bm_taxonomies', 'bm_render_taxonomies_page');
+}
+add_action('admin_menu', 'bm_add_taxonomies_page');
+
+function bm_render_taxonomies_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $msg = '';
+    $taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!is_array($taxonomies)) $taxonomies = array();
+    
+    // Criar nova taxonomia
+    if (isset($_POST['bm_add_taxonomy']) && wp_verify_nonce($_POST['bm_taxonomy_nonce'], 'bm_taxonomy_action')) {
+        $name = sanitize_text_field($_POST['bm_taxonomy_name']);
+        $slug = sanitize_key($_POST['bm_taxonomy_slug'] ?: $name);
+        $hierarchical = isset($_POST['bm_taxonomy_hierarchical']);
+        
+        if (empty($name)) {
+            $msg = '<div class="notice notice-error"><p>' . __('Nome é obrigatório.', 'book-manager') . '</p></div>';
+        } elseif (taxonomy_exists($slug) || isset($taxonomies[$slug])) {
+            $msg = '<div class="notice notice-error"><p>' . __('Já existe uma taxonomia com este slug.', 'book-manager') . '</p></div>';
+        } else {
+            $taxonomies[$slug] = array('label' => $name, 'hierarchical' => $hierarchical);
+            update_option('bm_dynamic_taxonomies', $taxonomies);
+            flush_rewrite_rules();
+            $msg = '<div class="notice notice-success"><p>' . sprintf(__('Taxonomia "%s" criada!', 'book-manager'), $name) . '</p></div>';
+        }
+    }
+    
+    // Excluir taxonomia
+    if (isset($_POST['bm_delete_taxonomy']) && wp_verify_nonce($_POST['bm_taxonomy_nonce'], 'bm_taxonomy_action')) {
+        $delete_slug = sanitize_key($_POST['bm_delete_slug']);
+        if (isset($taxonomies[$delete_slug])) {
+            unset($taxonomies[$delete_slug]);
+            update_option('bm_dynamic_taxonomies', $taxonomies);
+            flush_rewrite_rules();
+            $msg = '<div class="notice notice-success"><p>' . __('Taxonomia removida.', 'book-manager') . '</p></div>';
+        }
+    }
+    
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Taxonomias Dinâmicas', 'book-manager'); ?></h1>
+        <?php echo $msg; ?>
+        
+        <h2><?php _e('Criar Nova Taxonomia', 'book-manager'); ?></h2>
+        <form method="post" style="max-width:500px;">
+            <?php wp_nonce_field('bm_taxonomy_action', 'bm_taxonomy_nonce'); ?>
+            <table class="form-table">
+                <tr>
+                    <th><label><?php _e('Nome', 'book-manager'); ?></label></th>
+                    <td><input type="text" name="bm_taxonomy_name" required style="width:100%;" placeholder="<?php _e('Ex: Séries', 'book-manager'); ?>" /></td>
+                </tr>
+                <tr>
+                    <th><label><?php _e('Slug', 'book-manager'); ?></label></th>
+                    <td><input type="text" name="bm_taxonomy_slug" style="width:100%;" placeholder="<?php _e('Gerado automaticamente', 'book-manager'); ?>" /><p class="description"><?php _e('Deixe em branco para gerar a partir do nome.', 'book-manager'); ?></p></td>
+                </tr>
+                <tr>
+                    <th><label><?php _e('Hierárquica', 'book-manager'); ?></label></th>
+                    <td><label><input type="checkbox" name="bm_taxonomy_hierarchical" checked /> <?php _e('Permitir subcategorias (ex: pai/filho)', 'book-manager'); ?></label></td>
+                </tr>
+            </table>
+            <p><input type="submit" name="bm_add_taxonomy" class="button button-primary" value="<?php _e('Criar Taxonomia', 'book-manager'); ?>" /></p>
+        </form>
+        
+        <h2><?php _e('Taxonomias Existentes', 'book-manager'); ?></h2>
+        <?php if (empty($taxonomies)): ?>
+            <p><?php _e('Nenhuma taxonomia criada.', 'book-manager'); ?></p>
+        <?php else: ?>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Nome', 'book-manager'); ?></th>
+                        <th><?php _e('Slug', 'book-manager'); ?></th>
+                        <th><?php _e('Hierárquica', 'book-manager'); ?></th>
+                        <th><?php _e('Ações', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($taxonomies as $slug => $info): ?>
+                        <tr>
+                            <td><strong><?php echo esc_html($info['label']); ?></strong></td>
+                            <td><code><?php echo esc_html($slug); ?></code></td>
+                            <td><?php echo $info['hierarchical'] ? '✅' : '❌'; ?></td>
+                            <td>
+                                <form method="post" style="display:inline;" onsubmit="return confirm('<?php _e('Remover esta taxonomia? Os termos criados serão perdidos.', 'book-manager'); ?>');">
+                                    <?php wp_nonce_field('bm_taxonomy_action', 'bm_taxonomy_nonce'); ?>
+                                    <input type="hidden" name="bm_delete_slug" value="<?php echo esc_attr($slug); ?>">
+                                    <button type="submit" name="bm_delete_taxonomy" class="button button-small"><?php _e('Remover', 'book-manager'); ?></button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
+// ==========================================
 // FASE 12A: PÁGINA DE CONFIGURAÇÕES
 // ==========================================
 function bm_get_settings() {
@@ -956,6 +1162,13 @@ function bm_get_settings() {
         'max_loans_student' => 1,
         'default_loan_days' => 14,
         'reservation_hours' => 24,
+        'classification_system' => 'cdu',
+        'field_visibility' => array(
+            'isbn'      => array('student' => 0, 'teacher' => 0, 'librarian' => 1),
+            'location'  => array('student' => 0, 'teacher' => 1, 'librarian' => 1),
+            'copies'    => array('student' => 0, 'teacher' => 0, 'librarian' => 1),
+            'audit_log' => array('student' => 0, 'teacher' => 0, 'librarian' => 1),
+        ),
     );
     $saved = get_option('bm_settings', array());
     if (!is_array($saved)) $saved = array();
@@ -965,9 +1178,11 @@ function bm_get_settings() {
     return $saved;
 }
 
+
 function bm_add_settings_page() {
     add_submenu_page('edit.php?post_type=bm_book', 'Configurações', 'Configurações', 'manage_options', 'bm_settings', 'bm_render_settings_page');
 }
+
 add_action('admin_menu', 'bm_add_settings_page');
 
 function bm_render_settings_page() {
@@ -981,6 +1196,17 @@ function bm_render_settings_page() {
         $settings['max_loans_student'] = absint($_POST['max_loans_student']);
         $settings['default_loan_days'] = absint($_POST['default_loan_days']);
         $settings['reservation_hours'] = absint($_POST['reservation_hours']);
+        $settings['classification_system'] = isset($_POST['classification_system']) && $_POST['classification_system'] === 'cdd' ? 'cdd' : 'cdu';
+        if (isset($_POST['field_visibility']) && is_array($_POST['field_visibility'])) {
+            $settings['field_visibility'] = array();
+            foreach (array('isbn', 'location', 'copies', 'audit_log') as $field) {
+                $settings['field_visibility'][$field] = array(
+                    'student'   => isset($_POST['field_visibility'][$field]['student']) ? 1 : 0,
+                    'teacher'   => isset($_POST['field_visibility'][$field]['teacher']) ? 1 : 0,
+                    'librarian' => isset($_POST['field_visibility'][$field]['librarian']) ? 1 : 0,
+                );
+            }
+        }
         update_option('bm_settings', $settings);
         $msg = '<div class="notice notice-success"><p>Salvo! Reservas: ' . $settings['max_reservations_student'] . ' | Empréstimos: ' . $settings['max_loans_student'] . ' | Prazo: ' . $settings['default_loan_days'] . 'd | Reserva: ' . $settings['reservation_hours'] . 'h</p></div>';
     }
@@ -1021,7 +1247,49 @@ function bm_render_settings_page() {
                     </td>
                 </tr>
             </table>
+
+            <h2>Visibilidade de Campos por Perfil</h2>
+            <p class="description">Defina quais informações administrativas cada perfil vê na página pública do livro.</p>
+            <table class="form-table">
+                <tr>
+                    <th></th>
+                    <th style="text-align:center;">Aluno</th>
+                    <th style="text-align:center;">Professor</th>
+                    <th style="text-align:center;">Gestor</th>
+                </tr>
+                <?php
+                $fields = array(
+                    'isbn'      => 'ISBN',
+                    'location'  => 'Localização',
+                    'copies'    => 'Exemplares',
+                    'audit_log' => 'Histórico de Ações',
+                );
+                $visibility = isset($settings['field_visibility']) ? $settings['field_visibility'] : array();
+                foreach ($fields as $key => $label):
+                ?>
+                <tr>
+                    <th><label><?php echo $label; ?></label></th>
+                    <td style="text-align:center;"><input type="checkbox" name="field_visibility[<?php echo $key; ?>][student]" value="1" <?php checked(isset($visibility[$key]['student']) && $visibility[$key]['student']); ?> /></td>
+                    <td style="text-align:center;"><input type="checkbox" name="field_visibility[<?php echo $key; ?>][teacher]" value="1" <?php checked(isset($visibility[$key]['teacher']) && $visibility[$key]['teacher']); ?> /></td>
+                    <td style="text-align:center;"><input type="checkbox" name="field_visibility[<?php echo $key; ?>][librarian]" value="1" <?php checked(isset($visibility[$key]['librarian']) && $visibility[$key]['librarian']); ?> /></td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
             
+            
+            <h2>Sistema de Classificação</h2>
+            <table class="form-table">
+                <tr>
+                    <th><label>CDU ou CDD</label></th>
+                    <td>
+                        <label><input type="radio" name="classification_system" value="cdu" <?php checked($settings['classification_system'], 'cdu'); ?> /> Classificação CDU</label><br>
+                        <label><input type="radio" name="classification_system" value="cdd" <?php checked($settings['classification_system'], 'cdd'); ?> /> Classificação CDD</label>
+                        <p class="description">Define qual sistema de classificação a IA usará ao gerar o Número de Chamada.</p>
+                    </td>
+                </tr>
+            </table>
+            
+
             <p><input type="submit" name="save_settings" class="button button-primary" value="Salvar Configurações" /></p>
         </form>
     </div>
@@ -1054,9 +1322,11 @@ function bm_admin_media_scripts($hook) {
 }
 add_action('admin_enqueue_scripts', 'bm_admin_media_scripts');
 
+
 function bm_add_white_label_page() {
     add_submenu_page('edit.php?post_type=bm_book', 'Identidade Visual', 'Identidade Visual', 'manage_options', 'bm_white_label', 'bm_render_white_label_page');
 }
+
 add_action('admin_menu', 'bm_add_white_label_page');
 
 function bm_render_white_label_page() {
@@ -1167,7 +1437,42 @@ function bm_get_year_transition_settings() {
 function bm_add_year_transition_page() {
     add_submenu_page('edit.php?post_type=bm_book', 'Virada de Ano Letivo', 'Virada de Ano Letivo', 'manage_options', 'bm_year_transition', 'bm_render_year_transition_page');
 }
+
 add_action('admin_menu', 'bm_add_year_transition_page');
+
+// ==========================================
+// FASE 12C: EXPORTAÇÃO CSV DE ALUNOS (admin_init)
+// ==========================================
+function bm_handle_students_csv_export() {
+    if (!current_user_can('manage_options')) return;
+    if (!isset($_POST['export_students_csv'])) return;
+    
+    $current_year = date('Y');
+    $students = get_users(array('role' => 'bm_student'));
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="alunos_historico_' . $current_year . '.csv"');
+    echo "\xEF\xBB\xBF";
+    $output = fopen('php://output', 'w');
+    fputcsv($output, array('Nome', 'E-mail', 'XP', 'Medalhas', 'Livros Lidos', 'Fichas', 'Resenhas', 'Vídeos', 'Empréstimos Ativos'), ';');
+    foreach ($students as $student) {
+        $xp = get_user_meta($student->ID, '_bm_xp', true) ?: '0';
+        $badges = get_user_meta($student->ID, '_bm_badges', true) ?: array();
+        $loan_history = get_user_meta($student->ID, '_bm_loan_history', true) ?: array();
+        $reading_log = get_user_meta($student->ID, '_bm_reading_log', true) ?: array();
+        $active_loans = count(array_filter($loan_history, function($l) { return $l['status'] === 'active'; }));
+        fputcsv($output, array(
+            $student->display_name, $student->user_email, $xp, count($badges),
+            count($loan_history), count($reading_log),
+            count(array_filter($reading_log, function($l) { return !empty($l['review']); })),
+            count(array_filter($reading_log, function($l) { return !empty($l['video_url']); })),
+            $active_loans,
+        ), ';');
+    }
+    fclose($output);
+    exit;
+}
+add_action('admin_init', 'bm_handle_students_csv_export');
+
 
 function bm_render_year_transition_page() {
     if (!current_user_can('manage_options')) return;
@@ -1176,7 +1481,7 @@ function bm_render_year_transition_page() {
     $settings = bm_get_year_transition_settings();
     $current_year = date('Y');
     
-    // Salvar configurações
+            // Salvar configurações da virada (checkboxes de ações + data)
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
         $settings['enabled'] = isset($_POST['yt_enabled']) ? '1' : '0';
         $settings['transition_month'] = absint($_POST['transition_month']);
@@ -1185,12 +1490,11 @@ function bm_render_year_transition_page() {
         $settings['reset_badges'] = isset($_POST['reset_badges']) ? '1' : '0';
         $settings['clear_reservations'] = isset($_POST['clear_reservations']) ? '1' : '0';
         $settings['activate_recadastro'] = isset($_POST['activate_recadastro']) ? '1' : '0';
-        $settings['clear_before_year'] = sanitize_text_field($_POST['clear_before_year']);
         update_option('bm_year_transition', $settings);
-        $msg = '<div class="notice notice-success"><p>Configurações salvas!</p></div>';
+        $msg = '<div class="notice notice-success"><p>Configurações salvas! Virada ' . ($settings['enabled'] === '1' ? 'ATIVADA' : 'DESATIVADA') . '.</p></div>';
     }
     
-    // Salvar histórico habilitado + checkboxes
+    // Salvar configurações de histórico
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_history'])) {
         $settings['history_enabled'] = isset($_POST['history_enabled']) ? '1' : '0';
         $settings['clear_reading_log'] = isset($_POST['clear_reading_log']) ? '1' : '0';
@@ -1198,6 +1502,7 @@ function bm_render_year_transition_page() {
         $settings['clear_videos'] = isset($_POST['clear_videos']) ? '1' : '0';
         $settings['clear_ratings'] = isset($_POST['clear_ratings']) ? '1' : '0';
         $settings['clear_loan_history'] = isset($_POST['clear_loan_history']) ? '1' : '0';
+        $settings['clear_before_year'] = sanitize_text_field($_POST['clear_before_year']);
         update_option('bm_year_transition', $settings);
         $msg = '<div class="notice notice-success"><p>Configurações de histórico salvas!</p></div>';
     }
@@ -1328,31 +1633,7 @@ function bm_render_year_transition_page() {
         $msg = '<div class="notice notice-success"><p><strong>✅ Virada de Ano Letivo concluída!</strong> Backup salvo como bm_ranking_archive_' . $current_year . '.</p></div>';
     }
     
-    // Exportar CSV
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export_students_csv'])) {
-        $students = get_users(array('role' => 'bm_student'));
-        header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="alunos_historico_' . $current_year . '.csv"');
-        echo "\xEF\xBB\xBF";
-        $output = fopen('php://output', 'w');
-        fputcsv($output, array('Nome', 'E-mail', 'XP', 'Medalhas', 'Livros Lidos', 'Fichas', 'Resenhas', 'Vídeos', 'Empréstimos Ativos'), ';');
-        foreach ($students as $student) {
-            $xp = get_user_meta($student->ID, '_bm_xp', true) ?: '0';
-            $badges = get_user_meta($student->ID, '_bm_badges', true) ?: array();
-            $loan_history = get_user_meta($student->ID, '_bm_loan_history', true) ?: array();
-            $reading_log = get_user_meta($student->ID, '_bm_reading_log', true) ?: array();
-            $active_loans = count(array_filter($loan_history, function($l) { return $l['status'] === 'active'; }));
-            fputcsv($output, array(
-                $student->display_name, $student->user_email, $xp, count($badges),
-                count($loan_history), count($reading_log),
-                count(array_filter($reading_log, function($l) { return !empty($l['review']); })),
-                count(array_filter($reading_log, function($l) { return !empty($l['video_url']); })),
-                $active_loans,
-            ), ';');
-        }
-        fclose($output);
-        exit;
-    }
+    // Exportar CSV de alunos — movido para bm_handle_students_csv_export() via admin_init
     
     $last_transition = get_option('bm_last_year_transition', 'Nunca');
     $recadastro_active = get_option('bm_recadastro_required', '0');
@@ -1380,7 +1661,14 @@ function bm_render_year_transition_page() {
                 <tr><th><label>Ativar recadastramento de alunos</label></th><td><label><input type="checkbox" name="activate_recadastro" <?php checked($settings['activate_recadastro'], '1'); ?> /> Exigir que alunos confirmem dados no próximo login</label><p class="description">Apenas alunos (bm_student) serão afetados.</p></td></tr>
             </table>
             
-            <p><input type="submit" name="save_settings" class="button" value="Salvar Configurações" /> <input type="submit" name="export_students_csv" class="button" value="📥 Exportar dados dos alunos (CSV)" /></p>
+            <p><input type="submit" name="save_settings" class="button" value="Salvar Configurações" /></p>
+        </form>
+        
+        <form method="post" style="max-width:700px;">
+            <p><input type="submit" name="export_students_csv" class="button" value="📥 Exportar dados dos alunos (CSV)" /></p>
+        </form>
+        
+        <form method="post" style="max-width:700px;">
         </form>
         
         <hr style="margin:30px 0;" />
@@ -1431,7 +1719,7 @@ function bm_render_year_transition_page() {
     <script>
     document.getElementById('bm_history_toggle').addEventListener('change', function() {
         if (this.checked) {
-            var confirmed = confirm('⚠️ Atenção: Você está prestes a acessar opções que podem apagar permanentemente o histórico pedagógico dos alunos. Recomendamos fortemente exportar esses dados via CSV antes de prosseguir. Deseja continuar?');
+            var confirmed = confirm('⚠️ Atenção: Você está prest a acessar opções que podem apagar permanentemente o histórico pedagógico dos alunos. Recomendamos fortemente exportar esses dados via CSV antes de prosseguir. Deseja continuar?');
             if (!confirmed) { this.checked = false; return; }
         }
         var options = document.getElementById('bm_history_options');

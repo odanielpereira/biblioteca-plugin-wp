@@ -822,7 +822,9 @@ function bm_generate_cdu_only($post_id) {
     $sinopse = get_post_meta($post_id, '_bm_dynamic_sinopse', true);
     $genres = wp_get_post_terms($post_id, 'bm_genre', array('fields' => 'names'));
     
-    $prompt = "Atribua o código CDU para: \"" . $title . "\"";
+    $settings = bm_get_settings();
+    $system_label = ($settings['classification_system'] === 'cdd') ? 'CDD' : 'CDU';
+    $prompt = "Atribua o código {$system_label} para: \"" . $title . "\"";
     if ($author) $prompt .= " | Autor: " . $author;
     if (!empty($genres)) $prompt .= " | Gênero: " . implode(', ', $genres);
     if ($sinopse) $prompt .= " | Sinopse: " . wp_strip_all_tags(substr($sinopse, 0, 200));

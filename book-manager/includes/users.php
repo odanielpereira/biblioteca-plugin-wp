@@ -203,13 +203,17 @@ function bm_render_approval_page() {
 
 // ==========================================
 // FASE 9C: SISTEMA DE RESERVAS
+// FASE 12A: LIMITES CONFIGURÁVEIS
 // ==========================================
 function bm_reserve_book($book_id, $user_id, $reserved_for = null) {
     $target_user_id = $reserved_for ? intval($reserved_for) : $user_id;
+    $settings = bm_get_settings();
     
     if (bm_is_student_by_id($target_user_id)) {
         $active_count = bm_get_active_reservation_count($target_user_id);
-        if ($active_count >= 3) return array('error' => __('Limite de 3 reservas atingido.', 'book-manager'));
+        if ($active_count >= $settings['max_reservations_student']) {
+            return array('error' => sprintf(__('Limite de %d reservas atingido.', 'book-manager'), $settings['max_reservations_student']));
+        }
     }
     
     $reservations = get_post_meta($book_id, '_bm_reservations', true);
@@ -233,7 +237,7 @@ function bm_reserve_book($book_id, $user_id, $reserved_for = null) {
         'date' => current_time('mysql'),
         'status' => 'waiting',
         'position' => $position,
-        'expires_at' => date('Y-m-d H:i:s', strtotime('+24 hours')),
+        'expires_at' => date('Y-m-d H:i:s', strtotime('+' . $settings['reservation_hours'] . ' hours')),
     );
     
     $reservations[] = $reservation;
@@ -454,9 +458,19 @@ add_action('wp_footer', 'bm_reserve_scripts');
 
 // ==========================================
 // FASE 9D: EMPRÉSTIMOS E DEVOLUÇÕES
-// FASE 9F: BOTÃO WHATSAPP E CONTADOR REGRESSIVO (4 CORES)
+// FASE 12A: VERIFICAÇÃO DE ESTOQUE + BOTÃO REJEITAR + FILA
 // ==========================================
-function bm_confirm_loan($book_id, $user_id, $days = 14) {
+
+function bm_confirm_loan($book_id, $user_id, $days = null) {
+    $settings = bm_get_settings();
+    if ($days === null) $days = $settings['default_loan_days'];
+    
+    // Verificar estoque disponível
+    $stock = bm_get_stock_info($book_id);
+    if ($stock['available'] <= 0) {
+        return array('error' => __('Não há exemplares disponíveis para empréstimo.', 'book-manager'));
+    }
+    
     $reservations = get_post_meta($book_id, '_bm_reservations', true);
     if (!is_array($reservations)) return array('error' => __('Nenhuma reserva encontrada.', 'book-manager'));
     
@@ -491,6 +505,42 @@ function bm_confirm_loan($book_id, $user_id, $days = 14) {
     bm_log_audit($book_id, "Empréstimo confirmado para usuário #$user_id ($days dias)");
     
     return array('success' => true, 'message' => __('Empréstimo confirmado!', 'book-manager'), 'due_date' => date('d/m/Y', strtotime("+$days days")));
+}
+
+function bm_reject_reservation($book_id, $user_id) {
+    $reservations = get_post_meta($book_id, '_bm_reservations', true);
+    if (!is_array($reservations)) return array('error' => __('Nenhuma reserva encontrada.', 'book-manager'));
+    
+    $found = false;
+    foreach ($reservations as $key => $r) {
+        if ($r['user_id'] == $user_id && $r['status'] === 'waiting') {
+            $reservations[$key]['status'] = 'rejected';
+            $found = true;
+            break;
+        }
+    }
+    
+    if (!$found) return array('error' => __('Reserva não encontrada.', 'book-manager'));
+    
+    // Recalcular posições
+    $pos = 0;
+    foreach ($reservations as &$r) {
+        if ($r['status'] === 'waiting') {
+            $pos++;
+            $r['position'] = $pos;
+        }
+    }
+    
+    update_post_meta($book_id, '_bm_reservations', $reservations);
+    
+    $user_reservations = get_user_meta($user_id, '_bm_active_reservations', true) ?: array();
+    $user_reservations = array_diff($user_reservations, array($book_id));
+    update_user_meta($user_id, '_bm_active_reservations', array_values($user_reservations));
+    update_user_meta($user_id, '_bm_reservation_count', count($user_reservations));
+    
+    bm_log_audit($book_id, "Reserva rejeitada para usuário #$user_id");
+    
+    return array('success' => true, 'message' => __('Reserva rejeitada.', 'book-manager'));
 }
 
 function bm_return_book($book_id, $user_id) {
@@ -590,11 +640,13 @@ function bm_get_days_remaining($due_date) {
 function bm_add_loans_page() {
     add_submenu_page('edit.php?post_type=bm_book', __('Empréstimos', 'book-manager'), __('Empréstimos', 'book-manager'), 'edit_bm_books', 'bm_loans', 'bm_render_loans_page');
 }
+
 add_action('admin_menu', 'bm_add_loans_page');
 
 function bm_render_loans_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     
+    $settings = bm_get_settings();
     $notice = '';
     
     if (isset($_POST['bm_loan_action']) && wp_verify_nonce($_POST['bm_loan_nonce'], 'bm_loan_action')) {
@@ -603,12 +655,14 @@ function bm_render_loans_page() {
         $action = sanitize_text_field($_POST['bm_loan_action']);
         
         if ($action === 'confirm') {
-            $days = isset($_POST['loan_days']) ? intval($_POST['loan_days']) : 14;
+            $days = isset($_POST['loan_days']) ? intval($_POST['loan_days']) : $settings['default_loan_days'];
             $result = bm_confirm_loan($book_id, $user_id, $days);
         } elseif ($action === 'return') {
             $result = bm_return_book($book_id, $user_id);
         } elseif ($action === 'undo') {
             $result = bm_undo_loan($book_id, $user_id);
+        } elseif ($action === 'reject') {
+            $result = bm_reject_reservation($book_id, $user_id);
         }
         
         if (isset($result['error'])) {
@@ -628,6 +682,8 @@ function bm_render_loans_page() {
             if (in_array($r['status'], array('waiting', 'active'))) {
                 $r['book_id'] = $book->ID;
                 $r['book_title'] = $book->post_title;
+                $r['copies'] = intval(get_post_meta($book->ID, '_bm_copies', true));
+                $r['borrowed'] = intval(get_post_meta($book->ID, '_bm_borrowed_count', true));
                 $active_reservations[] = $r;
             }
         }
@@ -658,7 +714,8 @@ function bm_render_loans_page() {
                         <th><?php _e('Livro', 'book-manager'); ?></th>
                         <th><?php _e('Usuário', 'book-manager'); ?></th>
                         <th><?php _e('Status', 'book-manager'); ?></th>
-                        <th><?php _e('Reserva em', 'book-manager'); ?></th>
+                        <th><?php _e('Posição', 'book-manager'); ?></th>
+                        <th><?php _e('Estoque', 'book-manager'); ?></th>
                         <th><?php _e('Prazo', 'book-manager'); ?></th>
                         <th><?php _e('WhatsApp', 'book-manager'); ?></th>
                         <th><?php _e('Ação', 'book-manager'); ?></th>
@@ -673,23 +730,20 @@ function bm_render_loans_page() {
                         $status_label = $is_active ? __('Emprestado', 'book-manager') : __('Reservado', 'book-manager');
                         $status_color = $is_active ? '#0073aa' : '#f0ad4e';
                         
+                        $position_display = isset($r['position']) ? $r['position'] . 'º' : '—';
+                        
+                        $available = max(0, $r['copies'] - $r['borrowed']);
+                        $stock_display = $available . '/' . $r['copies'];
+                        $stock_color = $available > 0 ? '#46b450' : '#dc3545';
+                        
                         $days_remaining = '';
                         $countdown_style = '';
                         if ($is_active && isset($r['due_date'])) {
                             $days = bm_get_days_remaining($r['due_date']);
-                            if ($days > 3) {
-                                $days_remaining = $days . ' ' . __('dias restantes', 'book-manager');
-                                $countdown_style = 'color:#46b450;font-weight:bold;';
-                            } elseif ($days >= 1) {
-                                $days_remaining = $days . ' ' . ($days == 1 ? __('dia restante', 'book-manager') : __('dias restantes', 'book-manager'));
-                                $countdown_style = 'color:#f0ad4e;font-weight:bold;';
-                            } elseif ($days == 0) {
-                                $days_remaining = __('Vence hoje!', 'book-manager');
-                                $countdown_style = 'color:#e6c300;font-weight:bold;';
-                            } else {
-                                $days_remaining = abs($days) . ' ' . (abs($days) == 1 ? __('dia atrasado', 'book-manager') : __('dias atrasados', 'book-manager'));
-                                $countdown_style = 'color:#dc3545;font-weight:bold;';
-                            }
+                            if ($days > 3) { $days_remaining = $days . ' ' . __('dias restantes', 'book-manager'); $countdown_style = 'color:#46b450;font-weight:bold;'; }
+                            elseif ($days >= 1) { $days_remaining = $days . ' ' . ($days == 1 ? __('dia restante', 'book-manager') : __('dias restantes', 'book-manager')); $countdown_style = 'color:#f0ad4e;font-weight:bold;'; }
+                            elseif ($days == 0) { $days_remaining = __('Vence hoje!', 'book-manager'); $countdown_style = 'color:#e6c300;font-weight:bold;'; }
+                            else { $days_remaining = abs($days) . ' ' . (abs($days) == 1 ? __('dia atrasado', 'book-manager') : __('dias atrasados', 'book-manager')); $countdown_style = 'color:#dc3545;font-weight:bold;'; }
                         }
                         
                         $due_date = isset($r['due_date']) ? date('d/m/Y', strtotime($r['due_date'])) : '—';
@@ -703,12 +757,11 @@ function bm_render_loans_page() {
                             <td><strong><?php echo esc_html($r['book_title']); ?></strong></td>
                             <td><?php echo esc_html($user_name); ?></td>
                             <td><span style="background:<?php echo $status_color; ?>;color:#fff;padding:2px 8px;border-radius:3px;font-size:12px;"><?php echo $status_label; ?></span></td>
-                            <td><?php echo esc_html(date('d/m/Y', strtotime($r['date']))); ?></td>
+                            <td><?php echo $position_display; ?></td>
+                            <td><span style="color:<?php echo $stock_color; ?>;font-weight:bold;"><?php echo $stock_display; ?></span></td>
                             <td>
                                 <span style="display:block;<?php echo $countdown_style; ?>"><?php echo $due_date; ?></span>
-                                <?php if ($days_remaining): ?>
-                                    <span style="font-size:11px;<?php echo $countdown_style; ?>"><?php echo $days_remaining; ?></span>
-                                <?php endif; ?>
+                                <?php if ($days_remaining): ?><span style="font-size:11px;<?php echo $countdown_style; ?>"><?php echo $days_remaining; ?></span><?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($user_phone && $is_active): ?>
@@ -725,15 +778,25 @@ function bm_render_loans_page() {
                                     <input type="hidden" name="book_id" value="<?php echo $r['book_id']; ?>">
                                     <input type="hidden" name="user_id" value="<?php echo $r['user_id']; ?>">
                                     <?php if (!$is_active): ?>
-                                        <input type="number" name="loan_days" value="14" min="0" max="60" style="width:70px;padding:4px 8px;font-size:14px;text-align:center;" title="<?php _e('Dias de empréstimo', 'book-manager'); ?>" />
+                                        <input type="number" name="loan_days" value="<?php echo $settings['default_loan_days']; ?>" min="0" max="60" style="width:60px;padding:4px 8px;font-size:14px;text-align:center;" title="<?php _e('Dias de empréstimo', 'book-manager'); ?>" />
                                         <input type="hidden" name="bm_loan_action" value="confirm">
-                                        <button type="submit" class="button button-primary" style="background:#0073aa;color:#fff;border-color:#0073aa;"><?php _e('Confirmar', 'book-manager'); ?></button>
+                                        <button type="submit" class="button button-primary" style="background:#0073aa;color:#fff;border-color:#0073aa;" <?php echo $available <= 0 ? 'disabled' : ''; ?>><?php _e('Confirmar', 'book-manager'); ?></button>
+                                        <input type="hidden" name="bm_loan_action" value="reject" form="reject-<?php echo $r['book_id'] . '-' . $r['user_id']; ?>">
                                     <?php else: ?>
                                         <input type="hidden" name="bm_loan_action" value="return">
                                         <button type="submit" class="button" style="background:#46b450;color:#fff;border-color:#46b450;"><?php _e('Devolver', 'book-manager'); ?></button>
                                         <input type="hidden" name="bm_loan_action" value="undo" form="undo-<?php echo $r['book_id'] . '-' . $r['user_id']; ?>">
                                     <?php endif; ?>
                                 </form>
+                                <?php if (!$is_active): ?>
+                                    <form method="post" style="display:inline;" id="reject-<?php echo $r['book_id'] . '-' . $r['user_id']; ?>">
+                                        <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
+                                        <input type="hidden" name="book_id" value="<?php echo $r['book_id']; ?>">
+                                        <input type="hidden" name="user_id" value="<?php echo $r['user_id']; ?>">
+                                        <input type="hidden" name="bm_loan_action" value="reject">
+                                        <button type="submit" class="button" style="background:#dc3545;color:#fff;border-color:#dc3545;" title="<?php _e('Rejeitar reserva', 'book-manager'); ?>"><?php _e('Rejeitar', 'book-manager'); ?></button>
+                                    </form>
+                                <?php endif; ?>
                                 <?php if ($is_active): ?>
                                     <form method="post" style="display:inline;" id="undo-<?php echo $r['book_id'] . '-' . $r['user_id']; ?>">
                                         <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>

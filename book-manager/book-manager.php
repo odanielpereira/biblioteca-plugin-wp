@@ -27,8 +27,9 @@ require_once plugin_dir_path(__FILE__) . 'includes/users.php';
 function bm_register_book_cpt() {
     $labels = array(
         'name'               => 'Livros',
+        'all_items'          => 'Todos os Livros',
         'singular_name'      => 'Livro',
-        'menu_name'          => 'Livros',
+        'menu_name'          => 'Biblioteca',
         'add_new'            => 'Adicionar Novo',
         'add_new_item'       => 'Adicionar Novo Livro',
         'edit_item'          => 'Editar Livro',
@@ -205,16 +206,51 @@ function bm_remove_roles() {
     remove_role('bm_super_admin');
 }
 
+// FASE 12E-T4: Limpar roles sujas na ativação
+function bm_clean_dirty_roles() {
+    $dirty_roles = array(
+        'gestor_biblioteca' => 'bm_librarian',
+        'gestor da biblioteca' => 'bm_librarian',
+        'professor' => 'bm_teacher',
+        'aluno' => 'bm_student',
+    );
+    
+    foreach ($dirty_roles as $dirty => $clean) {
+        $users = get_users(array('role' => $dirty, 'number' => -1));
+        if (!empty($users)) {
+            foreach ($users as $user) {
+                $user_obj = new WP_User($user->ID);
+                $user_obj->set_role($clean);
+            }
+        }
+        remove_role($dirty);
+    }
+}
+
 function bm_plugin_activation() {
     bm_register_book_cpt();
     bm_register_taxonomies();
     bm_add_admin_caps();
     bm_register_roles();
+    bm_clean_dirty_roles();
     flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 'bm_plugin_activation');
 function bm_plugin_deactivation() { flush_rewrite_rules(); }
 register_deactivation_hook(__FILE__, 'bm_plugin_deactivation');
+
+// FASE 12E: Renomear submenu "Biblioteca" para "Livros"
+function bm_rename_first_submenu() {
+    global $submenu;
+    if (isset($submenu['edit.php?post_type=bm_book'])) {
+        foreach ($submenu['edit.php?post_type=bm_book'] as $key => $item) {
+            if ($item[2] === 'edit.php?post_type=bm_book') {
+                $submenu['edit.php?post_type=bm_book'][$key][0] = 'Livros';
+            }
+        }
+    }
+}
+add_action('admin_menu', 'bm_rename_first_submenu', 999);
 
 // ==========================================
 // FASE 7F: SOFT DELETE E AUDITORIA
