@@ -37,44 +37,94 @@ function bm_get_user_role() {
 // FASE 9B: AUTOCADASTRO E APROVAÇÃO
 // ==========================================
 function bm_registration_form() {
-    if (is_user_logged_in()) return '<p>' . __('Você já está logado.', 'book-manager') . '</p>';
+    if (is_user_logged_in()) {
+        $user_id = get_current_user_id();
+        $user = wp_get_current_user();
+        if (in_array('bm_student', (array) $user->roles) && get_option('bm_recadastro_required', '0') === '1') {
+            return bm_recadastro_form($user_id);
+        }
+        return '<p>' . __('Você já está logado.', 'book-manager') . '</p>';
+    }
     
     ob_start();
     ?>
-    <form method="post" class="bm-register-form" style="max-width:400px;margin:20px auto;">
+    <form method="post" class="bm-register-form" style="max-width:450px;margin:20px auto;">
         <?php wp_nonce_field('bm_register_action', 'bm_register_nonce'); ?>
+        
+        <h2><?php _e('Criar Conta', 'book-manager'); ?></h2>
+        
         <p>
-            <label><?php _e('Nome completo', 'book-manager'); ?> *</label>
-            <input type="text" name="bm_full_name" required style="width:100%;padding:8px;margin-top:4px;" />
-        </p>
-        <p>
-            <label><?php _e('E-mail', 'book-manager'); ?> *</label>
-            <input type="email" name="bm_email" required style="width:100%;padding:8px;margin-top:4px;" />
-        </p>
-        <p>
-            <label><?php _e('Senha', 'book-manager'); ?> *</label>
-            <input type="password" name="bm_password" required style="width:100%;padding:8px;margin-top:4px;" />
-        </p>
-        <p>
-            <label><?php _e('Perfil', 'book-manager'); ?> *</label>
-            <select name="bm_role" required style="width:100%;padding:8px;margin-top:4px;">
+            <label><strong><?php _e('Perfil', 'book-manager'); ?> *</strong></label>
+            <select name="bm_role" id="bm_role_select" required style="width:100%;padding:10px;margin-top:4px;font-size:16px;">
                 <option value=""><?php _e('— Selecione —', 'book-manager'); ?></option>
-                <option value="bm_student"><?php _e('Aluno', 'book-manager'); ?></option>
-                <option value="bm_teacher"><?php _e('Professor', 'book-manager'); ?></option>
+                <option value="bm_student"><?php _e('📚 Aluno', 'book-manager'); ?></option>
+                <option value="bm_teacher"><?php _e('👨‍🏫 Professor', 'book-manager'); ?></option>
             </select>
         </p>
-        <p>
-            <label><?php _e('Série/Ano (aluno) ou Disciplina (professor)', 'book-manager'); ?></label>
-            <input type="text" name="bm_info" style="width:100%;padding:8px;margin-top:4px;" />
-        </p>
-        <p>
-            <label><?php _e('Telefone/WhatsApp', 'book-manager'); ?></label>
-            <input type="text" name="bm_phone" style="width:100%;padding:8px;margin-top:4px;" placeholder="5511999999999" />
-        </p>
-        <p>
-            <input type="submit" name="bm_register_submit" value="<?php _e('Cadastrar', 'book-manager'); ?>" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;" />
+        
+        <div id="bm_common_fields" style="display:none;">
+            <p>
+                <label><strong><?php _e('Nome completo', 'book-manager'); ?> *</strong></label>
+                <input type="text" name="bm_full_name" required style="width:100%;padding:8px;margin-top:4px;" />
+            </p>
+            <p>
+                <label><strong><?php _e('E-mail', 'book-manager'); ?> *</strong></label>
+                <input type="email" name="bm_email" required style="width:100%;padding:8px;margin-top:4px;" />
+            </p>
+            <p>
+                <label><strong><?php _e('Senha', 'book-manager'); ?> *</strong></label>
+                <input type="password" name="bm_password" required minlength="6" style="width:100%;padding:8px;margin-top:4px;" />
+            </p>
+            
+            <div id="bm_student_fields" style="display:none;">
+                <?php
+                $user_fields = get_option('bm_user_dynamic_fields', array());
+                if (!is_array($user_fields)) $user_fields = array();
+                foreach ($user_fields as $field_name => $info):
+                    $name_lower = mb_strtolower(trim($field_name));
+                    if (in_array($name_lower, array('nome completo', 'e-mail', 'email'))) continue;
+                    $meta_key = '_bm_user_' . sanitize_key($field_name);
+                ?>
+                <p>
+                    <label><strong><?php echo esc_html($field_name); ?></strong></label>
+                    <?php if ($info['type'] === 'textarea'): ?>
+                        <textarea name="<?php echo esc_attr($meta_key); ?>" rows="3" style="width:100%;padding:8px;margin-top:4px;"></textarea>
+                    <?php else: ?>
+                        <input type="<?php echo $info['type'] === 'email' ? 'email' : 'text'; ?>" name="<?php echo esc_attr($meta_key); ?>" style="width:100%;padding:8px;margin-top:4px;" />
+                    <?php endif; ?>
+                </p>
+                <?php endforeach; ?>
+            </div>
+            
+            <div id="bm_teacher_fields" style="display:none;">
+                <p>
+                    <label><strong><?php _e('Disciplina', 'book-manager'); ?></strong></label>
+                    <input type="text" name="bm_info" style="width:100%;padding:8px;margin-top:4px;" placeholder="<?php _e('Ex: Matemática, História...', 'book-manager'); ?>" />
+                </p>
+            </div>
+        </div>
+        
+        <p style="margin-top:15px;">
+            <input type="submit" name="bm_register_submit" value="<?php _e('Cadastrar', 'book-manager'); ?>" style="padding:12px 24px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;width:100%;" />
         </p>
     </form>
+    
+    <script>
+    document.getElementById('bm_role_select').addEventListener('change', function() {
+        var role = this.value;
+        var common = document.getElementById('bm_common_fields');
+        var studentFields = document.getElementById('bm_student_fields');
+        var teacherFields = document.getElementById('bm_teacher_fields');
+        
+        if (role) {
+            common.style.display = 'block';
+            studentFields.style.display = role === 'bm_student' ? 'block' : 'none';
+            teacherFields.style.display = role === 'bm_teacher' ? 'block' : 'none';
+        } else {
+            common.style.display = 'none';
+        }
+    });
+    </script>
     <?php
     
     if (isset($_POST['bm_register_submit']) && wp_verify_nonce($_POST['bm_register_nonce'], 'bm_register_action')) {
@@ -82,8 +132,7 @@ function bm_registration_form() {
         $email = sanitize_email($_POST['bm_email']);
         $password = $_POST['bm_password'];
         $role = sanitize_text_field($_POST['bm_role']);
-        $info = sanitize_text_field($_POST['bm_info']);
-        $phone = sanitize_text_field($_POST['bm_phone']);
+        $info = isset($_POST['bm_info']) ? sanitize_text_field($_POST['bm_info']) : '';
         
         $errors = array();
         if (empty($full_name)) $errors[] = __('Nome é obrigatório.', 'book-manager');
@@ -105,8 +154,22 @@ function bm_registration_form() {
                 update_user_meta($user_id, 'bm_full_name', $full_name);
                 update_user_meta($user_id, 'bm_requested_role', $role);
                 update_user_meta($user_id, 'bm_info', $info);
-                update_user_meta($user_id, 'bm_phone', $phone);
                 update_user_meta($user_id, 'bm_approval_status', 'pending');
+                update_user_meta($user_id, '_bm_user_' . sanitize_key('Nome completo'), $full_name);
+                update_user_meta($user_id, '_bm_user_' . sanitize_key('E-mail'), $email);
+                
+                if ($role === 'bm_student') {
+                    $user_fields = get_option('bm_user_dynamic_fields', array());
+                    foreach ($user_fields as $field_name => $field_info) {
+                        $name_lower = mb_strtolower(trim($field_name));
+                        if (in_array($name_lower, array('nome completo', 'e-mail', 'email'))) continue;
+                        $meta_key = '_bm_user_' . sanitize_key($field_name);
+                        if (isset($_POST[$meta_key])) {
+                            update_user_meta($user_id, $meta_key, sanitize_text_field($_POST[$meta_key]));
+                        }
+                    }
+                }
+                
                 echo '<p style="color:green;">' . __('Cadastro realizado! Aguarde aprovação.', 'book-manager') . '</p>';
             } else {
                 echo '<p style="color:red;">' . $user_id->get_error_message() . '</p>';
@@ -121,6 +184,135 @@ function bm_registration_form() {
     return ob_get_clean();
 }
 add_shortcode('bm_register', 'bm_registration_form');
+
+// ==========================================
+// FASE 12I-T3: CAMPOS DINÂMICOS NA EDIÇÃO DE USUÁRIO
+// ==========================================
+function bm_add_user_dynamic_fields_metabox($user) {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    if (!in_array('bm_student', (array) $user->roles) && !in_array('bm_teacher', (array) $user->roles)) return;
+    
+    $user_fields = get_option('bm_user_dynamic_fields', array());
+    if (empty($user_fields)) return;
+    ?>
+    <h2><?php _e('Dados da Biblioteca', 'book-manager'); ?></h2>
+    <table class="form-table">
+        <?php foreach ($user_fields as $field_name => $info): 
+            $skip_fields = array('Nome completo', 'E-mail', 'Email', 'nome completo', 'e-mail', 'email');
+            if (in_array($field_name, $skip_fields)) continue;
+            $meta_key = '_bm_user_' . sanitize_key($field_name);
+            $value = get_user_meta($user->ID, $meta_key, true);
+        ?>
+        <tr>
+            <th><label><?php echo esc_html($field_name); ?></label></th>
+            <td>
+                <?php if ($info['type'] === 'textarea'): ?>
+                    <textarea name="<?php echo esc_attr($meta_key); ?>" rows="3" style="width:100%;max-width:400px;"><?php echo esc_textarea($value); ?></textarea>
+                <?php else: ?>
+                    <input type="<?php echo $info['type'] === 'email' ? 'email' : 'text'; ?>" name="<?php echo esc_attr($meta_key); ?>" value="<?php echo esc_attr($value); ?>" style="width:100%;max-width:400px;" />
+                <?php endif; ?>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+        
+        <tr>
+            <th><label><?php _e('Status de Aprovação', 'book-manager'); ?></label></th>
+            <td>
+                <?php $status = get_user_meta($user->ID, 'bm_approval_status', true); ?>
+                <select name="bm_approval_status">
+                    <option value="pending" <?php selected($status, 'pending'); ?>><?php _e('Pendente', 'book-manager'); ?></option>
+                    <option value="approved" <?php selected($status, 'approved'); ?>><?php _e('Aprovado', 'book-manager'); ?></option>
+                    <option value="rejected" <?php selected($status, 'rejected'); ?>><?php _e('Rejeitado', 'book-manager'); ?></option>
+                </select>
+            </td>
+        </tr>
+    </table>
+    <?php
+}
+add_action('edit_user_profile', 'bm_add_user_dynamic_fields_metabox');
+add_action('show_user_profile', 'bm_add_user_dynamic_fields_metabox');
+
+function bm_save_user_dynamic_fields($user_id) {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $user_fields = get_option('bm_user_dynamic_fields', array());
+    foreach ($user_fields as $field_name => $info) {
+        $meta_key = '_bm_user_' . sanitize_key($field_name);
+        if (isset($_POST[$meta_key])) {
+            update_user_meta($user_id, $meta_key, sanitize_text_field($_POST[$meta_key]));
+        }
+    }
+    
+    if (isset($_POST['bm_approval_status'])) {
+        update_user_meta($user_id, 'bm_approval_status', sanitize_text_field($_POST['bm_approval_status']));
+    }
+    
+    // Sincronizar display_name
+    $nome_key = '_bm_user_' . sanitize_key('Nome completo');
+    $novo_nome = get_user_meta($user_id, $nome_key, true);
+    if (!empty($novo_nome)) {
+        wp_update_user(array('ID' => $user_id, 'display_name' => $novo_nome));
+    }
+}
+add_action('edit_user_profile_update', 'bm_save_user_dynamic_fields');
+add_action('personal_options_update', 'bm_save_user_dynamic_fields');
+
+// FASE 12I: Formulário de recadastramento obrigatório
+function bm_recadastro_form($user_id) {
+    $user = get_userdata($user_id);
+    $recadastro_year = get_option('bm_recadastro_year', date('Y'));
+    
+    ob_start();
+    
+    if (isset($_POST['bm_recadastro_submit']) && wp_verify_nonce($_POST['bm_recadastro_nonce'], 'bm_recadastro_action')) {
+        $user_fields = get_option('bm_user_dynamic_fields', array());
+        foreach ($user_fields as $field_name => $info) {
+            $meta_key = '_bm_user_' . sanitize_key($field_name);
+            if (isset($_POST[$meta_key])) {
+                update_user_meta($user_id, $meta_key, sanitize_text_field($_POST[$meta_key]));
+            }
+        }
+        // Sincronizar display_name
+        $nome_key = '_bm_user_' . sanitize_key('Nome completo');
+        $novo_nome = get_user_meta($user_id, $nome_key, true);
+        if (!empty($novo_nome)) {
+            wp_update_user(array('ID' => $user_id, 'display_name' => $novo_nome));
+        }
+        echo '<p style="color:green;text-align:center;">' . __('Dados atualizados com sucesso! Bem-vindo ao ano letivo de ', 'book-manager') . esc_html($recadastro_year) . '.</p>';
+        return ob_get_clean();
+    }
+    ?>
+    <div style="max-width:450px;margin:20px auto;background:#fff8e1;padding:20px;border-radius:8px;border:2px solid #ffc107;">
+        <h2 style="text-align:center;">🔄 <?php _e('Recadastramento', 'book-manager'); ?> <?php echo esc_html($recadastro_year); ?></h2>
+        <p style="text-align:center;"><?php _e('Bem-vindo ao novo ano letivo! Confirme ou atualize seus dados para continuar.', 'book-manager'); ?></p>
+        
+        <form method="post">
+            <?php wp_nonce_field('bm_recadastro_action', 'bm_recadastro_nonce'); ?>
+            
+            <?php
+            $user_fields = get_option('bm_user_dynamic_fields', array());
+            foreach ($user_fields as $field_name => $info):
+                $meta_key = '_bm_user_' . sanitize_key($field_name);
+                $current_value = get_user_meta($user_id, $meta_key, true);
+            ?>
+            <p>
+                <label><strong><?php echo esc_html($field_name); ?></strong></label>
+                <?php if ($info['type'] === 'textarea'): ?>
+                    <textarea name="<?php echo esc_attr($meta_key); ?>" rows="3" style="width:100%;padding:8px;margin-top:4px;"><?php echo esc_textarea($current_value); ?></textarea>
+                <?php else: ?>
+                    <input type="<?php echo $info['type'] === 'email' ? 'email' : 'text'; ?>" name="<?php echo esc_attr($meta_key); ?>" value="<?php echo esc_attr($current_value); ?>" style="width:100%;padding:8px;margin-top:4px;" />
+                <?php endif; ?>
+            </p>
+            <?php endforeach; ?>
+            
+            <p style="margin-top:15px;">
+                <input type="submit" name="bm_recadastro_submit" value="<?php _e('Confirmar Dados', 'book-manager'); ?>" style="padding:12px 24px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;width:100%;" />
+            </p>
+        </form>
+    </div>
+    <?php
+    return ob_get_clean();
+}
 
 function bm_add_approval_page() {
     add_submenu_page('users.php', __('Aprovar Cadastros', 'book-manager'), __('Aprovar Cadastros', 'book-manager'), 'edit_bm_books', 'bm_approve_users', 'bm_render_approval_page');
@@ -177,7 +369,7 @@ function bm_render_approval_page() {
                             <td><?php echo esc_html($user->user_email); ?></td>
                             <td><?php echo esc_html(get_user_meta($user->ID, 'bm_requested_role', true)); ?></td>
                             <td><?php echo esc_html(get_user_meta($user->ID, 'bm_info', true)); ?></td>
-                            <td><?php echo esc_html(get_user_meta($user->ID, 'bm_phone', true)); ?></td>
+                            <td><?php echo esc_html(get_user_meta($user->ID, '_bm_user_' . sanitize_key('Telefone'), true)); ?></td>
                             <td>
                                 <form method="post" style="display:inline;">
                                     <?php wp_nonce_field('bm_approval_action', 'bm_approval_nonce'); ?>
@@ -725,7 +917,7 @@ function bm_render_loans_page() {
                     <?php foreach ($active_reservations as $r): 
                         $user = get_userdata($r['user_id']);
                         $user_name = $user ? $user->display_name : '#' . $r['user_id'];
-                        $user_phone = $user ? get_user_meta($user->ID, 'bm_phone', true) : '';
+                        $user_phone = $user ? get_user_meta($user->ID, '_bm_user_' . sanitize_key('Telefone'), true) : '';
                         $is_active = $r['status'] === 'active';
                         $status_label = $is_active ? __('Emprestado', 'book-manager') : __('Reservado', 'book-manager');
                         $status_color = $is_active ? '#0073aa' : '#f0ad4e';
@@ -997,6 +1189,62 @@ function bm_student_dashboard_content() {
     <div class="bm-dashboard" style="max-width:800px;margin:0 auto;padding:20px;">
         <h1><?php _e('Painel do Aluno', 'book-manager'); ?></h1>
         <p><?php printf(__('Bem-vindo, %s!', 'book-manager'), esc_html($user->display_name)); ?></p>
+
+                
+        <!-- Busca rápida de livros -->
+        <div style="background:#f0f7ff;padding:15px;border-radius:8px;margin:15px 0;border-left:4px solid #2196f3;">
+            <h3 style="margin:0 0 10px 0;">🔍 <?php _e('Buscar livro no acervo', 'book-manager'); ?></h3>
+            <div style="display:flex;gap:10px;">
+                <input type="text" id="bm-quick-search" placeholder="<?php _e('Digite o nome do livro...', 'book-manager'); ?>" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:4px;" />
+                <button type="button" id="bm-quick-search-btn" class="bm-btn-filter" style="padding:8px 16px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;"><?php _e('Buscar', 'book-manager'); ?></button>
+            </div>
+            <div id="bm-quick-results" style="margin-top:10px;display:none;"></div>
+        </div>
+        
+        <script>
+        document.getElementById('bm-quick-search-btn').addEventListener('click', bmQuickSearch);
+        document.getElementById('bm-quick-search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') bmQuickSearch();
+        });
+        
+        function bmQuickSearch() {
+            var query = document.getElementById('bm-quick-search').value.trim();
+            if (!query) return;
+            
+            var results = document.getElementById('bm-quick-results');
+            results.style.display = 'block';
+            results.innerHTML = '<p style="color:#666;">Buscando...</p>';
+            
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                try {
+                    var r = JSON.parse(xhr.responseText);
+                    if (r.success && r.books.length > 0) {
+                        var html = '';
+                        r.books.forEach(function(book) {
+                            var stockColor = book.available > 0 ? '#46b450' : '#dc3545';
+                            var stockIcon = book.available > 0 ? '✅' : '❌';
+                            html += '<div style="background:#fff;padding:10px;border-radius:4px;margin-bottom:5px;border:1px solid #eee;">';
+                            html += '<strong>' + book.title + '</strong>';
+                            if (book.author) html += ' — ' + book.author;
+                            html += ' <span style="color:' + stockColor + ';float:right;">' + stockIcon + ' ' + book.available + '/' + book.total + ' disponível(is)</span>';
+                            html += '<br><a href="' + book.url + '" style="font-size:12px;">Ver detalhes →</a>';
+                            html += '</div>';
+                        });
+                        results.innerHTML = html;
+                    } else {
+                        results.innerHTML = '<p style="color:#999;">Nenhum livro encontrado.</p>';
+                    }
+                } catch(e) {
+                    results.innerHTML = '<p style="color:red;">Erro na busca.</p>';
+                }
+            };
+            xhr.send('action=bm_quick_search&query=' + encodeURIComponent(query));
+        }
+        </script>
+        
         
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin:20px 0;">
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
@@ -1016,6 +1264,25 @@ function bm_student_dashboard_content() {
                 <p style="margin:5px 0 0 0;color:#666;"><?php _e('Pontos acumulados', 'book-manager'); ?></p>
             </div>
         </div>
+
+                <?php
+        $user_dynamic_fields = get_option('bm_user_dynamic_fields', array());
+        $has_user_data = false;
+        foreach ($user_dynamic_fields as $field_name => $info) {
+            $meta_key = '_bm_user_' . sanitize_key($field_name);
+            $value = get_user_meta($user_id, $meta_key, true);
+            if (!empty($value)) {
+                if (!$has_user_data) {
+                    echo '<h2>' . __('Meus Dados', 'book-manager') . '</h2>';
+                    echo '<div style="background:#f9f9f9;padding:15px;border-radius:8px;margin-bottom:20px;">';
+                    $has_user_data = true;
+                }
+                echo '<p><strong>' . esc_html($field_name) . ':</strong> ' . esc_html($value) . '</p>';
+            }
+        }
+        if ($has_user_data) echo '</div>';
+        ?>
+        
         
         <?php if (!empty($badges)): ?>
             <h2><?php _e('Minhas Medalhas', 'book-manager'); ?></h2>
@@ -1081,6 +1348,46 @@ function bm_student_dashboard_content() {
     return ob_get_clean();
 }
 
+// ==========================================
+// FASE 12I-T4: PROFESSOR VÊ DADOS DO ALUNO (LEITURA)
+// ==========================================
+function bm_teacher_view_student($student_id) {
+    if (!is_user_logged_in()) return '';
+    
+    $user = wp_get_current_user();
+    if (!in_array('bm_teacher', (array) $user->roles) && !in_array('bm_librarian', (array) $user->roles) && !current_user_can('manage_options')) return '';
+    
+    $student = get_userdata($student_id);
+    if (!$student || !in_array('bm_student', (array) $student->roles)) return '<p>' . __('Aluno não encontrado.', 'book-manager') . '</p>';
+    
+    ob_start();
+    ?>
+    <div style="background:#f9f9f9;padding:15px;border-radius:8px;margin:10px 0;border:1px solid #ddd;">
+        <h3 style="margin-top:0;">👤 <?php echo esc_html($student->display_name); ?></h3>
+        <?php
+        $user_fields = get_option('bm_user_dynamic_fields', array());
+        foreach ($user_fields as $field_name => $info):
+            $meta_key = '_bm_user_' . sanitize_key($field_name);
+            $value = get_user_meta($student_id, $meta_key, true);
+            if (!empty($value)):
+        ?>
+            <p style="margin:5px 0;"><strong><?php echo esc_html($field_name); ?>:</strong> <?php echo esc_html($value); ?></p>
+        <?php 
+            endif;
+        endforeach;
+        
+        $xp = bm_get_xp($student_id);
+        $badges = get_user_meta($student_id, '_bm_badges', true) ?: array();
+        ?>
+        <p style="margin:5px 0;"><strong>XP:</strong> <?php echo $xp; ?></p>
+        <?php if (!empty($badges)): ?>
+            <p style="margin:5px 0;"><strong>Medalhas:</strong> <?php echo count($badges); ?></p>
+        <?php endif; ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
 function bm_teacher_dashboard_content() {
     $user = wp_get_current_user();
     
@@ -1098,7 +1405,7 @@ function bm_teacher_dashboard_content() {
                 $student = get_userdata($r['user_id']);
                 $r['book_title'] = $book->post_title;
                 $r['student_name'] = $student ? $student->display_name : '#' . $r['user_id'];
-                $r['student_phone'] = $student ? get_user_meta($student->ID, 'bm_phone', true) : '';
+                $r['student_phone'] = $student ? get_user_meta($student->ID, '_bm_user_' . sanitize_key('Telefone'), true) : '';
                 $r['days_remaining'] = isset($r['due_date']) ? bm_get_days_remaining($r['due_date']) : 0;
                 $r['due_date_formatted'] = isset($r['due_date']) ? date('d/m/Y', strtotime($r['due_date'])) : '—';
                 $active_loans[] = $r;
@@ -1207,7 +1514,7 @@ function bm_librarian_dashboard_content() {
             $user_data = get_userdata($r['user_id']);
             $r['book_title'] = $book->post_title;
             $r['user_name'] = $user_data ? $user_data->display_name : '#' . $r['user_id'];
-            $r['user_phone'] = $user_data ? get_user_meta($user_data->ID, 'bm_phone', true) : '';
+            $r['user_phone'] = $user_data ? get_user_meta($user_data->ID, '_bm_user_' . sanitize_key('Telefone'), true) : '';
             
             if ($r['status'] === 'active') {
                 $r['days_remaining'] = isset($r['due_date']) ? bm_get_days_remaining($r['due_date']) : 0;
@@ -1891,6 +2198,240 @@ function bm_badges_shortcode() {
     return ob_get_clean();
 }
 add_shortcode('bm_badges', 'bm_badges_shortcode');
+
+// ==========================================
+// FASE 12J-T4/T5/T6: PÁGINA INDIVIDUAL DO ALUNO
+// ==========================================
+
+// FASE 12J: Exportar histórico do aluno (admin_init)
+function bm_handle_student_export() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    if (!isset($_POST['bm_export_student']) || !isset($_POST['bm_student_detail_nonce'])) return;
+    if (!wp_verify_nonce($_POST['bm_student_detail_nonce'], 'bm_student_detail_action')) return;
+    
+    $student_id = isset($_GET['student_id']) ? intval($_GET['student_id']) : 0;
+    $student = get_userdata($student_id);
+    if (!$student) return;
+    
+    $loan_history = get_user_meta($student_id, '_bm_loan_history', true) ?: array();
+    $reading_log = get_user_meta($student_id, '_bm_reading_log', true) ?: array();
+    
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="historico_' . sanitize_user($student->display_name) . '.csv"');
+    echo "\xEF\xBB\xBF";
+    $output = fopen('php://output', 'w');
+    fputcsv($output, array('Tipo', 'Livro', 'Data', 'Status', 'Detalhes'), ';');
+    
+    foreach ($loan_history as $loan) {
+        fputcsv($output, array(
+            'Empréstimo',
+            get_the_title($loan['book_id']),
+            $loan['loan_date'],
+            $loan['status'],
+            isset($loan['due_date']) ? 'Devolução: ' . $loan['due_date'] : '',
+        ), ';');
+    }
+    foreach ($reading_log as $log) {
+        fputcsv($output, array(
+            'Ficha de Leitura',
+            get_the_title($log['book_id']),
+            $log['date'],
+            $log['status'],
+            'Nota: ' . ($log['rating'] ?? '—'),
+        ), ';');
+    }
+    fclose($output);
+    exit;
+}
+add_action('admin_init', 'bm_handle_student_export');
+
+function bm_add_student_detail_page() {
+    add_submenu_page(null, __('Detalhes do Aluno', 'book-manager'), __('Detalhes do Aluno', 'book-manager'), 'edit_bm_books', 'bm_student_detail', 'bm_render_student_detail_page');
+}
+add_action('admin_menu', 'bm_add_student_detail_page');
+
+function bm_render_student_detail_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $student_id = isset($_GET['student_id']) ? intval($_GET['student_id']) : 0;
+    $student = get_userdata($student_id);
+    if (!$student) {
+        echo '<div class="wrap"><p>' . __('Aluno não encontrado.', 'book-manager') . '</p></div>';
+        return;
+    }
+    
+    $msg = '';
+    
+    // Salvar observações
+    if (isset($_POST['bm_save_notes']) && wp_verify_nonce($_POST['bm_student_detail_nonce'], 'bm_student_detail_action')) {
+        update_user_meta($student_id, '_bm_internal_notes', sanitize_textarea_field($_POST['bm_internal_notes']));
+        $msg = '<div class="notice notice-success"><p>' . __('Observações salvas.', 'book-manager') . '</p></div>';
+    }
+    
+    // Exportar histórico — movido para bm_handle_student_export() via admin_init
+    
+    $user_fields = get_option('bm_user_dynamic_fields', array());
+    $notes = get_user_meta($student_id, '_bm_internal_notes', true);
+    $xp = bm_get_xp($student_id);
+    $badges = get_user_meta($student_id, '_bm_badges', true) ?: array();
+    $loan_history = get_user_meta($student_id, '_bm_loan_history', true) ?: array();
+    $reading_log = get_user_meta($student_id, '_bm_reading_log', true) ?: array();
+    $status = get_user_meta($student_id, 'bm_approval_status', true) ?: 'approved';
+    $phone = get_user_meta($student_id, '_bm_user_' . sanitize_key('Telefone'), true);
+    
+    // Contar empréstimos ativos e atrasos
+    $active_loans = 0; $overdue_count = 0;
+    $loan_details = array();
+    foreach ($loan_history as $loan) {
+        if ($loan['status'] === 'active') {
+            $active_loans++;
+            $loan['book_title'] = get_the_title($loan['book_id']);
+            $loan['is_overdue'] = isset($loan['due_date']) && strtotime($loan['due_date']) < time();
+            if ($loan['is_overdue']) $overdue_count++;
+            $loan_details[] = $loan;
+        }
+    }
+    
+    ?>
+    <div class="wrap" style="max-width:900px;">
+        <h1><?php _e('Detalhes do Aluno', 'book-manager'); ?></h1>
+        <?php echo $msg; ?>
+        
+        <p><a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students'); ?>">← <?php _e('Voltar para lista', 'book-manager'); ?></a></p>
+        
+        <!-- Cards de resumo -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin:15px 0;">
+            <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
+                <h3 style="margin:0;font-size:28px;"><?php echo $xp; ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;">XP</p>
+            </div>
+            <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
+                <h3 style="margin:0;font-size:28px;"><?php echo count($badges); ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;">Medalhas</p>
+            </div>
+            <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
+                <h3 style="margin:0;font-size:28px;"><?php echo $active_loans; ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;">Empréstimos ativos</p>
+            </div>
+            <div style="background:<?php echo $overdue_count > 0 ? '#fff3f3' : '#f9f9f9'; ?>;padding:15px;border-radius:6px;text-align:center;">
+                <h3 style="margin:0;font-size:28px;color:<?php echo $overdue_count > 0 ? '#dc3545' : '#111'; ?>;"><?php echo $overdue_count; ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;">Em atraso</p>
+            </div>
+            <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
+                <h3 style="margin:0;font-size:28px;"><?php echo count($reading_log); ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;">Fichas de leitura</p>
+            </div>
+        </div>
+        
+        <!-- Dados do aluno -->
+        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:300px;">
+                <h2>👤 <?php echo esc_html($student->display_name); ?></h2>
+                <p><strong>E-mail:</strong> <?php echo esc_html($student->user_email); ?></p>
+                <p><strong>Status:</strong> <?php echo esc_html($status); ?></p>
+                
+                <?php foreach ($user_fields as $field_name => $info): 
+                    $meta_key = '_bm_user_' . sanitize_key($field_name);
+                    $value = get_user_meta($student_id, $meta_key, true);
+                    // Fallback para alunos antigos (sem meta keys dinâmicas)
+                    $name_lower = mb_strtolower(trim($field_name));
+                    if (empty($value) && in_array($name_lower, array('nome completo', 'nome'))) $value = $student->display_name;
+                    if (empty($value) && in_array($name_lower, array('e-mail', 'email'))) $value = $student->user_email;
+                ?>
+                    <p><strong><?php echo esc_html($field_name); ?>:</strong> <?php echo esc_html($value ?: '—'); ?></p>
+                <?php endforeach; ?>
+                
+                <?php if ($phone): ?>
+                    <p><?php echo bm_whatsapp_button($phone, '', '📱 WhatsApp'); ?></p>
+                <?php endif; ?>
+            </div>
+            
+            <!-- Observações internas -->
+            <div style="flex:1;min-width:300px;">
+                <h2>📝 <?php _e('Observações Internas', 'book-manager'); ?></h2>
+                <form method="post">
+                    <?php wp_nonce_field('bm_student_detail_action', 'bm_student_detail_nonce'); ?>
+                    <textarea name="bm_internal_notes" rows="5" style="width:100%;"><?php echo esc_textarea($notes); ?></textarea>
+                    <p style="margin-top:5px;">
+                        <button type="submit" name="bm_save_notes" class="button"><?php _e('Salvar Observações', 'book-manager'); ?></button>
+                        <button type="submit" name="bm_export_student" class="button" style="float:right;">📥 <?php _e('Exportar Histórico (CSV)', 'book-manager'); ?></button>
+                    </p>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Histórico de empréstimos ativos -->
+        <?php if (!empty($loan_details)): ?>
+            <h2>📋 <?php _e('Empréstimos Ativos', 'book-manager'); ?></h2>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Livro', 'book-manager'); ?></th>
+                        <th><?php _e('Empréstimo', 'book-manager'); ?></th>
+                        <th><?php _e('Devolução', 'book-manager'); ?></th>
+                        <th><?php _e('Situação', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($loan_details as $loan): ?>
+                        <tr style="<?php echo $loan['is_overdue'] ? 'background:#fff3f3;' : ''; ?>">
+                            <td><?php echo esc_html($loan['book_title']); ?></td>
+                            <td><?php echo date('d/m/Y', strtotime($loan['loan_date'])); ?></td>
+                            <td><?php echo isset($loan['due_date']) ? date('d/m/Y', strtotime($loan['due_date'])) : '—'; ?></td>
+                            <td style="color:<?php echo $loan['is_overdue'] ? '#dc3545' : '#46b450'; ?>;font-weight:bold;">
+                                <?php echo $loan['is_overdue'] ? '🔴 ' . __('Atrasado', 'book-manager') : '✅ ' . __('Em dia', 'book-manager'); ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+        
+        <!-- Medalhas -->
+        <?php if (!empty($badges)): ?>
+            <h2>🏅 <?php _e('Medalhas', 'book-manager'); ?></h2>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                <?php foreach ($badges as $badge_key): 
+                    $info = bm_get_badge_info($badge_key);
+                ?>
+                    <div style="background:#fff8e1;padding:10px 15px;border-radius:8px;text-align:center;border:1px solid #ffc107;" title="<?php echo esc_attr($info['desc']); ?>">
+                        <div style="font-size:28px;"><?php echo $info['icon']; ?></div>
+                        <div style="font-size:11px;font-weight:bold;"><?php echo esc_html($info['name']); ?></div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+        
+        <!-- Últimas fichas de leitura -->
+        <?php 
+        $recent_logs = array_slice(array_reverse($reading_log), 0, 5);
+        if (!empty($recent_logs)): 
+        ?>
+            <h2>📝 <?php _e('Últimas Fichas de Leitura', 'book-manager'); ?></h2>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Livro', 'book-manager'); ?></th>
+                        <th><?php _e('Data', 'book-manager'); ?></th>
+                        <th><?php _e('Nota', 'book-manager'); ?></th>
+                        <th><?php _e('Status', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($recent_logs as $log): ?>
+                        <tr>
+                            <td><?php echo esc_html(get_the_title($log['book_id'])); ?></td>
+                            <td><?php echo date('d/m/Y', strtotime($log['date'])); ?></td>
+                            <td><?php echo $log['rating'] > 0 ? str_repeat('★', $log['rating']) : '—'; ?></td>
+                            <td><?php echo $log['status'] === 'approved' ? '✅' : '⏳'; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+    <?php
+}
 
 // Conceder XP automaticamente ao aprovar ficha de leitura
 function bm_award_xp_on_approval($user_id, $book_id) {

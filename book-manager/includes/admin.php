@@ -512,16 +512,23 @@ add_action('admin_menu','bm_add_dynamic_fields_page');
 function bm_render_dynamic_fields_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     $message = '';
-    $dynamic_fields = get_option('bm_dynamic_fields', array());
+    
+    $active_tab = isset($_GET['tab']) && $_GET['tab'] === 'users' ? 'users' : 'books';
+    $dynamic_fields = $active_tab === 'users' ? get_option('bm_user_dynamic_fields', array()) : get_option('bm_dynamic_fields', array());
     if (!empty($dynamic_fields) && isset(array_values($dynamic_fields)[0]) && is_string(array_values($dynamic_fields)[0])) {
         $new_fields = array();
         foreach ($dynamic_fields as $name) $new_fields[$name] = array('type' => 'text');
         update_option('bm_dynamic_fields', $new_fields);
         $dynamic_fields = $new_fields;
     }
-    $system_fields = array('_bm_author' => 'Autor', '_bm_publisher' => 'Editora', '_bm_isbn' => 'ISBN', '_bm_location' => 'Localização', '_bm_copies' => 'Exemplares');
+    $system_fields = $active_tab === 'users' 
+        ? array() 
+        : array('_bm_author' => 'Autor', '_bm_publisher' => 'Editora', '_bm_isbn' => 'ISBN', '_bm_location' => 'Localização', '_bm_copies' => 'Exemplares');
     $saved_order = get_option('bm_field_order', array());
     $saved_visibility = get_option('bm_field_visibility', array());
+
+    $saved_order = $active_tab === 'users' ? get_option('bm_user_field_order', array()) : get_option('bm_field_order', array());
+    $saved_visibility = $active_tab === 'users' ? get_option('bm_user_field_visibility', array()) : get_option('bm_field_visibility', array());
 
     $all_fields = array();
     foreach ($saved_order as $key) {
@@ -532,53 +539,98 @@ function bm_render_dynamic_fields_page() {
     foreach ($dynamic_fields as $key => $info) { if (!isset($all_fields[$key])) $all_fields[$key] = array('label' => $key, 'type' => 'dynamic', 'field_type' => $info['type']); }
 
     if (isset($_POST['bm_dynamic_nonce']) && wp_verify_nonce($_POST['bm_dynamic_nonce'],'bm_dynamic_action')) {
+        $option_name = $active_tab === 'users' ? 'bm_user_dynamic_fields' : 'bm_dynamic_fields';
+        $meta_prefix = $active_tab === 'users' ? '_bm_user_' : '_bm_dynamic_';
+        
         if (isset($_POST['add_field']) && !empty($_POST['new_field_name'])) {
-            $fields = get_option('bm_dynamic_fields', array());
+            $fields = get_option($option_name, array());
             $name = sanitize_text_field($_POST['new_field_name']);
             $type = isset($_POST['new_field_type']) ? sanitize_text_field($_POST['new_field_type']) : 'text';
-            if (!isset($fields[$name])) { $fields[$name] = array('type' => $type); update_option('bm_dynamic_fields', $fields); $message = __('Campo adicionado.','book-manager'); }
+            $name_lower = mb_strtolower(trim($name));
+            
+            // Verificar duplicatas (case-insensitive)
+            $duplicate = false;
+            foreach ($fields as $existing_name => $info) {
+                if (mb_strtolower(trim($existing_name)) === $name_lower) {
+                    $duplicate = true;
+                    break;
+                }
+            }
+            
+            if ($duplicate) {
+                $message = __('Já existe um campo com este nome.','book-manager');
+            } elseif (!isset($fields[$name])) {
+                $fields[$name] = array('type' => $type);
+                update_option($option_name, $fields);
+                $message = __('Campo adicionado.','book-manager');
+            }
         }
         if (isset($_POST['remove_field']) && !empty($_POST['remove_field_name'])) {
-            $fields = get_option('bm_dynamic_fields', array());
+            $fields = get_option($option_name, array());
             unset($fields[sanitize_text_field($_POST['remove_field_name'])]);
-            update_option('bm_dynamic_fields', $fields);
+            update_option($option_name, $fields);
             $message = __('Campo removido.','book-manager');
         }
         if (isset($_POST['save_order'])) {
             $order = isset($_POST['field_order']) ? array_map('sanitize_text_field', $_POST['field_order']) : array();
             $rename_names = isset($_POST['field_rename']) ? array_map('sanitize_text_field', $_POST['field_rename']) : array();
-            $fields = get_option('bm_dynamic_fields', array());
+            $fields = get_option($option_name, array());
             foreach ($rename_names as $old_key => $new_name) {
                 if (!empty($new_name) && $old_key !== $new_name) {
                     if (isset($fields[$old_key])) {
                         $fields[$new_name] = $fields[$old_key];
                         unset($fields[$old_key]);
-                        $old_meta = '_bm_dynamic_' . sanitize_key($old_key);
-                        $new_meta = '_bm_dynamic_' . sanitize_key($new_name);
-                        $all_books = get_posts(array('post_type'=>'bm_book','posts_per_page'=>-1,'post_status'=>'any'));
-                        foreach ($all_books as $book) {
-                            $value = get_post_meta($book->ID, $old_meta, true);
-                            if (!empty($value)) {
-                                update_post_meta($book->ID, $new_meta, $value);
-                                delete_post_meta($book->ID, $old_meta);
+                        $old_meta = $meta_prefix . sanitize_key($old_key);
+                        $new_meta = $meta_prefix . sanitize_key($new_name);
+                        if ($active_tab === 'users') {
+                            $all_users = get_users(array('number' => -1));
+                            foreach ($all_users as $user) {
+                                $value = get_user_meta($user->ID, $old_meta, true);
+                                if (!empty($value)) {
+                                    update_user_meta($user->ID, $new_meta, $value);
+                                    delete_user_meta($user->ID, $old_meta);
+                                }
+                            }
+                        } else {
+                            $all_books = get_posts(array('post_type'=>'bm_book','posts_per_page'=>-1,'post_status'=>'any'));
+                            foreach ($all_books as $book) {
+                                $value = get_post_meta($book->ID, $old_meta, true);
+                                if (!empty($value)) {
+                                    update_post_meta($book->ID, $new_meta, $value);
+                                    delete_post_meta($book->ID, $old_meta);
+                                }
                             }
                         }
                     }
                 }
             }
-            update_option('bm_dynamic_fields', $fields);
-            update_option('bm_field_order', $order);
+            update_option($option_name, $fields);
+            
+            // Preservar ordem: campos renomeados mantêm posição
+            $final_order = array();
+            foreach ($order as $key) {
+                // Se foi renomeado, usa o novo nome
+                if (isset($rename_names[$key]) && !empty($rename_names[$key]) && $key !== $rename_names[$key]) {
+                    $final_order[] = $rename_names[$key];
+                } else {
+                    $final_order[] = $key;
+                }
+            }
+            
+            $order_option = $active_tab === 'users' ? 'bm_user_field_order' : 'bm_field_order';
+            update_option($order_option, $final_order);
             $all_keys = array_keys($all_fields);
             $visibility = array();
             foreach ($all_keys as $k) {
                 $visibility[$k] = isset($_POST['field_visible']) && in_array($k, (array)$_POST['field_visible']);
             }
-            update_option('bm_field_visibility', $visibility);
+            $visibility_option = $active_tab === 'users' ? 'bm_user_field_visibility' : 'bm_field_visibility';
+            update_option($visibility_option, $visibility);
             $message = __('Alterações salvas.','book-manager');
         }
-        $dynamic_fields = get_option('bm_dynamic_fields', array());
-        $saved_order = get_option('bm_field_order', array());
-        $saved_visibility = get_option('bm_field_visibility', array());
+        $dynamic_fields = get_option($active_tab === 'users' ? 'bm_user_dynamic_fields' : 'bm_dynamic_fields', array());
+        $saved_order = get_option($active_tab === 'users' ? 'bm_user_field_order' : 'bm_field_order', array());
+        $saved_visibility = get_option($active_tab === 'users' ? 'bm_user_field_visibility' : 'bm_field_visibility', array());
         $all_fields = array();
         foreach ($saved_order as $key) {
             if (isset($system_fields[$key])) $all_fields[$key] = array('label' => $system_fields[$key], 'type' => 'system');
@@ -590,12 +642,19 @@ function bm_render_dynamic_fields_page() {
     ?>
     <div class="wrap">
         <h1><?php _e('Gerenciar Campos','book-manager'); ?></h1>
+        
+        <nav class="nav-tab-wrapper" style="margin-bottom:15px;">
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_dynamic_fields&tab=books'); ?>" class="nav-tab <?php echo $active_tab === 'books' ? 'nav-tab-active' : ''; ?>">📚 <?php _e('Campos de Livros','book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_dynamic_fields&tab=users'); ?>" class="nav-tab <?php echo $active_tab === 'users' ? 'nav-tab-active' : ''; ?>">👤 <?php _e('Campos de Alunos','book-manager'); ?></a>
+        </nav>
+        
         <?php if ($message): ?><div class="notice notice-success is-dismissible"><p><?php echo esc_html($message); ?></p></div><?php endif; ?>
         <h2><?php _e('Adicionar novo campo dinâmico','book-manager'); ?></h2>
         <form method="post"><?php wp_nonce_field('bm_dynamic_action','bm_dynamic_nonce'); ?>
             <input type="text" name="new_field_name" placeholder="<?php _e('Nome do campo','book-manager'); ?>" />
             <select name="new_field_type" style="margin-left:5px;">
                 <option value="text"><?php _e('Texto curto','book-manager'); ?></option>
+                <option value="email"><?php _e('E-mail','book-manager'); ?></option>
                 <option value="textarea"><?php _e('Texto longo','book-manager'); ?></option>
             </select>
             <input type="submit" name="add_field" class="button" value="<?php _e('Adicionar','book-manager'); ?>" />
@@ -618,13 +677,26 @@ function bm_render_dynamic_fields_page() {
                                     <input type="text" name="field_rename[<?php echo esc_attr($key); ?>]" value="<?php echo esc_attr($info['label']); ?>" style="width:100%;" />
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo (isset($info['field_type']) && $info['field_type'] === 'textarea') ? __('Texto longo','book-manager') : __('Texto curto','book-manager'); ?></td>
+                            <td>
+                                <?php 
+                                $ft = isset($info['field_type']) ? $info['field_type'] : 'text';
+                                if ($ft === 'textarea') _e('Texto longo','book-manager');
+                                elseif ($ft === 'email') _e('E-mail','book-manager');
+                                else _e('Texto curto','book-manager');
+                                ?>
+                            </td>
                             <td><label><input type="checkbox" name="field_visible[]" value="<?php echo esc_attr($key); ?>" <?php checked($is_visible); ?> /> <?php _e('Mostrar','book-manager'); ?></label></td>
                             <td>
                                 <?php if ($info['type'] === 'dynamic'): ?>
-                                    <button type="submit" name="remove_field" class="button button-small" onclick="return confirm('<?php _e('Remover este campo?','book-manager'); ?>');">
-                                        <input type="hidden" name="remove_field_name" value="<?php echo esc_attr($key); ?>" /><?php _e('Remover','book-manager'); ?>
-                                    </button>
+                                    <?php 
+                                    $is_locked = isset($dynamic_fields[$key]['locked']) && $dynamic_fields[$key]['locked'];
+                                    if ($is_locked): ?>
+                                        <span style="color:#999;">🔒 <?php _e('Protegido','book-manager'); ?></span>
+                                    <?php else: ?>
+                                        <button type="submit" name="remove_field" class="button button-small" onclick="return confirm('<?php _e('Remover este campo?','book-manager'); ?>');">
+                                            <input type="hidden" name="remove_field_name" value="<?php echo esc_attr($key); ?>" /><?php _e('Remover','book-manager'); ?>
+                                        </button>
+                                    <?php endif; ?>
                                 <?php else: ?><span style="color:#999;">—</span><?php endif; ?>
                             </td>
                         </tr>
@@ -708,6 +780,875 @@ function bm_render_api_settings_page() {
     </div>
     <?php
 }
+
+// ==========================================
+// FASE 12K: ATENDIMENTO (EMPRÉSTIMO RÁPIDO NO BALCÃO)
+// ==========================================
+function bm_add_service_page() {
+    add_submenu_page('edit.php?post_type=bm_book', __('Atendimento', 'book-manager'), __('Atendimento', 'book-manager'), 'edit_bm_books', 'bm_service', 'bm_render_service_page');
+}
+add_action('admin_menu', 'bm_add_service_page');
+
+function bm_render_service_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $nonce = wp_create_nonce('bm_service_nonce');
+    ?>
+    <div class="wrap" style="max-width:1100px;">
+        <h1>📋 <?php _e('Atendimento — Balcão', 'book-manager'); ?></h1>
+        
+        <!-- Campo de código de barras (leitor) -->
+        <div style="background:#f0f7ff;padding:10px 15px;border-radius:6px;margin-bottom:15px;border-left:4px solid #2196f3;">
+            <label style="font-weight:bold;">📷 <?php _e('Leitor de Código de Barras', 'book-manager'); ?></label>
+            <input type="text" id="bm-barcode-input" placeholder="<?php _e('Escaneie o ISBN ou digite...', 'book-manager'); ?>" style="width:100%;padding:10px;font-size:16px;margin-top:5px;border:2px solid #2196f3;border-radius:4px;" autofocus />
+            <p class="description" style="margin:5px 0 0 0;"><?php _e('Escaneie o código de barras ou digite o ISBN e pressione Enter para buscar o livro.', 'book-manager'); ?></p>
+        </div>
+        
+        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+            <!-- Coluna do Livro -->
+            <div style="flex:1;min-width:350px;background:#fff;padding:20px;border-radius:8px;border:1px solid #ddd;">
+                <h2 style="margin-top:0;">📖 <?php _e('Livro', 'book-manager'); ?></h2>
+                <div style="display:flex;gap:10px;margin-bottom:10px;">
+                    <input type="text" id="bm-book-search" placeholder="<?php _e('Buscar por título, autor ou ISBN...', 'book-manager'); ?>" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:4px;" />
+                    <button type="button" id="bm-book-search-btn" class="button">🔍</button>
+                </div>
+                <div id="bm-book-result" style="min-height:100px;padding:10px;background:#f9f9f9;border-radius:4px;">
+                    <p style="color:#999;"><?php _e('Busque um livro ou escaneie o código de barras.', 'book-manager'); ?></p>
+                </div>
+                <div id="bm-book-queue" style="margin-top:10px;display:none;"></div>
+            </div>
+            
+            <!-- Coluna do Aluno -->
+            <div style="flex:1;min-width:350px;background:#fff;padding:20px;border-radius:8px;border:1px solid #ddd;">
+                <h2 style="margin-top:0;">👤 <?php _e('Aluno', 'book-manager'); ?></h2>
+                <div style="display:flex;gap:10px;margin-bottom:10px;">
+                    <input type="text" id="bm-student-search" placeholder="<?php _e('Buscar por nome ou e-mail...', 'book-manager'); ?>" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:4px;" />
+                    <button type="button" id="bm-student-search-btn" class="button">🔍</button>
+                </div>
+                <div id="bm-student-result" style="min-height:100px;padding:10px;background:#f9f9f9;border-radius:4px;">
+                    <p style="color:#999;"><?php _e('Busque um aluno.', 'book-manager'); ?></p>
+                </div>
+                <div style="margin-top:10px;">
+                    <button type="button" id="bm-new-student-btn" class="button" style="width:100%;">➕ <?php _e('Cadastrar Novo Aluno', 'book-manager'); ?></button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Área de ação -->
+        <div id="bm-action-area" style="margin-top:20px;text-align:center;display:none;">
+            <button type="button" id="bm-loan-btn" class="button button-primary" style="font-size:18px;padding:15px 40px;">📤 <?php _e('EMPRESTAR', 'book-manager'); ?></button>
+            <button type="button" id="bm-return-btn" class="button" style="font-size:18px;padding:15px 40px;background:#46b450;color:#fff;border-color:#46b450;">📥 <?php _e('DEVOLVER', 'book-manager'); ?></button>
+            <button type="button" id="bm-renew-btn" class="button" style="font-size:16px;padding:12px 30px;background:#ffc107;color:#111;border-color:#ffc107;">🔄 <?php _e('Renovar +7 dias', 'book-manager'); ?></button>
+        </div>
+        
+        <!-- Área de resultado da ação -->
+        <div id="bm-action-result" style="margin-top:15px;display:none;"></div>
+    </div>
+    
+    <!-- Modal de cadastro rápido de aluno -->
+    <div id="bm-quick-register-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#fff;padding:25px;border-radius:8px;max-width:450px;width:90%;max-height:80vh;overflow-y:auto;">
+            <h2 style="margin-top:0;" id="bm-modal-title">➕ <?php _e('Cadastro Rápido de Aluno', 'book-manager'); ?></h2>
+            <form id="bm-quick-register-form" onsubmit="return false;">
+                <?php wp_nonce_field('bm_service_nonce', 'bm_quick_register_nonce'); ?>
+                <p>
+                    <label><strong><?php _e('Nome completo', 'book-manager'); ?> *</strong></label>
+                    <input type="text" name="bm_quick_name" required style="width:100%;padding:8px;margin-top:4px;" />
+                </p>
+                <p>
+                    <label><strong><?php _e('E-mail', 'book-manager'); ?> *</strong></label>
+                    <input type="email" name="bm_quick_email" required style="width:100%;padding:8px;margin-top:4px;" />
+                </p>
+                <p>
+                    <label><strong><?php _e('Telefone', 'book-manager'); ?></strong></label>
+                    <input type="text" name="bm_quick_phone" style="width:100%;padding:8px;margin-top:4px;" placeholder="5511999999999" />
+                </p>
+                <?php
+                $user_fields = get_option('bm_user_dynamic_fields', array());
+                $user_field_order = get_option('bm_user_field_order', array());
+                $ordered_fields = array();
+                foreach ($user_field_order as $key) {
+                    if (isset($user_fields[$key])) $ordered_fields[$key] = $user_fields[$key];
+                }
+                foreach ($user_fields as $key => $info) {
+                    if (!isset($ordered_fields[$key])) $ordered_fields[$key] = $info;
+                }
+                foreach ($ordered_fields as $field_name => $info):
+                    $name_lower = mb_strtolower(trim($field_name));
+                    if (in_array($name_lower, array('nome completo', 'e-mail', 'email', 'telefone'))) continue;
+                    $meta_key = '_bm_user_' . sanitize_key($field_name);
+                ?>
+                <p>
+                    <label><strong><?php echo esc_html($field_name); ?></strong></label>
+                    <input type="text" name="<?php echo esc_attr($meta_key); ?>" style="width:100%;padding:8px;margin-top:4px;" />
+                </p>
+                <?php endforeach; ?>
+                <p style="margin-top:15px;display:flex;gap:10px;">
+                    <button type="submit" class="button button-primary" style="flex:1;" id="bm-modal-submit-btn"><?php _e('Cadastrar', 'book-manager'); ?></button>
+                    <button type="button" class="button" onclick="document.getElementById('bm-quick-register-modal').style.display='none'" style="flex:1;"><?php _e('Cancelar', 'book-manager'); ?></button>
+                </p>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal de danos na devolução -->
+    <div id="bm-damage-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#fff;padding:25px;border-radius:8px;max-width:400px;width:90%;">
+            <h3 style="margin-top:0;">📋 <?php _e('Registro de Devolução', 'book-manager'); ?></h3>
+            <p>
+                <label><strong><?php _e('Estado do livro:', 'book-manager'); ?></strong></label>
+                <select id="bm-damage-status" style="width:100%;padding:8px;margin-top:4px;">
+                    <option value="good">✅ <?php _e('Bom', 'book-manager'); ?></option>
+                    <option value="acceptable">⚠️ <?php _e('Aceitável', 'book-manager'); ?></option>
+                    <option value="damaged">❌ <?php _e('Danificado', 'book-manager'); ?></option>
+                </select>
+            </p>
+            <p>
+                <label><strong><?php _e('Observação:', 'book-manager'); ?></strong></label>
+                <textarea id="bm-damage-note" rows="3" style="width:100%;margin-top:4px;" placeholder="<?php _e('Descreva o dano...', 'book-manager'); ?>"></textarea>
+            </p>
+            <p style="display:flex;gap:10px;">
+                <button type="button" id="bm-confirm-return" class="button button-primary" style="flex:1;"><?php _e('Confirmar Devolução', 'book-manager'); ?></button>
+                <button type="button" class="button" onclick="document.getElementById('bm-damage-modal').style.display='none'" style="flex:1;"><?php _e('Cancelar', 'book-manager'); ?></button>
+            </p>
+        </div>
+    </div>
+    
+    <script>
+    var bmNonce = '<?php echo $nonce; ?>';
+    var bmAjaxUrl = '<?php echo admin_url("admin-ajax.php"); ?>';
+    var bmSelectedBook = null;
+    var bmSelectedStudent = null;
+    
+    // Leitor de código de barras
+    document.getElementById('bm-barcode-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            var isbn = this.value.trim();
+            if (isbn) bmSearchBookByISBN(isbn);
+        }
+    });
+    
+    // Buscar livro
+    document.getElementById('bm-book-search-btn').addEventListener('click', function() {
+        var query = document.getElementById('bm-book-search').value.trim();
+        if (query) bmSearchBook(query);
+    });
+    document.getElementById('bm-book-search').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            var query = this.value.trim();
+            if (query) bmSearchBook(query);
+        }
+    });
+    
+    // Buscar aluno
+    document.getElementById('bm-student-search-btn').addEventListener('click', function() {
+        var query = document.getElementById('bm-student-search').value.trim();
+        if (query) bmSearchStudent(query);
+    });
+    document.getElementById('bm-student-search').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            var query = this.value.trim();
+            if (query) bmSearchStudent(query);
+        }
+    });
+    
+    // Modal cadastro rápido
+    document.getElementById('bm-new-student-btn').addEventListener('click', function() {
+        document.getElementById('bm-quick-register-modal').style.display = 'flex';
+    });
+    
+    function bmSearchBookByISBN(isbn) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', bmAjaxUrl);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            try {
+                var r = JSON.parse(xhr.responseText);
+                if (r.found) {
+                    bmDisplayBook(r.book);
+                } else if (r.can_register) {
+                    bmShowBookNotFound(isbn, r.isbn);
+                } else {
+                    document.getElementById('bm-book-result').innerHTML = '<p style="color:#dc3545;">' + r.message + '</p>';
+                }
+            } catch(e) {
+                document.getElementById('bm-book-result').innerHTML = '<p style="color:#dc3545;">Erro na busca.</p>';
+            }
+        };
+        xhr.send('action=bm_service_search_book&isbn=' + encodeURIComponent(isbn) + '&nonce=' + bmNonce);
+    }
+    
+    function bmSearchBook(query) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', bmAjaxUrl);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            try {
+                var r = JSON.parse(xhr.responseText);
+                if (r.found) {
+                    bmDisplayBook(r.book);
+                } else {
+                    document.getElementById('bm-book-result').innerHTML = '<p style="color:#dc3545;">' + r.message + '</p>';
+                }
+            } catch(e) {
+                document.getElementById('bm-book-result').innerHTML = '<p style="color:#dc3545;">Erro na busca.</p>';
+            }
+        };
+        xhr.send('action=bm_service_search_book&query=' + encodeURIComponent(query) + '&nonce=' + bmNonce);
+    }
+    
+    function bmDisplayBook(book) {
+        bmSelectedBook = book;
+        var stockColor = book.available > 0 ? '#46b450' : '#dc3545';
+        var html = '<div style="padding:10px;">';
+        html += '<h3 style="margin:0 0 5px 0;">' + book.title + '</h3>';
+        if (book.author) html += '<p style="margin:3px 0;"><strong>Autor:</strong> ' + book.author + '</p>';
+        if (book.cdu) html += '<p style="margin:3px 0;"><strong>Classificação:</strong> ' + book.cdu + '</p>';
+        html += '<p style="margin:3px 0;"><strong>Disponível:</strong> <span style="color:' + stockColor + ';font-weight:bold;">' + book.available + '/' + book.total + '</span></p>';
+        if (book.consulta_local) html += '<p style="margin:3px 0;color:#dc3545;">📌 <strong>Consulta local</strong> — não pode sair da biblioteca</p>';
+        if (book.overdue) html += '<p style="margin:3px 0;color:#dc3545;">⚠️ Este livro está com devolução atrasada</p>';
+        html += '</div>';
+        
+        document.getElementById('bm-book-result').innerHTML = html;
+        
+        // Mostrar fila de espera
+        if (book.queue && book.queue.length > 0) {
+            var qHtml = '<div style="margin-top:10px;padding:10px;background:#fff8e1;border-radius:4px;"><strong>📋 Fila de espera:</strong><ol style="margin:5px 0;padding-left:20px;">';
+            book.queue.forEach(function(q) {
+                qHtml += '<li>' + q.name + ' (desde ' + q.date + ')</li>';
+            });
+            qHtml += '</ol></div>';
+            document.getElementById('bm-book-queue').style.display = 'block';
+            document.getElementById('bm-book-queue').innerHTML = qHtml;
+        } else {
+            document.getElementById('bm-book-queue').style.display = 'none';
+        }
+        
+        bmCheckActionReady();
+    }
+    
+    function bmShowBookNotFound(isbn, cleanIsbn) {
+        var html = '<p style="color:#dc3545;">Livro não encontrado no acervo.</p>';
+        html += '<button type="button" class="button button-primary" onclick="bmRegisterBookByISBN(\'' + cleanIsbn + '\')">📚 Cadastrar este livro via Google Books</button>';
+        document.getElementById('bm-book-result').innerHTML = html;
+    }
+    
+    function bmSearchStudent(query) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', bmAjaxUrl);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            try {
+                var r = JSON.parse(xhr.responseText);
+                if (r.found) {
+                    bmDisplayStudent(r.student);
+                } else if (r.multiple) {
+                    bmDisplayStudentList(r.students);
+                } else {
+                    document.getElementById('bm-student-result').innerHTML = '<p style="color:#dc3545;">' + r.message + '</p>';
+                }
+            } catch(e) {
+                document.getElementById('bm-student-result').innerHTML = '<p style="color:#dc3545;">Erro na busca.</p>';
+            }
+        };
+        xhr.send('action=bm_service_search_student&query=' + encodeURIComponent(query) + '&nonce=' + bmNonce);
+    }
+    
+    function bmDisplayStudent(student) {
+        bmSelectedStudent = student;
+        var html = '<div style="padding:10px;">';
+        html += '<h3 style="margin:0 0 5px 0;"><a href="<?php echo admin_url("edit.php?post_type=bm_book&page=bm_student_detail"); ?>&student_id=' + student.id + '" style="text-decoration:none;color:#111;" target="_blank">' + student.name + '</a> <button type="button" class="button button-small" onclick="bmEditStudent(' + student.id + ')" style="margin-left:10px;font-size:11px;">✏️ Editar</button></h3>';
+        html += '<p style="margin:3px 0;"><strong>E-mail:</strong> ' + student.email + '</p>';
+        if (student.group) html += '<p style="margin:3px 0;"><strong>Grupo:</strong> ' + student.group + '</p>';
+        html += '<p style="margin:3px 0;"><strong>Empréstimos ativos:</strong> ' + student.active_loans + '/' + student.max_loans + '</p>';
+        if (student.has_overdue) html += '<p style="margin:3px 0;color:#dc3545;">⚠️ <strong>Possui livro em atraso</strong></p>';
+        if (student.blocked) html += '<p style="margin:3px 0;color:#dc3545;">🚫 <strong>Empréstimo bloqueado</strong> — aluno com atraso</p>';
+        
+        if (student.recent_books && student.recent_books.length > 0) {
+            html += '<p style="margin:5px 0 3px 0;"><strong>Últimos livros:</strong></p>';
+            student.recent_books.forEach(function(b) {
+                html += '<span style="display:inline-block;background:#e3f2fd;padding:2px 8px;border-radius:10px;font-size:11px;margin:2px;">' + b + '</span> ';
+            });
+        }
+        html += '</div>';
+        document.getElementById('bm-student-result').innerHTML = html;
+        bmCheckActionReady();
+    }
+    
+    function bmDisplayStudentList(students) {
+        var html = '<p style="margin:0 0 10px 0;">Múltiplos alunos encontrados:</p>';
+        students.forEach(function(s) {
+            html += '<div style="padding:8px;margin:3px 0;background:#fff;border:1px solid #eee;border-radius:4px;cursor:pointer;" onclick="bmSelectStudent(' + s.id + ')">';
+            html += '<strong>' + s.name + '</strong> — ' + s.email;
+            if (s.group) html += ' | ' + s.group;
+            html += '</div>';
+        });
+        document.getElementById('bm-student-result').innerHTML = html;
+    }
+    
+    function bmSelectStudent(id) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', bmAjaxUrl);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            var r = JSON.parse(xhr.responseText);
+            if (r.found) bmDisplayStudent(r.student);
+        };
+        xhr.send('action=bm_service_search_student&student_id=' + id + '&nonce=' + bmNonce);
+    }
+    
+    function bmCheckActionReady() {
+        if (bmSelectedBook && bmSelectedStudent) {
+            document.getElementById('bm-action-area').style.display = 'block';
+        }
+    }
+    
+    // Ações
+    document.getElementById('bm-loan-btn').addEventListener('click', function() {
+        if (!bmSelectedBook || !bmSelectedStudent) return;
+        if (bmSelectedStudent.blocked) {
+            alert('Aluno com atraso — empréstimo bloqueado.');
+            return;
+        }
+        if (bmSelectedBook.consulta_local) {
+            alert('Este livro é de consulta local e não pode ser emprestado.');
+            return;
+        }
+        if (bmSelectedBook.available <= 0) {
+            alert('Não há exemplares disponíveis.');
+            return;
+        }
+        var days = prompt('Prazo do empréstimo (dias):', '14');
+        if (!days) return;
+        
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', bmAjaxUrl);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            var r = JSON.parse(xhr.responseText);
+            var area = document.getElementById('bm-action-result');
+            area.style.display = 'block';
+            area.innerHTML = '<div class="notice notice-' + (r.success ? 'success' : 'error') + '"><p>' + r.message + '</p></div>';
+            if (r.success) {
+                bmSelectedBook = null; bmSelectedStudent = null;
+                document.getElementById('bm-book-result').innerHTML = '<p style="color:#999;">Busque um livro.</p>';
+                document.getElementById('bm-student-result').innerHTML = '<p style="color:#999;">Busque um aluno.</p>';
+                document.getElementById('bm-action-area').style.display = 'none';
+                document.getElementById('bm-book-queue').style.display = 'none';
+            }
+        };
+        xhr.send('action=bm_service_loan&book_id=' + bmSelectedBook.id + '&user_id=' + bmSelectedStudent.id + '&days=' + days + '&nonce=' + bmNonce);
+    });
+    
+    document.getElementById('bm-return-btn').addEventListener('click', function() {
+        if (!bmSelectedBook || !bmSelectedStudent) return;
+        document.getElementById('bm-damage-modal').style.display = 'flex';
+    });
+    
+    document.getElementById('bm-confirm-return').addEventListener('click', function() {
+        var condition = document.getElementById('bm-damage-status').value;
+        var note = document.getElementById('bm-damage-note').value;
+        document.getElementById('bm-damage-modal').style.display = 'none';
+        
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', bmAjaxUrl);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            var r = JSON.parse(xhr.responseText);
+            var area = document.getElementById('bm-action-result');
+            area.style.display = 'block';
+            area.innerHTML = '<div class="notice notice-' + (r.success ? 'success' : 'error') + '"><p>' + r.message + '</p></div>';
+            if (r.success) {
+                bmSelectedBook = null; bmSelectedStudent = null;
+                document.getElementById('bm-book-result').innerHTML = '<p style="color:#999;">Busque um livro.</p>';
+                document.getElementById('bm-student-result').innerHTML = '<p style="color:#999;">Busque um aluno.</p>';
+                document.getElementById('bm-action-area').style.display = 'none';
+                document.getElementById('bm-book-queue').style.display = 'none';
+            }
+        };
+        xhr.send('action=bm_service_return&book_id=' + bmSelectedBook.id + '&user_id=' + bmSelectedStudent.id + '&condition=' + condition + '&note=' + encodeURIComponent(note) + '&nonce=' + bmNonce);
+    });
+    
+    document.getElementById('bm-renew-btn').addEventListener('click', function() {
+        if (!bmSelectedBook || !bmSelectedStudent) return;
+        var days = prompt('Renovar por quantos dias?', '7');
+        if (!days) return;
+        
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', bmAjaxUrl);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            var r = JSON.parse(xhr.responseText);
+            var area = document.getElementById('bm-action-result');
+            area.style.display = 'block';
+            area.innerHTML = '<div class="notice notice-' + (r.success ? 'success' : 'error') + '"><p>' + r.message + '</p></div>';
+        };
+        xhr.send('action=bm_service_renew&book_id=' + bmSelectedBook.id + '&user_id=' + bmSelectedStudent.id + '&days=' + days + '&nonce=' + bmNonce);
+    });
+    
+    // Cadastro/Edição rápida de aluno
+    document.getElementById('bm-quick-register-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var form = this;
+        var editId = form.getAttribute('data-edit-id');
+        
+        var params = 'nonce=' + bmNonce;
+        params += '&name=' + encodeURIComponent(form.querySelector('[name="bm_quick_name"]').value);
+        params += '&email=' + encodeURIComponent(form.querySelector('[name="bm_quick_email"]').value);
+        params += '&phone=' + encodeURIComponent(form.querySelector('[name="bm_quick_phone"]').value);
+        
+        var dynamicInputs = form.querySelectorAll('input[name^="_bm_user_"]');
+        dynamicInputs.forEach(function(input) {
+            params += '&' + input.name + '=' + encodeURIComponent(input.value);
+        });
+        
+        if (editId) {
+            params = 'action=bm_service_edit_student&student_id=' + editId + '&' + params;
+        } else {
+            params = 'action=bm_service_quick_register&' + params;
+        }
+        
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', bmAjaxUrl);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            var r = JSON.parse(xhr.responseText);
+            if (r.success) {
+                document.getElementById('bm-quick-register-modal').style.display = 'none';
+                form.removeAttribute('data-edit-id');
+                document.getElementById('bm-modal-title').textContent = '➕ Cadastro Rápido de Aluno';
+                document.getElementById('bm-modal-submit-btn').textContent = 'Cadastrar';
+                if (editId) {
+                    bmSelectStudent(editId);
+                } else {
+                    bmSelectedStudent = { id: r.student_id, name: r.student_name };
+                    document.getElementById('bm-student-result').innerHTML = '<h3>' + r.student_name + '</h3><p style="color:green;">' + r.message + '</p>';
+                    bmCheckActionReady();
+                }
+            } else {
+                alert(r.message);
+            }
+        };
+        xhr.send(params);
+    });
+    
+    // Cadastro de livro por ISBN
+    function bmRegisterBookByISBN(isbn) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', bmAjaxUrl);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            var r = JSON.parse(xhr.responseText);
+            if (r.success) {
+                document.getElementById('bm-book-result').innerHTML = '<div style="padding:10px;"><h3>' + r.book_title + '</h3><p style="color:green;">' + r.message + '</p></div>';
+                bmSelectedBook = { id: r.book_id, title: r.book_title, author: r.book_author, available: 1, total: 1, consulta_local: false };
+                bmCheckActionReady();
+            } else {
+                alert(r.message);
+            }
+        };
+        xhr.send('action=bm_service_register_book_by_isbn&isbn=' + isbn + '&nonce=' + bmNonce);
+    }
+    
+    // Editar aluno
+    function bmEditStudent(id) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', bmAjaxUrl);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            var r = JSON.parse(xhr.responseText);
+            if (r.found) {
+                var s = r.student;
+                var form = document.querySelector('#bm-quick-register-form');
+                form.querySelector('[name="bm_quick_name"]').value = s.name || '';
+                form.querySelector('[name="bm_quick_email"]').value = s.email || '';
+                form.querySelector('[name="bm_quick_phone"]').value = s.phone || '';
+                if (s.dynamic_fields) {
+                    for (var key in s.dynamic_fields) {
+                        var input = form.querySelector('[name="' + key + '"]');
+                        if (input) input.value = s.dynamic_fields[key] || '';
+                    }
+                }
+                form.setAttribute('data-edit-id', id);
+                document.getElementById('bm-modal-title').textContent = '✏️ Editar Aluno';
+                document.getElementById('bm-modal-submit-btn').textContent = 'Salvar Alterações';
+                document.getElementById('bm-quick-register-modal').style.display = 'flex';
+            }
+        };
+        xhr.send('action=bm_service_search_student&student_id=' + id + '&nonce=' + bmNonce);
+    }
+    </script>
+    <?php
+}
+
+// ==========================================
+// FASE 12J: ADMINISTRAÇÃO DE ALUNOS
+// ==========================================
+function bm_add_students_page() {
+    add_submenu_page('edit.php?post_type=bm_book', __('Alunos', 'book-manager'), __('Alunos', 'book-manager'), 'edit_bm_books', 'bm_students', 'bm_render_students_page');
+}
+add_action('admin_menu', 'bm_add_students_page');
+
+function bm_render_students_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $msg = '';
+    
+    // Ações em lote
+    if (isset($_POST['bm_bulk_action']) && wp_verify_nonce($_POST['bm_students_nonce'], 'bm_students_action')) {
+        $action = sanitize_text_field($_POST['bm_bulk_action']);
+        $user_ids = isset($_POST['user_ids']) ? array_map('intval', $_POST['user_ids']) : array();
+        
+        if (!empty($user_ids) && in_array($action, array('approve', 'suspend', 'delete'))) {
+            $count = 0;
+            foreach ($user_ids as $uid) {
+                $user = get_userdata($uid);
+                if (!$user || user_can($uid, 'manage_options')) continue;
+                
+                if ($action === 'approve') {
+                    $requested_role = get_user_meta($uid, 'bm_requested_role', true) ?: 'bm_student';
+                    wp_update_user(array('ID' => $uid, 'role' => $requested_role));
+                    update_user_meta($uid, 'bm_approval_status', 'approved');
+                    $count++;
+                } elseif ($action === 'suspend') {
+                    wp_update_user(array('ID' => $uid, 'role' => 'subscriber'));
+                    update_user_meta($uid, 'bm_approval_status', 'suspended');
+                    $count++;
+                } elseif ($action === 'delete') {
+                    if (get_current_user_id() !== $uid) {
+                        wp_delete_user($uid);
+                        $count++;
+                    }
+                }
+            }
+            $msg = '<div class="notice notice-success"><p>' . sprintf(__('%d aluno(s) afetado(s).', 'book-manager'), $count) . '</p></div>';
+        }
+    }
+    
+    // Filtros
+    $filter_status = isset($_GET['filter_status']) ? sanitize_text_field($_GET['filter_status']) : '';
+    $filter_group = isset($_GET['filter_group']) ? sanitize_text_field($_GET['filter_group']) : '';
+    $filter_search = isset($_GET['filter_search']) ? sanitize_text_field($_GET['filter_search']) : '';
+    $filter_overdue = isset($_GET['filter_overdue']) ? true : false;
+    
+    $args = array('role' => 'bm_student', 'number' => 50);
+    if ($filter_search) $args['search'] = '*' . $filter_search . '*';
+    
+    if ($filter_status === 'pending') {
+        $args['meta_key'] = 'bm_approval_status';
+        $args['meta_value'] = 'pending';
+    } elseif ($filter_status === 'suspended') {
+        $args['role'] = 'subscriber';
+        $args['meta_key'] = 'bm_approval_status';
+        $args['meta_value'] = 'suspended';
+    }
+    
+    if ($filter_group) {
+        $args['meta_query'][] = array('key' => 'bm_student_group', 'value' => $filter_group, 'compare' => 'LIKE');
+    }
+    
+    $students = get_users($args);
+    
+    // Se filtro por atraso, filtrar manualmente
+    if ($filter_overdue) {
+        $filtered = array();
+        foreach ($students as $student) {
+            $loan_history = get_user_meta($student->ID, '_bm_loan_history', true) ?: array();
+            $has_overdue = false;
+            foreach ($loan_history as $loan) {
+                if ($loan['status'] === 'active' && isset($loan['due_date']) && strtotime($loan['due_date']) < time()) {
+                    $has_overdue = true;
+                    break;
+                }
+            }
+            if ($has_overdue) $filtered[] = $student;
+        }
+        $students = $filtered;
+    }
+    
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Alunos', 'book-manager'); ?></h1>
+        <?php echo $msg; ?>
+        
+        <form method="get" style="margin-bottom:15px;">
+            <input type="hidden" name="post_type" value="bm_book">
+            <input type="hidden" name="page" value="bm_students">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
+                <div>
+                    <label><?php _e('Buscar', 'book-manager'); ?></label>
+                    <input type="text" name="filter_search" value="<?php echo esc_attr($filter_search); ?>" placeholder="<?php _e('Nome ou e-mail', 'book-manager'); ?>" style="padding:4px 8px;" />
+                </div>
+                <div>
+                    <label><?php _e('Status', 'book-manager'); ?></label>
+                    <select name="filter_status" style="padding:4px 8px;">
+                        <option value=""><?php _e('Todos', 'book-manager'); ?></option>
+                        <option value="approved" <?php selected($filter_status, 'approved'); ?>><?php _e('Aprovado', 'book-manager'); ?></option>
+                        <option value="pending" <?php selected($filter_status, 'pending'); ?>><?php _e('Pendente', 'book-manager'); ?></option>
+                        <option value="suspended" <?php selected($filter_status, 'suspended'); ?>><?php _e('Suspenso', 'book-manager'); ?></option>
+                    </select>
+                </div>
+                <div>
+                    <label><?php _e('Grupo', 'book-manager'); ?></label>
+                    <input type="text" name="filter_group" value="<?php echo esc_attr($filter_group); ?>" placeholder="<?php _e('Ex: 1º Ano', 'book-manager'); ?>" style="padding:4px 8px;width:80px;" />
+                </div>
+                <div>
+                    <label><input type="checkbox" name="filter_overdue" <?php checked($filter_overdue); ?> /> <?php _e('Apenas em atraso', 'book-manager'); ?></label>
+                </div>
+                <div>
+                    <button type="submit" class="button"><?php _e('Filtrar', 'book-manager'); ?></button>
+                    <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students'); ?>" class="button"><?php _e('Limpar', 'book-manager'); ?></a>
+                </div>
+            </div>
+        </form>
+        
+        <form method="post">
+            <?php wp_nonce_field('bm_students_action', 'bm_students_nonce'); ?>
+            <div style="margin-bottom:10px;">
+                <select name="bm_bulk_action" style="padding:4px 8px;">
+                    <option value=""><?php _e('— Ações em lote —', 'book-manager'); ?></option>
+                    <option value="approve"><?php _e('Aprovar', 'book-manager'); ?></option>
+                    <option value="suspend"><?php _e('Suspender', 'book-manager'); ?></option>
+                    <option value="delete"><?php _e('Excluir', 'book-manager'); ?></option>
+                </select>
+                <button type="submit" class="button" onclick="return confirm('<?php _e('Confirmar ação em lote?', 'book-manager'); ?>')"><?php _e('Aplicar', 'book-manager'); ?></button>
+            </div>
+            
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th style="width:30px;"><input type="checkbox" id="bm-select-all-students" /></th>
+                        <th><?php _e('Aluno', 'book-manager'); ?></th>
+                        <th><?php _e('E-mail', 'book-manager'); ?></th>
+                        <th><?php _e('Status', 'book-manager'); ?></th>
+                        <th><?php _e('Grupo', 'book-manager'); ?></th>
+                        <th><?php _e('XP', 'book-manager'); ?></th>
+                        <th><?php _e('Empréstimos', 'book-manager'); ?></th>
+                        <th><?php _e('Ações', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($students)): ?>
+                        <tr><td colspan="8"><?php _e('Nenhum aluno encontrado.', 'book-manager'); ?></td></tr>
+                    <?php else: ?>
+                        <?php foreach ($students as $student): 
+                            $status = get_user_meta($student->ID, 'bm_approval_status', true) ?: 'approved';
+                            $group = get_user_meta($student->ID, 'bm_student_group', true);
+                            $xp = bm_get_xp($student->ID);
+                            $phone = get_user_meta($student->ID, '_bm_user_' . sanitize_key('Telefone'), true);
+                            
+                            $loan_history = get_user_meta($student->ID, '_bm_loan_history', true) ?: array();
+                            $active_loans = 0; $has_overdue = false;
+                            foreach ($loan_history as $loan) {
+                                if ($loan['status'] === 'active') {
+                                    $active_loans++;
+                                    if (isset($loan['due_date']) && strtotime($loan['due_date']) < time()) {
+                                        $has_overdue = true;
+                                    }
+                                }
+                            }
+                            
+                            $row_style = $has_overdue ? 'background:#fff3f3;' : '';
+                            $status_labels = array('approved' => '✅', 'pending' => '⏳', 'suspended' => '🚫');
+                            $status_label = isset($status_labels[$status]) ? $status_labels[$status] : '✅';
+                        ?>
+                            <tr style="<?php echo $row_style; ?>">
+                                <td><input type="checkbox" name="user_ids[]" value="<?php echo $student->ID; ?>" /></td>
+                                <td>
+                                    <strong><?php echo esc_html($student->display_name); ?></strong>
+                                    <?php if ($has_overdue): ?> <span style="color:#dc3545;" title="<?php _e('Em atraso', 'book-manager'); ?>">🔴</span><?php endif; ?>
+                                </td>
+                                <td><?php echo esc_html($student->user_email); ?></td>
+                                <td><?php echo $status_label . ' ' . $status; ?></td>
+                                <td><?php echo esc_html($group); ?></td>
+                                <td><?php echo $xp; ?></td>
+                                <td><?php echo $active_loans; ?> ativo(s)</td>
+                                <td>
+                                    <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_student_detail&student_id=' . $student->ID); ?>" class="button button-small"><?php _e('Ver', 'book-manager'); ?></a>
+                                    <?php if ($phone): ?>
+                                        <?php echo bm_whatsapp_button($phone, '', 'WhatsApp'); ?>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </form>
+    </div>
+    
+    <script>
+    document.getElementById('bm-select-all-students').addEventListener('change', function() {
+        var checkboxes = document.querySelectorAll('input[name="user_ids[]"]');
+        checkboxes.forEach(function(cb) { cb.checked = this.checked; }.bind(this));
+    });
+    </script>
+    <?php
+}
+
+// ==========================================
+// FASE 12H: IMPORTAÇÃO DE ALUNOS EM MASSA
+// ==========================================
+function bm_add_student_import_page() {
+    add_submenu_page('edit.php?post_type=bm_book', __('Importar Alunos', 'book-manager'), __('Importar Alunos', 'book-manager'), 'edit_bm_books', 'bm_student_import', 'bm_render_student_import_page');
+}
+add_action('admin_menu', 'bm_add_student_import_page');
+
+function bm_render_student_import_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $message = '';
+    $stage = isset($_POST['import_stage']) ? $_POST['import_stage'] : '';
+    $headers = array();
+    
+    // Estágio 3: Processamento
+    if ('process' === $stage && isset($_POST['bm_student_import_nonce']) && wp_verify_nonce($_POST['bm_student_import_nonce'], 'bm_student_import_action')) {
+        $import_as = isset($_POST['import_as']) && $_POST['import_as'] === 'pending' ? 'pending' : 'approved';
+        $imported = 0; $skipped = 0; $dup_skipped = 0;
+        
+        $mapping_raw = isset($_POST['mapping']) ? array_map('sanitize_text_field', $_POST['mapping']) : array();
+        $mapping = array();
+        foreach ($mapping_raw as $csv_index => $field) {
+            if (!empty($field)) $mapping[$field] = intval($csv_index);
+        }
+        
+        if (!empty($_POST['csv_data'])) {
+            $rows = json_decode(stripslashes($_POST['csv_data']), true);
+            foreach ($rows as $row) {
+                $display_name = ''; $user_email = ''; $user_login = ''; $user_pass = '';
+                
+                $nome_key = '_bm_user_' . sanitize_key('Nome completo');
+                $email_key = '_bm_user_' . sanitize_key('E-mail');
+                if (isset($mapping[$nome_key]) && isset($row[$mapping[$nome_key]])) $display_name = trim(sanitize_text_field($row[$mapping[$nome_key]]));
+                if (isset($mapping[$email_key]) && isset($row[$mapping[$email_key]])) $user_email = sanitize_email($row[$mapping[$email_key]]);
+                if (isset($mapping['user_login']) && isset($row[$mapping['user_login']])) $user_login = sanitize_user($row[$mapping['user_login']]);
+                if (isset($mapping['user_pass']) && isset($row[$mapping['user_pass']])) $user_pass = $row[$mapping['user_pass']];
+                
+                if (empty($display_name) || empty($user_email)) { $skipped++; continue; }
+                
+                if (email_exists($user_email)) { $dup_skipped++; continue; }
+                
+                if (empty($user_login)) $user_login = sanitize_user($user_email);
+                if (empty($user_pass)) $user_pass = wp_generate_password(12, false);
+                
+                $user_id = wp_insert_user(array(
+                    'user_login' => $user_login,
+                    'user_email' => $user_email,
+                    'user_pass' => $user_pass,
+                    'display_name' => $display_name,
+                    'role' => 'bm_student',
+                ));
+                
+                if (!is_wp_error($user_id)) {
+                    update_user_meta($user_id, 'bm_approval_status', $import_as);
+                    update_user_meta($user_id, '_bm_user_' . sanitize_key('Nome completo'), $display_name);
+                    update_user_meta($user_id, '_bm_user_' . sanitize_key('E-mail'), $user_email);
+                    
+                    if (isset($mapping['bm_student_group']) && isset($row[$mapping['bm_student_group']])) {
+                        update_user_meta($user_id, 'bm_student_group', sanitize_text_field($row[$mapping['bm_student_group']]));
+                    }
+                    
+                    // Campos dinâmicos de alunos
+                    $user_dynamic_fields = get_option('bm_user_dynamic_fields', array());
+                    foreach ($user_dynamic_fields as $field_name => $info) {
+                        $meta_key = '_bm_user_' . sanitize_key($field_name);
+                        if (isset($mapping[$meta_key]) && isset($row[$mapping[$meta_key]])) {
+                            update_user_meta($user_id, $meta_key, sanitize_text_field($row[$mapping[$meta_key]]));
+                        }
+                    }
+                    
+                    $imported++;
+                } else {
+                    $skipped++;
+                }
+            }
+        }
+        $message = sprintf(__('%d alunos importados, %d ignorados (sem nome/e-mail), %d duplicados pulados.', 'book-manager'), $imported, $skipped, $dup_skipped);
+    }
+    
+    // Estágio 2: Leitura do arquivo
+    if ('' === $stage && isset($_FILES['csv_file']) && isset($_POST['bm_student_import_nonce'])) {
+        if (!wp_verify_nonce($_POST['bm_student_import_nonce'], 'bm_student_import_action')) {
+            $message = __('Erro de segurança.', 'book-manager');
+        } elseif (empty($_FILES['csv_file']['tmp_name'])) {
+            $message = __('Nenhum arquivo enviado.', 'book-manager');
+        } else {
+            $filetype = wp_check_filetype($_FILES['csv_file']['name']);
+            if ('csv' !== $filetype['ext']) {
+                $message = __('Formato inválido.', 'book-manager');
+            } else {
+                $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
+                if ($handle) {
+                    $line = 0; $all_rows = array();
+                    while (($data = fgetcsv($handle, 0, ';')) !== false) {
+                        if (1 === ++$line) { $headers = array_map('sanitize_text_field', $data); continue; }
+                        $all_rows[] = $data;
+                    }
+                    fclose($handle);
+                    if (empty($headers)) {
+                        $message = __('Arquivo sem cabeçalho.', 'book-manager');
+                    } else {
+                        $stage = 'map';
+                    }
+                    $_POST['csv_data_preview'] = json_encode($all_rows, JSON_UNESCAPED_UNICODE);
+                    $_POST['csv_headers'] = json_encode($headers, JSON_UNESCAPED_UNICODE);
+                }
+            }
+        }
+    }
+    
+    // Campos mapeáveis
+    $system_fields = array();
+    $user_dynamic_fields = get_option('bm_user_dynamic_fields', array());
+    if (!is_array($user_dynamic_fields)) $user_dynamic_fields = array();
+    foreach ($user_dynamic_fields as $df => $info) {
+        $system_fields['_bm_user_' . sanitize_key($df)] = $df . ' (' . __('dinâmico', 'book-manager') . ')';
+    }
+    
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Importar Alunos via CSV', 'book-manager'); ?></h1>
+        <?php if ($message): ?><div class="notice notice-success is-dismissible"><p><?php echo esc_html($message); ?></p></div><?php endif; ?>
+        
+        <?php if ('map' === $stage && !empty($headers)): ?>
+            <h2><?php _e('Mapeamento de Colunas', 'book-manager'); ?></h2>
+            <p><?php _e('Associe cada coluna do seu arquivo ao campo correspondente no sistema.', 'book-manager'); ?></p>
+            <form method="post">
+                <?php wp_nonce_field('bm_student_import_action', 'bm_student_import_nonce'); ?>
+                <input type="hidden" name="import_stage" value="process">
+                <input type="hidden" name="csv_data" value="<?php echo esc_attr(json_encode(json_decode(stripslashes($_POST['csv_data_preview']), true), JSON_UNESCAPED_UNICODE)); ?>">
+                <h3><?php _e('Mapear colunas', 'book-manager'); ?></h3>
+                <?php foreach ($headers as $i => $h): ?>
+                    <p><strong><?php echo esc_html($h); ?></strong> →
+                    <select name="mapping[<?php echo $i; ?>]">
+                        <option value=""><?php _e('— Ignorar —', 'book-manager'); ?></option>
+                        <?php foreach ($system_fields as $key => $label): ?>
+                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+                        <?php endforeach; ?>
+                    </select></p>
+                <?php endforeach; ?>
+                <p><strong><?php _e('Importar como:', 'book-manager'); ?></strong>
+                    <label><input type="radio" name="import_as" value="approved" checked> <?php _e('Aprovado (direto)', 'book-manager'); ?></label>
+                    <label style="margin-left:10px;"><input type="radio" name="import_as" value="pending"> <?php _e('Pendente (aguardando aprovação)', 'book-manager'); ?></label></p>
+                <?php submit_button(__('Importar Alunos', 'book-manager')); ?>
+            </form>
+        <?php else: ?>
+            <form method="post" enctype="multipart/form-data">
+                <?php wp_nonce_field('bm_student_import_action', 'bm_student_import_nonce'); ?>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="csv_file"><?php _e('Arquivo CSV', 'book-manager'); ?></label></th>
+                        <td><input type="file" id="csv_file" name="csv_file" accept=".csv" /><p class="description"><?php _e('CSV com cabeçalho na primeira linha. Delimitador: ponto e vírgula (;).', 'book-manager'); ?></p></td>
+                    </tr>
+                </table>
+                <?php submit_button(__('Enviar Arquivo', 'book-manager')); ?>
+            </form>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
+
 
 // ==========================================
 // FASE 11C: GERAÇÃO DE ETIQUETAS

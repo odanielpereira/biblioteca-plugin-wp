@@ -73,7 +73,7 @@
 
 ---
 
-## Ciclo 7 — Versão 7.0.0 ← EM ANDAMENTO
+## Ciclo 7 — Versão 7.0.0 ← CONCLUÍDO
 
 ### Fase 11: Ferramentas Pedagógicas ← FASE ATIVA
 *   **Objetivo:** Fornecer ferramentas de apoio pedagógico: gerador de atividades, classificação por disciplina, CDU/Cutter, chatbot e geração de etiquetas.
@@ -129,7 +129,7 @@
 
 ---
 
-## Ciclo 8 — Versão 8.0.0 ← EM PLANEJAMENTO
+## Ciclo 8 — Versão 8.0.0 ← CONCLUÍDO
 
 ### Fase 12: Infraestrutura e Configurações
 *   **Objetivo:** Tornar o plugin configurável, adaptável a qualquer escola e preparado para virada de ano letivo.
@@ -170,7 +170,7 @@
     11. [x] Log de viradas (bm_year_transition_log).
     12. [x] Confirmação dupla antes de executar.
 
-#### Fase 12D — Limpeza de Código Morto
+#### Fase 12D — Limpeza de Código Morto → MOVIDO PARA CICLO DE POLIMENTO
 *   **Descrição:** Remover funções não utilizadas identificadas no documento POSSÍVEIS LIXOS.
 *   **Tarefas:**
     1.  [ ] Remover bloco `// FASE 8G` (versão Gemini).
@@ -190,63 +190,68 @@
     6.  [x] Seletor CDU ou CDD na central de configurações.
     7.  [x] Visibilidade configurável de campos administrativos por perfil.
 
-#### Fase 12F — Status e Diagnóstico
+#### Fase 12F — Status e Diagnóstico → MOVIDO PARA CICLO DE POLIMENTO
 *   **Descrição:** Páginas de status do sistema e logs.
 *   **Tarefas:**
     1.  [ ] Página de Status: versão do plugin, PHP, WordPress, memória, chaves API.
     2.  [ ] Contador de chamadas API (Groq) com estatísticas de uso.
     3.  [ ] Logs de erro e diagnóstico.
 
-#### Fase 12G — Campos Dinâmicos para Alunos
+#### Fase 12G — Campos Dinâmicos para Alunos ← CONCLUÍDA
 *   **Descrição:** Adaptar o gerenciador de campos dinâmicos para suportar também metadados de usuário (user_meta).
 *   **Tarefas:**
-    1.  [ ] Interface unificada com abas: "Campos de Livros" e "Campos de Alunos".
-    2.  [ ] Prefixo `_bm_user_` para campos dinâmicos de alunos.
-    3.  [ ] Mesmos tipos: texto curto, texto longo.
-    4.  [ ] Drag and drop, renomear, ocultar/mostrar.
-    5.  [ ] Nenhum campo fixo obrigatório — gestor define tudo.
+    1.  [x] Interface unificada com abas: "Campos de Livros" e "Campos de Alunos".
+    2.  [x] Prefixo `_bm_user_` para campos dinâmicos de alunos.
+    3.  [x] Mesmos tipos: texto curto, texto longo.
+    4.  [x] Drag and drop, renomear, ocultar/mostrar.
+    5.  [x] Nenhum campo fixo obrigatório — gestor define tudo.
+    6.  [x] Campos pré-instalados na ativação: Nome completo, E-mail, Telefone, Série/Ano, Turno, Turma.
 
-#### Fase 12H — Importação de Alunos em Massa
+#### Fase 12H — Importação de Alunos em Massa ← CONCLUÍDA
 *   **Descrição:** Página de importação de alunos via CSV com mapeamento dinâmico de colunas.
 *   **Tarefas:**
-    1.  [ ] Subpágina "Importar Alunos" no menu Usuários ou Livros.
-    2.  [ ] Upload de CSV com mapeamento dinâmico (igual ao de livros).
-    3.  [ ] Colunas mapeáveis: user_login, display_name, user_email, user_pass + campos dinâmicos + bm_student_group.
-    4.  [ ] Criação automática de usuários com role `bm_student`.
-    5.  [ ] Status: "approved" (direto) ou "pending" (aguardando aprovação).
-    6.  [ ] Detecção de duplicados por e-mail.
-    7.  [ ] Relatório: X importados, Y ignorados, Z duplicados.
+    1.  [x] Subpágina "Importar Alunos" no menu Biblioteca.
+    2.  [x] Upload de CSV com mapeamento dinâmico (igual ao de livros).
+    3.  [x] Colunas mapeáveis: campos dinâmicos (_bm_user_*).
+    4.  [x] Criação automática de usuários com role `bm_student`.
+    5.  [x] Status: "approved" (direto) ou "pending" (aguardando aprovação).
+    6.  [x] Detecção de duplicados por e-mail.
+    7.  [x] Relatório: X importados, Y ignorados, Z duplicados.
 
-#### Fase 12I — Dashboard e Cadastro de Alunos
+#### Fase 12I — Dashboard e Cadastro de Alunos ← CONCLUÍDA
 *   **Descrição:** Exibir campos dinâmicos no dashboard do aluno e no formulário de autocadastro.
 *   **Tarefas:**
-    1.  [ ] Dashboard do aluno exibe campos dinâmicos preenchidos.
-    2.  [ ] Shortcode `[bm_register]` atualizado com campos dinâmicos.
-    3.  [ ] Página de edição de aluno no admin (dados nativos + campos dinâmicos + histórico).
-    4.  [ ] Professor vê dados do aluno em modo leitura.
+    1.  [x] Dashboard do aluno exibe campos dinâmicos preenchidos.
+    2.  [x] Shortcode `[bm_register]` atualizado: perfil primeiro, campos dinâmicos condicionais, trava de recadastramento.
+    3.  [x] Página de edição de aluno no admin (dados nativos + campos dinâmicos + histórico).
+    4.  [x] Professor vê dados do aluno em modo leitura.
+    5.  [x] Busca rápida de livros no dashboard do aluno.
 
-#### Fase 12J — Administração de Alunos
+#### Fase 12J — Administração de Alunos ← CONCLUÍDA
 *   **Descrição:** Interface completa para Admin e Gestor gerenciarem alunos.
 *   **Tarefas:**
-    1.  [ ] Subpágina "Alunos" com listagem (tabela com colunas customizáveis).
-    2.  [ ] Filtros por grupo, status, turno, série.
-    3.  [ ] Ações em lote: aprovar, suspender, excluir.
-    4.  [ ] Página individual do aluno (dados + campos dinâmicos + histórico de leitura/XP/medalhas).
+    1.  [x] Subpágina "Alunos" com listagem (tabela com colunas customizáveis).
+    2.  [x] Filtros por grupo, status, turno, série, atraso.
+    3.  [x] Ações em lote: aprovar, suspender, excluir.
+    4.  [x] Página individual do aluno (dados + campos dinâmicos + histórico de leitura/XP/medalhas).
+    5.  [x] Exportar histórico do aluno (CSV).
+    6.  [x] Indicador visual de pendências + WhatsApp + observações internas + bloqueio por atraso.
 
-    #### Fase 12K — Atendimento (Empréstimo Rápido no Balcão)
+#### Fase 12K — Atendimento (Empréstimo Rápido no Balcão) ← CONCLUÍDA
 *   **Descrição:** Tela de atendimento físico para Gestor/Admin realizar empréstimos e devoluções rapidamente.
 *   **Tarefas:**
-    1.  [ ] Subpágina "Atendimento" no menu Biblioteca (acesso: Gestor e Admin).
-    2.  [ ] Campo de busca de livro com autocomplete e exibição de disponibilidade em tempo real.
-    3.  [ ] Indicador visual se o livro é "Consulta local" (não pode sair da biblioteca).
-    4.  [ ] Campo de busca de aluno com autocomplete e status (pendências, livros ativos, limite).
-    5.  [ ] Modal de cadastro rápido de aluno (nome, e-mail, telefone, campos dinâmicos) na mesma tela.
-    6.  [ ] Botão "Emprestar" que aplica regras (limite, prazo, consulta local) e atualiza estoque.
-    7.  [ ] Botão "Devolver" na mesma tela.
-    8.  [ ] Alerta visual se aluno tem devolução atrasada ou atingiu limite de empréstimos.
-    9.  [ ] Suporte a leitor de código de barras (campo com foco automático para ISBN/ID).
-    10. [ ] Histórico rápido do aluno (últimos 3 livros lidos).
-    11. [ ] Checkbox "Consulta local" no cadastro/edição do livro (metadado `_bm_consulta_local`).
+    1.  [x] Subpágina "Atendimento" no menu Biblioteca.
+    2.  [x] Campo de busca de livro com autocomplete e exibição de disponibilidade em tempo real.
+    3.  [x] Indicador visual "Consulta local".
+    4.  [x] Campo de busca de aluno com autocomplete e status (pendências, livros ativos, limite).
+    5.  [x] Modal de cadastro/edição rápido de aluno na mesma tela.
+    6.  [x] Botão "Emprestar" com verificação de regras (limite, prazo, consulta local, bloqueio por atraso).
+    7.  [x] Botão "Devolver" com registro de danos.
+    8.  [x] Botão "Renovar" (+7 dias).
+    9.  [x] Suporte a leitor de código de barras (campo com foco automático para ISBN).
+    10. [x] Histórico rápido do aluno (últimos 3 livros).
+    11. [x] Cadastro de livro por ISBN via Google Books API.
+    12. [x] Fila de espera visível.
 
 ## Ciclo de Polimento — Versão 8.5.0 ← PLANEJADO
 

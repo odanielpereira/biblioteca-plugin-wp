@@ -655,3 +655,78 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Ação:** Fase 12F movida para o Ciclo de Polimento.
 - **Detalhes:** A tarefa "Status e Diagnóstico" (página de status, contador de chamadas API, logs de erro) foi removida da Fase 12F e adicionada ao Ciclo de Polimento. Motivo: é uma funcionalidade puramente informativa, sem dependência para as fases seguintes (12G-12K). Será implementada como refinamento futuro.
 - **Ferramenta:** Decisão do usuário
+
+**113 - Data:** 2026-06-05
+- **Ação:** Fase 12G concluída — Campos Dinâmicos para Alunos.
+- **Detalhes:** Página "Gerenciar Campos" reformulada com duas abas: "Campos de Livros" (existente) e "Campos de Alunos" (nova). Aba de alunos usa `get_option('bm_user_dynamic_fields')` e prefixo `_bm_user_` para meta keys. Aba de alunos não possui campos fixos de sistema — gestor define tudo. Salvamento, renomeação com migração de dados, ordenação e visibilidade adaptados para detectar a aba ativa e usar as options correspondentes (`bm_user_field_order`, `bm_user_field_visibility`). Migração ao renomear campo de aluno percorre `get_users()` em vez de `get_posts()`, usando `update_user_meta()` / `delete_user_meta()`. Interface com nav-tab-wrapper do WordPress.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**114 - Data:** 2026-06-05
+- **Ação:** Fase 12H concluída — Importação de Alunos em Massa.
+- **Detalhes:** Implementada subpágina "Importar Alunos" no menu Biblioteca (slug: `bm_student_import`, acesso: Admin e Gestor). Fluxo em 3 estágios: Upload → Mapeamento → Processamento. Mapeamento dinâmico de colunas com campos fixos (`display_name`, `user_email`, `user_login`, `user_pass`, `bm_student_group`) e campos dinâmicos de alunos (`_bm_user_*` criados na 12G). Processamento usa `wp_insert_user()` com role `bm_student`. Detecção de duplicados por `email_exists()`. Opção de importar como `approved` (direto) ou `pending` (aguardando aprovação). Senha gerada automaticamente se não informada. Relatório final: X importados, Y ignorados, Z duplicados. Delimitador `;`, codificação UTF-8.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**115 - Data:** 2026-06-06
+- **Ação:** Correção de unificação — Nome e E-mail como campos dinâmicos bloqueados.
+- **Detalhes:** Resolvido problema de duplicação no mapeamento CSV onde "Nome completo" aparecia duas vezes (fixo `display_name` + dinâmico `_bm_user_nome`). Implementada unificação em 5 passos: (1) `book-manager.php` — função `bm_install_default_user_fields()` pré-instala 5 campos padrão na ativação: Nome completo, E-mail (bloqueados), Série/Ano, Turno, Turma. (2) `admin.php` — aba de alunos mostra 🔒 Protegido para campos bloqueados, impedindo remoção. (3) `admin.php` — verificação case-insensitive impede criação de campo com nome duplicado. (4) `admin.php` — importação CSV (12H) alterada para usar `_bm_user_nome` e `_bm_user_email` como fonte primária, com sincronização automática para `display_name` e `user_email` nativos. (5) `users.php` — cadastro `[bm_register]` agora grava também em `_bm_user_nome` e `_bm_user_email`. Regra estabelecida: campos dinâmicos são a fonte da verdade; `display_name` e `user_email` são espelhos sincronizados. WordPress Users continua funcionando normalmente.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+116 - Data: 2026-06-06
+- Ação: Correções na unificação de campos dinâmicos de alunos.
+- Detalhes: Corrigidos 4 problemas: (1) bm_install_default_user_fields() refeita para limpar duplicados case-insensitive e sobrescrever defaults com valores corretos — E-mail agora é tipo email. (2) Adicionado tipo "E-mail" nos campos dinâmicos (select + exibição na tabela). (3) Ordenação ao salvar corrigida: campos renomeados mantêm posição original no drag and drop. (4) Mapeamento CSV de alunos limpo: removidos user_login, user_pass, bm_student_group e fixos duplicados — apenas campos dinâmicos _bm_user_* aparecem. Nome completo e E-mail são os campos dinâmicos obrigatórios. Senha e login gerados automaticamente.
+- Ferramenta: write_file (manual pelo usuário)
+
+117 - Data: 2026-06-06
+- Ação: Correção final — Importação CSV de alunos funcional.
+- Detalhes: Resolvido bug onde 5 alunos eram ignorados (sem nome/e-mail). Causa: as chaves do mapeamento usavam sanitize_key() (ex: _bm_user_nomecompleto, _bm_user_e-mail), mas o código procurava _bm_user_nome e _bm_user_email (chaves fixas). Solução: código agora gera as chaves dinamicamente com '_bm_user_' . sanitize_key('Nome completo') e '_bm_user_' . sanitize_key('E-mail'), casando com o que o formulário envia. Salvamento também atualizado. Debug removido. Campos bloqueados podem ser renomeados mas não removidos — chaves internas permanecem estáveis. Testado: 5 alunos importados com sucesso.
+- Ferramenta: write_file (manual pelo usuário)
+
+**118 - Data:** 2026-06-06
+- **Ação:** Fase 12I parcial — Dashboard do aluno: campos dinâmicos + busca rápida.
+- **Detalhes:** Implementados 12I-T1 e 12I-T5. (T1) Dashboard do aluno agora exibe seção "Meus Dados" com todos os campos dinâmicos preenchidos (_bm_user_*), buscados via get_user_meta(). (T5) Adicionada busca rápida de livros no topo do dashboard: campo de texto + botão com AJAX. Handler bm_ajax_quick_search() em frontend.php busca por título com get_posts() e retorna JSON com título, autor, disponibilidade (available/total) e link. Resultados exibidos em tempo real com indicador visual verde/vermelho. Enter no campo também aciona a busca.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**121 - Data:** 2026-06-06
+- **Ação:** Correção — Telefone como campo dinâmico bloqueado.
+- **Detalhes:** Telefone adicionado como campo pré-instalado e bloqueado nos campos dinâmicos de alunos (bm_install_default_user_fields). Tipo: texto curto, locked: true. Não é obrigatório para cadastro — apenas não pode ser removido da lista. WhatsApp (bm_whatsapp_link) e todas as 4 ocorrências de consulta (empréstimos, dashboard professor, dashboard gestor, aprovação de cadastros) atualizadas para buscar de _bm_user_telefone em vez do antigo bm_phone. Option do banco atualizado via SQL.
+- **Ferramenta:** write_file + SQL (manual pelo usuário)
+
+**122 - Data:** 2026-06-06
+- **Ação:** Fase 12I-T2 concluída — Shortcode [bm_register] atualizado.
+- **Detalhes:** Formulário de cadastro reescrito: (1) Perfil como primeira escolha — dropdown Aluno/Professor no topo. (2) Campos condicionais via JavaScript — ao selecionar perfil, revela campos específicos. Aluno vê campos dinâmicos (_bm_user_*) exceto Nome e E-mail (já são fixos no topo). Professor vê campo Disciplina. (3) Telefone removido do formulário — agora é campo dinâmico bloqueado. (4) Salvamento grava Nome e E-mail também nos meta keys dinâmicos + campos dinâmicos do perfil. (5) Trava de recadastramento: se bm_recadastro_required=1, aluno logado vê bm_recadastro_form() com todos os campos dinâmicos preenchidos para confirmação/atualização. Ao salvar, sincroniza display_name via wp_update_user().
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**123 - Data:** 2026-06-06
+- **Ação:** Fase 12I-T3 e T4 concluídas — Edição de aluno no admin + Professor vê dados em modo leitura.
+- **Detalhes:** (T3) Adicionada seção "Dados da Biblioteca" na tela de edição de usuário do WordPress (edit_user_profile e show_user_profile). Exibe todos os campos dinâmicos (_bm_user_*) + dropdown de Status de Aprovação (pendente/aprovado/rejeitado). Salvamento via edit_user_profile_update e personal_options_update. Sincroniza display_name ao salvar. Acesso restrito a Admin e Gestor. (T4) Função bm_teacher_view_student($student_id): Professor e Gestor veem dados do aluno em modo leitura — nome, campos dinâmicos preenchidos, XP e quantidade de medalhas. Sem edição.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**124 - Data:** 2026-06-06
+- **Ação:** Correção — Removida duplicação de Nome e E-mail na edição de usuário.
+- **Detalhes:** A seção "Dados da Biblioteca" na tela de edição de usuário agora pula Nome completo e E-mail (já são campos nativos do WordPress). Evita duplicação visual. Campos como Telefone, Série/Ano, Turno, Turma continuam aparecendo normalmente.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**126 - Data:** 2026-06-06
+- **Ação:** Fase 12J concluída — Administração de Alunos.
+- **Detalhes:** Implementadas 6 tarefas. (T1) Subpágina "Alunos" no menu Biblioteca (slug: bm_students) com listagem de todos os alunos bm_student. (T2) Filtros por: busca textual (nome/e-mail), status (aprovado/pendente/suspenso), grupo/turma, e checkbox "Apenas em atraso". (T3) Ações em lote com checkboxes: aprovar (define role e status), suspender (muda para subscriber), excluir (wp_delete_user). Proteção: não afeta admins nem o próprio usuário logado. (T4) Página individual do aluno com: cards de resumo (XP, medalhas, empréstimos ativos, atrasos, fichas), todos os campos dinâmicos, histórico de empréstimos ativos com indicador de atraso (🔴/✅), últimas 5 fichas de leitura, e medalhas conquistadas. (T5) Botão "Exportar Histórico (CSV)" gera CSV com todos os empréstimos e fichas do aluno. (T6) Indicador visual 🔴 na listagem para alunos com atraso, botão WhatsApp direto (se tiver telefone), campo "Observações Internas" (_bm_internal_notes) visível apenas para Gestor/Admin.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**127 - Data:** 2026-06-06
+- **Ação:** Correções na Fase 12J — Export CSV e fallback de dados.
+- **Detalhes:** (1) Export CSV movido de dentro de bm_render_student_detail_page() para função separada bm_handle_student_export() hookada em admin_init, eliminando warning "Cannot modify header information". (2) Adicionado fallback na página de detalhes: se Nome completo estiver vazio nos meta keys dinâmicos, busca display_name nativo; se E-mail estiver vazio, busca user_email nativo. Resolve exibição de "—" para alunos antigos que não têm _bm_user_* preenchidos.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**128 - Data:** 2026-06-06
+- **Ação:** Fase 12K concluída — Atendimento (Empréstimo Rápido no Balcão).
+- **Detalhes:** Implementadas 10 tarefas. (T1) Subpágina "Atendimento" no menu Biblioteca. (T2) Busca de livro por título, autor ou ISBN via AJAX com exibição de disponibilidade. (T3) Busca de aluno por nome ou e-mail com múltiplos resultados selecionáveis. (T4) Botões Emprestar (com prompt de dias), Devolver (com modal de danos) e Renovar +7 dias. (T5) Indicador visual "📌 Consulta local — não pode sair". (T6) Modal de cadastro rápido de aluno com campos dinâmicos. (T7) Últimos 3 livros do aluno exibidos como pills. (T8) Leitor de código de barras: campo com foco automático, Enter escaneia ISBN. (T9) Se livro não encontrado por ISBN, botão "Cadastrar via Google Books" — busca título, autor, editora e capa. (T10) Bloqueio de empréstimo se aluno com atraso, renovação rápida, fila de espera visível, registro de danos na devolução (_bm_return_log). Handlers AJAX em frontend.php: bm_ajax_service_loan, bm_ajax_service_return, bm_ajax_service_renew, bm_ajax_service_quick_register, bm_ajax_service_register_book_by_isbn.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**129 - Data:** 2026-06-06
+- **Ação:** Correções finais na Fase 12K — Atendimento.
+- **Detalhes:** Corrigidos 4 problemas: (1) Modal de cadastro redirecionava para posts — adicionado onsubmit="return false". (2) Botão Editar abria modal mas cadastrava novo aluno (e-mail duplicado) — implementada verificação data-edit-id no submit com envio para bm_service_edit_student. (3) Título e botão do modal agora alternam entre "➕ Cadastro Rápido" / "✏️ Editar Aluno" e "Cadastrar" / "Salvar Alterações". (4) Nome do aluno na busca agora é link para a página de detalhes (bm_student_detail). Handlers AJAX adicionados: bm_ajax_service_edit_student para atualização. bm_format_student_data() expandido para incluir campos dinâmicos e telefone. Botões Emprestar, Devolver, Renovar funcionais. Fluxo completo de atendimento operacional.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**130 - Data:** 2026-06-06
+- **Ação:** Correção do drag and drop + ordem dos campos no modal movida para o Polimento.
+- **Detalhes:** (1) Corrigido bug no Gerenciar Campos: $saved_order e $saved_visibility eram carregados depois de montar $all_fields, fazendo a ordem não persistir ao recarregar a página. Agora são carregados antes — drag and drop funciona em ambas as abas. (2) Ordem dos campos dinâmicos no modal de cadastro/edição do Atendimento não reflete a ordem do drag and drop. Movido para o Ciclo de Polimento — é cosmético, não afeta o salvamento dos dados.
+- **Ferramenta:** write_file (manual pelo usuário)

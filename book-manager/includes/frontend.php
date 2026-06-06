@@ -768,6 +768,469 @@ add_action('wp_ajax_bm_chatbot', 'bm_ajax_chatbot');
 add_action('wp_ajax_nopriv_bm_chatbot', 'bm_ajax_chatbot');
 
 // ==========================================
+// FASE 12I-T5: BUSCA RÁPIDA NO DASHBOARD
+// ==========================================
+function bm_ajax_quick_search() {
+    $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
+    if (empty($query)) wp_die(json_encode(array('success' => false)));
+    
+    $args = array(
+        'post_type' => 'bm_book',
+        'posts_per_page' => 5,
+        'post_status' => 'publish',
+        's' => $query,
+    );
+    
+    $books = get_posts($args);
+    $results = array();
+    
+    foreach ($books as $book) {
+        $total = intval(get_post_meta($book->ID, '_bm_copies', true));
+        $borrowed = intval(get_post_meta($book->ID, '_bm_borrowed_count', true));
+        $available = max(0, $total - $borrowed);
+        
+        $results[] = array(
+            'title' => $book->post_title,
+            'author' => get_post_meta($book->ID, '_bm_author', true),
+            'total' => $total,
+            'available' => $available,
+            'url' => get_permalink($book->ID),
+        );
+    }
+    
+    wp_die(json_encode(array('success' => true, 'books' => $results)));
+}
+add_action('wp_ajax_bm_quick_search', 'bm_ajax_quick_search');
+
+// ==========================================
+// FASE 12K: HANDLERS AJAX DE ATENDIMENTO
+// ==========================================
+
+// Buscar livro por título, autor ou ISBN
+function bm_ajax_service_search_book() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('found' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $isbn = isset($_POST['isbn']) ? sanitize_text_field($_POST['isbn']) : '';
+    $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
+    
+    if (!empty($isbn)) {
+        // Buscar por ISBN exato
+        $posts = get_posts(array(
+            'post_type' => 'bm_book',
+            'posts_per_page' => 1,
+            'meta_key' => '_bm_isbn',
+            'meta_value' => $isbn,
+        ));
+    } elseif (!empty($query)) {
+        $posts = get_posts(array(
+            'post_type' => 'bm_book',
+            'posts_per_page' => 1,
+            's' => $query,
+        ));
+    } else {
+        wp_die(json_encode(array('found' => false, 'message' => 'Digite um termo de busca.')));
+    }
+    
+    if (!empty($posts)) {
+        $book = $posts[0];
+        $total = intval(get_post_meta($book->ID, '_bm_copies', true));
+        $borrowed = intval(get_post_meta($book->ID, '_bm_borrowed_count', true));
+        
+        // Fila de espera
+        $reservations = get_post_meta($book->ID, '_bm_reservations', true) ?: array();
+        $queue = array();
+        foreach ($reservations as $r) {
+            if ($r['status'] === 'waiting') {
+                $user = get_userdata($r['user_id']);
+                $queue[] = array('name' => $user ? $user->display_name : '#' . $r['user_id'], 'date' => date('d/m/Y', strtotime($r['date'])));
+            }
+        }
+        
+        // Verificar se há empréstimo ativo em atraso
+        $overdue = false;
+        foreach ($reservations as $r) {
+            if ($r['status'] === 'active' && isset($r['due_date']) && strtotime($r['due_date']) < time()) {
+                $overdue = true;
+                break;
+            }
+        }
+        
+        wp_die(json_encode(array(
+            'found' => true,
+            'book' => array(
+                'id' => $book->ID,
+                'title' => $book->post_title,
+                'author' => get_post_meta($book->ID, '_bm_author', true),
+                'cdu' => get_post_meta($book->ID, '_bm_cdu', true),
+                'total' => $total,
+                'available' => max(0, $total - $borrowed),
+                'consulta_local' => get_post_meta($book->ID, '_bm_consulta_local', true) == '1',
+                'queue' => $queue,
+                'overdue' => $overdue,
+            ),
+        )));
+    }
+    
+    // Não encontrado — verificar se é ISBN para sugerir cadastro
+    if (!empty($isbn)) {
+        $clean_isbn = preg_replace('/[^0-9]/', '', $isbn);
+        if (strlen($clean_isbn) >= 10) {
+            wp_die(json_encode(array('found' => false, 'can_register' => true, 'isbn' => $clean_isbn, 'message' => 'Livro não encontrado.')));
+        }
+    }
+    
+    wp_die(json_encode(array('found' => false, 'message' => 'Nenhum livro encontrado.')));
+}
+add_action('wp_ajax_bm_service_search_book', 'bm_ajax_service_search_book');
+
+// Buscar aluno por nome ou e-mail
+function bm_ajax_service_search_student() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('found' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $student_id = isset($_POST['student_id']) ? intval($_POST['student_id']) : 0;
+    $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
+    
+    if ($student_id) {
+        $student = get_userdata($student_id);
+        if ($student && in_array('bm_student', (array) $student->roles)) {
+            wp_die(json_encode(array('found' => true, 'student' => bm_format_student_data($student))));
+        }
+        wp_die(json_encode(array('found' => false, 'message' => 'Aluno não encontrado.')));
+    }
+    
+    if (empty($query)) wp_die(json_encode(array('found' => false, 'message' => 'Digite um nome ou e-mail.')));
+    
+    $students = get_users(array('role' => 'bm_student', 'search' => '*' . $query . '*', 'number' => 10));
+    
+    if (empty($students)) {
+        wp_die(json_encode(array('found' => false, 'message' => 'Nenhum aluno encontrado.')));
+    } elseif (count($students) === 1) {
+        wp_die(json_encode(array('found' => true, 'student' => bm_format_student_data($students[0]))));
+    } else {
+        $list = array();
+        foreach ($students as $s) {
+            $list[] = array(
+                'id' => $s->ID,
+                'name' => $s->display_name,
+                'email' => $s->user_email,
+                'group' => get_user_meta($s->ID, 'bm_student_group', true),
+            );
+        }
+        wp_die(json_encode(array('found' => false, 'multiple' => true, 'students' => $list)));
+    }
+}
+
+// ==========================================
+// FASE 12K: AÇÕES DO ATENDIMENTO
+// ==========================================
+
+// Emprestar
+function bm_ajax_service_loan() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $book_id = intval($_POST['book_id']);
+    $user_id = intval($_POST['user_id']);
+    $days = isset($_POST['days']) ? intval($_POST['days']) : 14;
+    
+    if (!$book_id || !$user_id) wp_die(json_encode(array('success' => false, 'message' => 'Selecione livro e aluno.')));
+    
+    // Verificar consulta local
+    if (get_post_meta($book_id, '_bm_consulta_local', true) == '1') {
+        wp_die(json_encode(array('success' => false, 'message' => 'Este livro é de consulta local e não pode ser emprestado.')));
+    }
+    
+    // Verificar se aluno tem atraso (bloqueio)
+    $loan_history = get_user_meta($user_id, '_bm_loan_history', true) ?: array();
+    foreach ($loan_history as $loan) {
+        if ($loan['status'] === 'active' && isset($loan['due_date']) && strtotime($loan['due_date']) < time()) {
+            wp_die(json_encode(array('success' => false, 'message' => 'Aluno possui livro em atraso. Empréstimo bloqueado.')));
+        }
+    }
+    
+    // Criar reserva primeiro (se não existir)
+    $reservations = get_post_meta($book_id, '_bm_reservations', true) ?: array();
+    $has_reservation = false;
+    foreach ($reservations as $r) {
+        if ($r['user_id'] == $user_id && $r['status'] === 'waiting') $has_reservation = true;
+    }
+    
+    if (!$has_reservation) {
+        $result = bm_reserve_book($book_id, 1, $user_id); // user_id 1 = admin reservando para aluno
+        if (isset($result['error'])) {
+            wp_die(json_encode(array('success' => false, 'message' => $result['error'])));
+        }
+    }
+    
+    $result = bm_confirm_loan($book_id, $user_id, $days);
+    if (isset($result['error'])) {
+        wp_die(json_encode(array('success' => false, 'message' => $result['error'])));
+    }
+    
+    wp_die(json_encode(array('success' => true, 'message' => '✅ Emprestado com sucesso! Devolução: ' . date('d/m/Y', strtotime('+' . $days . ' days')))));
+}
+add_action('wp_ajax_bm_service_loan', 'bm_ajax_service_loan');
+
+// Devolver
+function bm_ajax_service_return() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $book_id = intval($_POST['book_id']);
+    $user_id = intval($_POST['user_id']);
+    $condition = isset($_POST['condition']) ? sanitize_text_field($_POST['condition']) : 'good';
+    $note = isset($_POST['note']) ? sanitize_text_field($_POST['note']) : '';
+    
+    if (!$book_id || !$user_id) wp_die(json_encode(array('success' => false, 'message' => 'Selecione livro e aluno.')));
+    
+    // Salvar condição de devolução
+    if (!empty($note) || $condition !== 'good') {
+        $return_log = get_post_meta($book_id, '_bm_return_log', true) ?: array();
+        $return_log[] = array(
+            'user_id' => $user_id,
+            'date' => current_time('mysql'),
+            'condition' => $condition,
+            'note' => $note,
+        );
+        update_post_meta($book_id, '_bm_return_log', $return_log);
+    }
+    
+    $result = bm_return_book($book_id, $user_id);
+    if (isset($result['error'])) {
+        wp_die(json_encode(array('success' => false, 'message' => $result['error'])));
+    }
+    
+    wp_die(json_encode(array('success' => true, 'message' => '✅ Devolvido com sucesso!')));
+}
+add_action('wp_ajax_bm_service_return', 'bm_ajax_service_return');
+
+// Renovar
+function bm_ajax_service_renew() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $book_id = intval($_POST['book_id']);
+    $user_id = intval($_POST['user_id']);
+    $days = isset($_POST['days']) ? intval($_POST['days']) : 7;
+    
+    if (!$book_id || !$user_id) wp_die(json_encode(array('success' => false, 'message' => 'Selecione livro e aluno.')));
+    
+    // Atualizar due_date no empréstimo ativo
+    $reservations = get_post_meta($book_id, '_bm_reservations', true) ?: array();
+    $found = false;
+    foreach ($reservations as &$r) {
+        if ($r['user_id'] == $user_id && $r['status'] === 'active') {
+            $old_due = $r['due_date'];
+            $r['due_date'] = date('Y-m-d H:i:s', strtotime('+' . $days . ' days', strtotime($old_due)));
+            $found = true;
+            break;
+        }
+    }
+    
+    if (!$found) wp_die(json_encode(array('success' => false, 'message' => 'Empréstimo ativo não encontrado.')));
+    
+    update_post_meta($book_id, '_bm_reservations', $reservations);
+    
+    $loan_history = get_user_meta($user_id, '_bm_loan_history', true) ?: array();
+    foreach ($loan_history as &$loan) {
+        if ($loan['book_id'] == $book_id && $loan['status'] === 'active') {
+            $loan['due_date'] = date('Y-m-d H:i:s', strtotime('+' . $days . ' days', strtotime($loan['due_date'])));
+            break;
+        }
+    }
+    update_user_meta($user_id, '_bm_loan_history', $loan_history);
+    
+    $new_due = date('d/m/Y', strtotime('+' . $days . ' days'));
+    wp_die(json_encode(array('success' => true, 'message' => '🔄 Renovado! Nova data de devolução: ' . $new_due)));
+}
+add_action('wp_ajax_bm_service_renew', 'bm_ajax_service_renew');
+
+// Cadastro rápido de aluno
+function bm_ajax_service_quick_register() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $name = sanitize_text_field($_POST['name']);
+    $email = sanitize_email($_POST['email']);
+    $phone = sanitize_text_field($_POST['phone']);
+    
+    if (empty($name) || empty($email)) wp_die(json_encode(array('success' => false, 'message' => 'Nome e e-mail são obrigatórios.')));
+    if (email_exists($email)) wp_die(json_encode(array('success' => false, 'message' => 'E-mail já cadastrado.')));
+    
+    $password = wp_generate_password(12, false);
+    $user_id = wp_insert_user(array(
+        'user_login' => sanitize_user($email),
+        'user_email' => $email,
+        'user_pass' => $password,
+        'display_name' => $name,
+        'role' => 'bm_student',
+    ));
+    
+    if (is_wp_error($user_id)) wp_die(json_encode(array('success' => false, 'message' => $user_id->get_error_message())));
+    
+    update_user_meta($user_id, 'bm_approval_status', 'approved');
+    update_user_meta($user_id, '_bm_user_' . sanitize_key('Nome completo'), $name);
+    update_user_meta($user_id, '_bm_user_' . sanitize_key('E-mail'), $email);
+    update_user_meta($user_id, '_bm_user_' . sanitize_key('Telefone'), $phone);
+    
+    // Campos dinâmicos
+    $user_fields = get_option('bm_user_dynamic_fields', array());
+    foreach ($user_fields as $field_name => $info) {
+        $meta_key = '_bm_user_' . sanitize_key($field_name);
+        if (isset($_POST[$meta_key]) && !empty($_POST[$meta_key])) {
+            update_user_meta($user_id, $meta_key, sanitize_text_field($_POST[$meta_key]));
+        }
+    }
+    
+    wp_die(json_encode(array('success' => true, 'message' => '✅ Aluno cadastrado!', 'student_id' => $user_id, 'student_name' => $name)));
+}
+add_action('wp_ajax_bm_service_quick_register', 'bm_ajax_service_quick_register');
+
+// Cadastro de livro por ISBN via Google Books
+function bm_ajax_service_register_book_by_isbn() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $isbn = sanitize_text_field($_POST['isbn']);
+    if (empty($isbn)) wp_die(json_encode(array('success' => false, 'message' => 'ISBN inválido.')));
+    
+    $url = 'https://www.googleapis.com/books/v1/volumes?q=isbn:' . $isbn . '&key=' . BM_GOOGLE_BOOKS_API_KEY;
+    $response = wp_remote_get($url, array('timeout' => 15));
+    
+    if (is_wp_error($response)) wp_die(json_encode(array('success' => false, 'message' => 'Erro ao buscar na Google Books.')));
+    
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+    if (empty($data['items'][0]['volumeInfo'])) wp_die(json_encode(array('success' => false, 'message' => 'Livro não encontrado na Google Books.')));
+    
+    $info = $data['items'][0]['volumeInfo'];
+    $title = sanitize_text_field($info['title']);
+    $author = isset($info['authors']) ? sanitize_text_field(implode(', ', $info['authors'])) : '';
+    $publisher = isset($info['publisher']) ? sanitize_text_field($info['publisher']) : '';
+    
+    $post_id = wp_insert_post(array(
+        'post_type' => 'bm_book',
+        'post_title' => $title,
+        'post_status' => 'publish',
+    ));
+    
+    if (is_wp_error($post_id)) wp_die(json_encode(array('success' => false, 'message' => 'Erro ao criar livro.')));
+    
+    update_post_meta($post_id, '_bm_isbn', $isbn);
+    update_post_meta($post_id, '_bm_author', $author);
+    update_post_meta($post_id, '_bm_publisher', $publisher);
+    update_post_meta($post_id, '_bm_copies', '1');
+    
+    // Buscar capa
+    if (isset($info['imageLinks']['thumbnail'])) {
+        $cover_url = str_replace('http://', 'https://', $info['imageLinks']['thumbnail']);
+        $cover_url = str_replace('&zoom=1', '&zoom=2', $cover_url);
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        $ir = wp_remote_get($cover_url, array('timeout' => 15));
+        if (!is_wp_error($ir)) {
+            $body = wp_remote_retrieve_body($ir);
+            if (!empty($body)) {
+                $ud = wp_upload_dir();
+                $fn = 'book-cover-' . $post_id . '-' . time() . '.jpg';
+                $fp = $ud['path'] . '/' . $fn;
+                file_put_contents($fp, $body);
+                $att = array('post_mime_type' => 'image/jpeg', 'post_title' => $title, 'post_content' => '', 'post_status' => 'inherit');
+                $aid = wp_insert_attachment($att, $fp, $post_id);
+                if (!is_wp_error($aid)) {
+                    $ad = wp_generate_attachment_metadata($aid, $fp);
+                    wp_update_attachment_metadata($aid, $ad);
+                    set_post_thumbnail($post_id, $aid);
+                }
+            }
+        }
+    }
+    
+    wp_die(json_encode(array('success' => true, 'message' => '✅ Livro cadastrado: ' . $title, 'book_id' => $post_id, 'book_title' => $title, 'book_author' => $author)));
+}
+add_action('wp_ajax_bm_service_register_book_by_isbn', 'bm_ajax_service_register_book_by_isbn');
+
+// Editar aluno via atendimento
+function bm_ajax_service_edit_student() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $student_id = intval($_POST['student_id']);
+    $name = sanitize_text_field($_POST['name']);
+    $email = sanitize_email($_POST['email']);
+    $phone = sanitize_text_field($_POST['phone']);
+    
+    if (!$student_id || empty($name) || empty($email)) wp_die(json_encode(array('success' => false, 'message' => 'Nome e e-mail são obrigatórios.')));
+    
+    $existing = get_userdata($student_id);
+    if (!$existing || !in_array('bm_student', (array) $existing->roles)) wp_die(json_encode(array('success' => false, 'message' => 'Aluno não encontrado.')));
+    
+    // Verificar se e-mail já existe em outro usuário
+    $email_owner = email_exists($email);
+    if ($email_owner && $email_owner != $student_id) wp_die(json_encode(array('success' => false, 'message' => 'E-mail já cadastrado para outro aluno.')));
+    
+    wp_update_user(array('ID' => $student_id, 'display_name' => $name, 'user_email' => $email));
+    update_user_meta($student_id, '_bm_user_' . sanitize_key('Nome completo'), $name);
+    update_user_meta($student_id, '_bm_user_' . sanitize_key('E-mail'), $email);
+    update_user_meta($student_id, '_bm_user_' . sanitize_key('Telefone'), $phone);
+    
+    // Campos dinâmicos
+    $user_fields = get_option('bm_user_dynamic_fields', array());
+    foreach ($user_fields as $field_name => $info) {
+        $meta_key = '_bm_user_' . sanitize_key($field_name);
+        if (isset($_POST[$meta_key])) {
+            update_user_meta($student_id, $meta_key, sanitize_text_field($_POST[$meta_key]));
+        }
+    }
+    
+    wp_die(json_encode(array('success' => true, 'message' => '✅ Aluno atualizado!')));
+}
+add_action('wp_ajax_bm_service_edit_student', 'bm_ajax_service_edit_student');
+
+add_action('wp_ajax_bm_service_search_student', 'bm_ajax_service_search_student');
+
+function bm_format_student_data($student) {
+    $settings = bm_get_settings();
+    $loan_history = get_user_meta($student->ID, '_bm_loan_history', true) ?: array();
+    $active_loans = 0; $has_overdue = false; $recent_books = array();
+    
+    foreach (array_reverse($loan_history) as $loan) {
+        if ($loan['status'] === 'active') {
+            $active_loans++;
+            if (isset($loan['due_date']) && strtotime($loan['due_date']) < time()) $has_overdue = true;
+        }
+        if (count($recent_books) < 3) {
+            $title = get_the_title($loan['book_id']);
+            if ($title) $recent_books[] = $title;
+        }
+    }
+    
+    // Campos dinâmicos
+    $dynamic_fields = array();
+    $user_fields = get_option('bm_user_dynamic_fields', array());
+    foreach ($user_fields as $field_name => $info) {
+        $meta_key = '_bm_user_' . sanitize_key($field_name);
+        $dynamic_fields[$meta_key] = get_user_meta($student->ID, $meta_key, true);
+    }
+    
+    return array(
+        'id' => $student->ID,
+        'name' => $student->display_name,
+        'email' => $student->user_email,
+        'phone' => get_user_meta($student->ID, '_bm_user_' . sanitize_key('Telefone'), true),
+        'group' => get_user_meta($student->ID, 'bm_student_group', true),
+        'active_loans' => $active_loans,
+        'max_loans' => $settings['max_loans_student'],
+        'has_overdue' => $has_overdue,
+        'blocked' => $has_overdue,
+        'recent_books' => $recent_books,
+        'dynamic_fields' => $dynamic_fields,
+    );
+}
+
+// ==========================================
 // FASE 11B: NÚMERO DE CHAMADA (CDU + CUTTER)
 // ==========================================
 

@@ -206,6 +206,37 @@ function bm_remove_roles() {
     remove_role('bm_super_admin');
 }
 
+// FASE 12G: Pré-instalar campos dinâmicos padrão para alunos
+function bm_install_default_user_fields() {
+    $existing = get_option('bm_user_dynamic_fields', array());
+    if (!is_array($existing)) $existing = array();
+    
+    $defaults = array(
+        'Nome completo' => array('type' => 'text', 'locked' => true),
+        'E-mail' => array('type' => 'email', 'locked' => true),
+        'Telefone' => array('type' => 'text', 'locked' => true),
+        'Série/Ano' => array('type' => 'text', 'locked' => false),
+        'Turno' => array('type' => 'text', 'locked' => false),
+        'Turma' => array('type' => 'text', 'locked' => false),
+    );
+    
+    // Remove duplicados antigos (case-insensitive)
+    $default_keys_lower = array_map('mb_strtolower', array_keys($defaults));
+    foreach ($existing as $key => $info) {
+        if (in_array(mb_strtolower($key), $default_keys_lower) && !isset($defaults[$key])) {
+            unset($existing[$key]);
+        }
+    }
+    
+    // Garante que os defaults existam com os valores corretos
+    foreach ($defaults as $name => $info) {
+        $existing[$name] = $info;
+    }
+    
+    update_option('bm_user_dynamic_fields', $existing);
+}
+
+
 // FASE 12E-T4: Limpar roles sujas na ativação
 function bm_clean_dirty_roles() {
     $dirty_roles = array(
@@ -233,6 +264,7 @@ function bm_plugin_activation() {
     bm_add_admin_caps();
     bm_register_roles();
     bm_clean_dirty_roles();
+    bm_install_default_user_fields();
     flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 'bm_plugin_activation');
