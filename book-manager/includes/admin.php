@@ -787,12 +787,21 @@ function bm_render_labels_page() {
                     </p>
                 </form>
                 
-                <script>
-                document.getElementById('bm-select-all').addEventListener('change', function() {
-                    var checks = document.querySelectorAll('input[name="book_ids[]"]');
-                    checks.forEach(function(c) { c.checked = this.checked; }.bind(this));
-                });
-                </script>
+                    <script>
+    document.getElementById('bm_upload_logo').addEventListener('click', function(e) {
+        e.preventDefault();
+        var frame = wp.media({
+            title: 'Selecionar logo',
+            button: { text: 'Usar esta imagem' },
+            multiple: false
+        });
+        frame.on('select', function() {
+            var attachment = frame.state().get('selection').first().toJSON();
+            document.getElementById('bm_school_logo').value = attachment.url;
+        });
+        frame.open();
+    });
+    </script>
             </div>
             
             <div style="flex:0 0 350px;">
@@ -937,3 +946,498 @@ function bm_ajax_print_labels() {
     exit;
 }
 add_action('wp_ajax_bm_print_labels', 'bm_ajax_print_labels');
+
+// ==========================================
+// FASE 12A: PÁGINA DE CONFIGURAÇÕES
+// ==========================================
+function bm_get_settings() {
+    $defaults = array(
+        'max_reservations_student' => 3,
+        'max_loans_student' => 1,
+        'default_loan_days' => 14,
+        'reservation_hours' => 24,
+    );
+    $saved = get_option('bm_settings', array());
+    if (!is_array($saved)) $saved = array();
+    foreach ($defaults as $key => $default) {
+        if (!isset($saved[$key])) $saved[$key] = $default;
+    }
+    return $saved;
+}
+
+function bm_add_settings_page() {
+    add_submenu_page('edit.php?post_type=bm_book', 'Configurações', 'Configurações', 'manage_options', 'bm_settings', 'bm_render_settings_page');
+}
+add_action('admin_menu', 'bm_add_settings_page');
+
+function bm_render_settings_page() {
+    if (!current_user_can('manage_options')) return;
+    
+    $msg = '';
+    $settings = bm_get_settings();
+    
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
+        $settings['max_reservations_student'] = absint($_POST['max_reservations_student']);
+        $settings['max_loans_student'] = absint($_POST['max_loans_student']);
+        $settings['default_loan_days'] = absint($_POST['default_loan_days']);
+        $settings['reservation_hours'] = absint($_POST['reservation_hours']);
+        update_option('bm_settings', $settings);
+        $msg = '<div class="notice notice-success"><p>Salvo! Reservas: ' . $settings['max_reservations_student'] . ' | Empréstimos: ' . $settings['max_loans_student'] . ' | Prazo: ' . $settings['default_loan_days'] . 'd | Reserva: ' . $settings['reservation_hours'] . 'h</p></div>';
+    }
+    ?>
+    <div class="wrap">
+        <h1>Configurações</h1>
+        <?php echo $msg; ?>
+        
+        <form method="post" style="max-width:600px;">
+            <h2>Limites e Prazos</h2>
+            <table class="form-table">
+                <tr>
+                    <th><label>Máximo de reservas por aluno</label></th>
+                    <td>
+                        <input type="number" name="max_reservations_student" value="<?php echo esc_attr($settings['max_reservations_student']); ?>" min="1" max="10" style="width:80px;" />
+                        <p class="description">Quantos livros um aluno pode reservar simultaneamente.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label>Máximo de empréstimos por aluno</label></th>
+                    <td>
+                        <input type="number" name="max_loans_student" value="<?php echo esc_attr($settings['max_loans_student']); ?>" min="1" max="10" style="width:80px;" />
+                        <p class="description">Quantos livros um aluno pode pegar emprestado simultaneamente.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label>Prazo padrão de empréstimo (dias)</label></th>
+                    <td>
+                        <input type="number" name="default_loan_days" value="<?php echo esc_attr($settings['default_loan_days']); ?>" min="1" max="60" style="width:80px;" />
+                        <p class="description">Prazo padrão ao confirmar um empréstimo.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label>Prazo de reserva (horas)</label></th>
+                    <td>
+                        <input type="number" name="reservation_hours" value="<?php echo esc_attr($settings['reservation_hours']); ?>" min="1" max="72" style="width:80px;" />
+                        <p class="description">Tempo máximo que uma reserva aguarda retirada.</p>
+                    </td>
+                </tr>
+            </table>
+            
+            <p><input type="submit" name="save_settings" class="button button-primary" value="Salvar Configurações" /></p>
+        </form>
+    </div>
+    <?php
+}
+
+
+// ==========================================
+// FASE 12B: WHITE LABEL
+// ==========================================
+function bm_get_white_label() {
+    $defaults = array(
+        'enabled' => '0',
+        'school_name' => '',
+        'school_logo' => '',
+        'footer_text' => '',
+        'school_url' => '',
+    );
+    $saved = get_option('bm_white_label', array());
+    if (!is_array($saved)) $saved = array();
+    foreach ($defaults as $key => $default) {
+        if (!isset($saved[$key])) $saved[$key] = $default;
+    }
+    return $saved;
+}
+
+function bm_admin_media_scripts($hook) {
+    if (strpos($hook, 'bm_white_label') === false) return;
+    wp_enqueue_media();
+}
+add_action('admin_enqueue_scripts', 'bm_admin_media_scripts');
+
+function bm_add_white_label_page() {
+    add_submenu_page('edit.php?post_type=bm_book', 'Identidade Visual', 'Identidade Visual', 'manage_options', 'bm_white_label', 'bm_render_white_label_page');
+}
+add_action('admin_menu', 'bm_add_white_label_page');
+
+function bm_render_white_label_page() {
+    if (!current_user_can('manage_options')) return;
+    
+    $msg = '';
+    $wl = bm_get_white_label();
+    
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_white_label'])) {
+        $wl['enabled'] = isset($_POST['wl_enabled']) ? '1' : '0';
+        $wl['school_name'] = sanitize_text_field(wp_unslash($_POST['school_name']));
+        $wl['school_logo'] = esc_url_raw($_POST['school_logo']);
+        $wl['footer_text'] = sanitize_text_field(wp_unslash($_POST['footer_text']));
+        $wl['school_url'] = esc_url_raw($_POST['school_url']);
+        update_option('bm_white_label', $wl);
+        $msg = '<div class="notice notice-success"><p>Salvo! Escola: ' . $wl['school_name'] . '</p></div>';
+    }
+    ?>
+    <div class="wrap">
+        <h1>Identidade Visual</h1>
+        <?php echo $msg; ?>
+        
+        <form method="post" style="max-width:600px;">
+            <p>
+                <label><input type="checkbox" name="wl_enabled" <?php checked($wl['enabled'], '1'); ?> /> <strong>Ativar identidade visual personalizada</strong></label>
+            </p>
+            
+            <h2>Personalização da Escola</h2>
+            <table class="form-table">
+                <tr>
+                    <th><label>Nome da escola</label></th>
+                    <td>
+                        <input type="text" name="school_name" value="<?php echo esc_attr($wl['school_name']); ?>" style="width:100%;" placeholder="Ex: Escola Municipal Paulo Freire" />
+                        <p class="description">Substitui "Catálogo de Livros" no título da vitrine.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label>URL da escola</label></th>
+                    <td>
+                        <input type="url" name="school_url" value="<?php echo esc_attr($wl['school_url']); ?>" style="width:100%;" placeholder="https://..." />
+                    </td>
+                </tr>
+                <tr>
+                    <th><label>Logo da escola</label></th>
+                    <td>
+                        <input type="text" name="school_logo" id="bm_school_logo" value="<?php echo esc_attr($wl['school_logo']); ?>" style="width:80%;" placeholder="https://..." />
+                        <button type="button" class="button" id="bm_upload_logo" style="margin-left:5px;">Upload</button>
+                        <?php if ($wl['school_logo']): ?>
+                            <br><img src="<?php echo esc_url($wl['school_logo']); ?>" style="max-width:200px;max-height:80px;margin-top:5px;" />
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label>Texto do rodapé</label></th>
+                    <td>
+                        <input type="text" name="footer_text" value="<?php echo esc_attr($wl['footer_text']); ?>" style="width:100%;" placeholder="Ex: Biblioteca Central — 2024" />
+                        <p class="description">Exibido no rodapé da vitrine e páginas do livro.</p>
+                    </td>
+                </tr>
+            </table>
+            
+            <p><input type="submit" name="save_white_label" class="button button-primary" value="Salvar" /></p>
+        </form>
+    </div>
+    
+    <script>
+    document.getElementById('bm_upload_logo').addEventListener('click', function(e) {
+        e.preventDefault();
+        var frame = wp.media({ title: 'Selecionar logo', button: { text: 'Usar esta imagem' }, multiple: false });
+        frame.on('select', function() {
+            var attachment = frame.state().get('selection').first().toJSON();
+            document.getElementById('bm_school_logo').value = attachment.url;
+        });
+        frame.open();
+    });
+    </script>
+    <?php
+}
+
+// ==========================================
+// FASE 12C: VIRADA DE ANO LETIVO
+// ==========================================
+function bm_get_year_transition_settings() {
+    $defaults = array(
+        'enabled' => '0',
+        'transition_month' => '12',
+        'transition_day' => '31',
+        'reset_xp' => '0',
+        'reset_badges' => '0',
+        'clear_reservations' => '1',
+        'activate_recadastro' => '1',
+        'history_enabled' => '0',
+        'clear_reading_log' => '0',
+        'clear_reviews' => '0',
+        'clear_videos' => '0',
+        'clear_ratings' => '0',
+        'clear_loan_history' => '0',
+        'clear_before_year' => '',
+    );
+    $saved = get_option('bm_year_transition', array());
+    if (!is_array($saved)) $saved = array();
+    foreach ($defaults as $key => $default) {
+        if (!isset($saved[$key])) $saved[$key] = $default;
+    }
+    return $saved;
+}
+
+function bm_add_year_transition_page() {
+    add_submenu_page('edit.php?post_type=bm_book', 'Virada de Ano Letivo', 'Virada de Ano Letivo', 'manage_options', 'bm_year_transition', 'bm_render_year_transition_page');
+}
+add_action('admin_menu', 'bm_add_year_transition_page');
+
+function bm_render_year_transition_page() {
+    if (!current_user_can('manage_options')) return;
+    
+    $msg = '';
+    $settings = bm_get_year_transition_settings();
+    $current_year = date('Y');
+    
+    // Salvar configurações
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
+        $settings['enabled'] = isset($_POST['yt_enabled']) ? '1' : '0';
+        $settings['transition_month'] = absint($_POST['transition_month']);
+        $settings['transition_day'] = absint($_POST['transition_day']);
+        $settings['reset_xp'] = isset($_POST['reset_xp']) ? '1' : '0';
+        $settings['reset_badges'] = isset($_POST['reset_badges']) ? '1' : '0';
+        $settings['clear_reservations'] = isset($_POST['clear_reservations']) ? '1' : '0';
+        $settings['activate_recadastro'] = isset($_POST['activate_recadastro']) ? '1' : '0';
+        $settings['clear_before_year'] = sanitize_text_field($_POST['clear_before_year']);
+        update_option('bm_year_transition', $settings);
+        $msg = '<div class="notice notice-success"><p>Configurações salvas!</p></div>';
+    }
+    
+    // Salvar histórico habilitado + checkboxes
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_history'])) {
+        $settings['history_enabled'] = isset($_POST['history_enabled']) ? '1' : '0';
+        $settings['clear_reading_log'] = isset($_POST['clear_reading_log']) ? '1' : '0';
+        $settings['clear_reviews'] = isset($_POST['clear_reviews']) ? '1' : '0';
+        $settings['clear_videos'] = isset($_POST['clear_videos']) ? '1' : '0';
+        $settings['clear_ratings'] = isset($_POST['clear_ratings']) ? '1' : '0';
+        $settings['clear_loan_history'] = isset($_POST['clear_loan_history']) ? '1' : '0';
+        update_option('bm_year_transition', $settings);
+        $msg = '<div class="notice notice-success"><p>Configurações de histórico salvas!</p></div>';
+    }
+    
+    // Executar virada
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['execute_transition'])) {
+        $students = get_users(array('role' => 'bm_student'));
+        
+        // Backup dos rankings
+        $rankings_backup = array();
+        foreach ($students as $student) {
+            $xp = get_user_meta($student->ID, '_bm_xp', true);
+            $badges = get_user_meta($student->ID, '_bm_badges', true);
+            $loan_history = get_user_meta($student->ID, '_bm_loan_history', true) ?: array();
+            $rankings_backup[] = array(
+                'user_id' => $student->ID, 'name' => $student->display_name, 'email' => $student->user_email,
+                'xp' => $xp, 'badges' => $badges, 'total_loans' => count($loan_history), 'year' => $current_year,
+            );
+        }
+        update_option('bm_ranking_archive_' . $current_year, $rankings_backup);
+        
+        // Resetar XP
+        if ($settings['reset_xp'] === '1') {
+            foreach ($students as $student) {
+                delete_user_meta($student->ID, '_bm_xp');
+                delete_user_meta($student->ID, '_bm_xp_history');
+            }
+        }
+        
+        // Resetar medalhas
+        if ($settings['reset_badges'] === '1') {
+            foreach ($students as $student) {
+                delete_user_meta($student->ID, '_bm_badges');
+            }
+        }
+        
+        // Limpar reservas
+        if ($settings['clear_reservations'] === '1') {
+            $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
+            foreach ($all_books as $book) {
+                $reservations = get_post_meta($book->ID, '_bm_reservations', true);
+                if (!is_array($reservations)) continue;
+                $cleaned = array();
+                foreach ($reservations as $r) { if ($r['status'] === 'active') $cleaned[] = $r; }
+                update_post_meta($book->ID, '_bm_reservations', $cleaned);
+                update_post_meta($book->ID, '_bm_borrowed_count', count(array_filter($cleaned, function($r) { return $r['status'] === 'active'; })));
+            }
+            foreach ($students as $student) {
+                delete_user_meta($student->ID, '_bm_active_reservations');
+                delete_user_meta($student->ID, '_bm_reservation_count');
+            }
+        }
+        
+        // Limpeza de histórico
+        if ($settings['history_enabled'] === '1') {
+            $before_year = !empty($settings['clear_before_year']) ? intval($settings['clear_before_year']) : $current_year;
+            
+            foreach ($students as $student) {
+                // Fichas de leitura
+                if ($settings['clear_reading_log'] === '1') {
+                    $reading_log = get_user_meta($student->ID, '_bm_reading_log', true) ?: array();
+                    $cleaned = array();
+                    foreach ($reading_log as $log) {
+                        $log_year = date('Y', strtotime($log['date']));
+                        if ($log_year >= $before_year) $cleaned[] = $log;
+                    }
+                    update_user_meta($student->ID, '_bm_reading_log', $cleaned);
+                }
+                
+                // Resenhas (texto)
+                if ($settings['clear_reviews'] === '1') {
+                    $reading_log = get_user_meta($student->ID, '_bm_reading_log', true) ?: array();
+                    foreach ($reading_log as &$log) {
+                        $log_year = date('Y', strtotime($log['date']));
+                        if ($log_year < $before_year) $log['review'] = '';
+                    }
+                    update_user_meta($student->ID, '_bm_reading_log', $reading_log);
+                }
+                
+                // Vídeos
+                if ($settings['clear_videos'] === '1') {
+                    $reading_log = get_user_meta($student->ID, '_bm_reading_log', true) ?: array();
+                    foreach ($reading_log as &$log) {
+                        $log_year = date('Y', strtotime($log['date']));
+                        if ($log_year < $before_year) $log['video_url'] = '';
+                    }
+                    update_user_meta($student->ID, '_bm_reading_log', $reading_log);
+                }
+                
+                // Avaliações (estrelas)
+                if ($settings['clear_ratings'] === '1') {
+                    $reading_log = get_user_meta($student->ID, '_bm_reading_log', true) ?: array();
+                    foreach ($reading_log as &$log) {
+                        $log_year = date('Y', strtotime($log['date']));
+                        if ($log_year < $before_year) $log['rating'] = 0;
+                    }
+                    update_user_meta($student->ID, '_bm_reading_log', $reading_log);
+                }
+                
+                // Histórico de empréstimos
+                if ($settings['clear_loan_history'] === '1') {
+                    $loan_history = get_user_meta($student->ID, '_bm_loan_history', true) ?: array();
+                    $cleaned = array();
+                    foreach ($loan_history as $loan) {
+                        $loan_year = date('Y', strtotime($loan['loan_date']));
+                        if ($loan_year >= $before_year) $cleaned[] = $loan;
+                    }
+                    update_user_meta($student->ID, '_bm_loan_history', $cleaned);
+                }
+            }
+        }
+        
+        // Recadastramento
+        if ($settings['activate_recadastro'] === '1') {
+            update_option('bm_recadastro_required', '1');
+            update_option('bm_recadastro_year', $current_year + 1);
+        } else {
+            update_option('bm_recadastro_required', '0');
+        }
+        
+        // Log
+        $log = get_option('bm_year_transition_log', array());
+        $log[] = array('date' => current_time('mysql'), 'user' => get_current_user_id(), 'settings' => $settings);
+        update_option('bm_year_transition_log', $log);
+        
+        update_option('bm_last_year_transition', $current_year);
+        
+        $msg = '<div class="notice notice-success"><p><strong>✅ Virada de Ano Letivo concluída!</strong> Backup salvo como bm_ranking_archive_' . $current_year . '.</p></div>';
+    }
+    
+    // Exportar CSV
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export_students_csv'])) {
+        $students = get_users(array('role' => 'bm_student'));
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="alunos_historico_' . $current_year . '.csv"');
+        echo "\xEF\xBB\xBF";
+        $output = fopen('php://output', 'w');
+        fputcsv($output, array('Nome', 'E-mail', 'XP', 'Medalhas', 'Livros Lidos', 'Fichas', 'Resenhas', 'Vídeos', 'Empréstimos Ativos'), ';');
+        foreach ($students as $student) {
+            $xp = get_user_meta($student->ID, '_bm_xp', true) ?: '0';
+            $badges = get_user_meta($student->ID, '_bm_badges', true) ?: array();
+            $loan_history = get_user_meta($student->ID, '_bm_loan_history', true) ?: array();
+            $reading_log = get_user_meta($student->ID, '_bm_reading_log', true) ?: array();
+            $active_loans = count(array_filter($loan_history, function($l) { return $l['status'] === 'active'; }));
+            fputcsv($output, array(
+                $student->display_name, $student->user_email, $xp, count($badges),
+                count($loan_history), count($reading_log),
+                count(array_filter($reading_log, function($l) { return !empty($l['review']); })),
+                count(array_filter($reading_log, function($l) { return !empty($l['video_url']); })),
+                $active_loans,
+            ), ';');
+        }
+        fclose($output);
+        exit;
+    }
+    
+    $last_transition = get_option('bm_last_year_transition', 'Nunca');
+    $recadastro_active = get_option('bm_recadastro_required', '0');
+    $transition_date = $settings['transition_day'] . '/' . $settings['transition_month'];
+    ?>
+    <div class="wrap">
+        <h1>🔄 Virada de Ano Letivo</h1>
+        <?php echo $msg; ?>
+        
+        <form method="post" style="max-width:700px;">
+            <h2>Configurações</h2>
+            <table class="form-table">
+                <tr><th><label>Ativar sistema de virada de ano letivo</label></th><td><label><input type="checkbox" name="yt_enabled" <?php checked($settings['enabled'], '1'); ?> /> Habilitar</label><p class="description">Se desativado, todo histórico continua indefinidamente.</p></td></tr>
+                <tr><th><label>Data da virada (mês/dia)</label></th><td>
+                    <select name="transition_month" style="width:100px;"><?php for ($m = 1; $m <= 12; $m++): ?><option value="<?php echo $m; ?>" <?php selected($settings['transition_month'], $m); ?>><?php echo date_i18n('F', mktime(0, 0, 0, $m, 1)); ?></option><?php endfor; ?></select>
+                    <select name="transition_day" style="width:80px;margin-left:5px;"><?php for ($d = 1; $d <= 31; $d++): ?><option value="<?php echo $d; ?>" <?php selected($settings['transition_day'], $d); ?>><?php echo $d; ?></option><?php endfor; ?></select>
+                    <p class="description">Define quando a virada acontece. Ex: 31/Dezembro (Brasil) ou 30/Junho (Austrália).</p></td></tr>
+            </table>
+            
+            <h2>Ações da Virada</h2>
+            <table class="form-table">
+                <tr><th><label>Resetar pontuações (XP)</label></th><td><label><input type="checkbox" name="reset_xp" <?php checked($settings['reset_xp'], '1'); ?> /> Zerar pontuações de todos os alunos</label></td></tr>
+                <tr><th><label>Resetar medalhas</label></th><td><label><input type="checkbox" name="reset_badges" <?php checked($settings['reset_badges'], '1'); ?> /> Zerar medalhas de todos os alunos</label></td></tr>
+                <tr><th><label>Limpar reservas pendentes</label></th><td><label><input type="checkbox" name="clear_reservations" <?php checked($settings['clear_reservations'], '1'); ?> /> Remover todas as reservas não confirmadas</label><p class="description">Empréstimos ativos não serão afetados.</p></td></tr>
+                <tr><th><label>Ativar recadastramento de alunos</label></th><td><label><input type="checkbox" name="activate_recadastro" <?php checked($settings['activate_recadastro'], '1'); ?> /> Exigir que alunos confirmem dados no próximo login</label><p class="description">Apenas alunos (bm_student) serão afetados.</p></td></tr>
+            </table>
+            
+            <p><input type="submit" name="save_settings" class="button" value="Salvar Configurações" /> <input type="submit" name="export_students_csv" class="button" value="📥 Exportar dados dos alunos (CSV)" /></p>
+        </form>
+        
+        <hr style="margin:30px 0;" />
+        
+        <form method="post" style="max-width:700px;">
+            <h2>🗑️ Limpeza de Histórico</h2>
+            <p class="description">⚠️ Esta seção controla a exclusão permanente de dados históricos dos alunos. Por padrão, o histórico NUNCA é apagado.</p>
+            
+            <table class="form-table">
+                <tr><th><label>Habilitar limpeza de histórico</label></th><td><label><input type="checkbox" name="history_enabled" id="bm_history_toggle" <?php checked($settings['history_enabled'], '1'); ?> /> Permitir configurar limpeza de dados históricos</label></td></tr>
+            </table>
+            
+            <div id="bm_history_options" style="<?php echo $settings['history_enabled'] === '1' ? '' : 'opacity:0.5;pointer-events:none;'; ?>">
+                <table class="form-table">
+                    <tr><th><label>Apagar fichas de leitura</label></th><td><label><input type="checkbox" name="clear_reading_log" <?php checked($settings['clear_reading_log'], '1'); ?> /> Remove fichas de leitura (_bm_reading_log)</label></td></tr>
+                    <tr><th><label>Apagar resenhas (texto)</label></th><td><label><input type="checkbox" name="clear_reviews" <?php checked($settings['clear_reviews'], '1'); ?> /> Remove textos das resenhas</label></td></tr>
+                    <tr><th><label>Apagar vídeo-resenhas (links)</label></th><td><label><input type="checkbox" name="clear_videos" <?php checked($settings['clear_videos'], '1'); ?> /> Remove links de vídeos</label></td></tr>
+                    <tr><th><label>Apagar avaliações (estrelas)</label></th><td><label><input type="checkbox" name="clear_ratings" <?php checked($settings['clear_ratings'], '1'); ?> /> Remove notas com estrelas</label></td></tr>
+                    <tr><th><label>Apagar histórico de empréstimos</label></th><td><label><input type="checkbox" name="clear_loan_history" <?php checked($settings['clear_loan_history'], '1'); ?> /> Remove histórico (_bm_loan_history)</label></td></tr>
+                    <tr><th><label>Apagar apenas dados anteriores a (ano)</label></th><td><input type="number" name="clear_before_year" value="<?php echo esc_attr($settings['clear_before_year']); ?>" style="width:80px;" placeholder="<?php echo $current_year; ?>" /><p class="description">Deixe vazio para apagar tudo. Ex: "2024" apaga apenas dados de 2023 para trás.</p></td></tr>
+                </table>
+                <p><input type="submit" name="save_history" class="button" value="Salvar Configurações de Histórico" /></p>
+            </div>
+        </form>
+        
+        <hr style="margin:30px 0;" />
+        
+        <?php if ($settings['enabled'] === '1'): ?>
+            <div style="background:#fff3f3;padding:15px;border-radius:8px;border:2px solid #dc3545;margin-bottom:20px;">
+                <h2 style="color:#dc3545;margin-top:0;">⚠️ Executar Virada de Ano Letivo</h2>
+                <p>Esta ação é <strong>irreversível</strong>. Um backup automático dos rankings será salvo antes.</p>
+                <p><strong>Data configurada:</strong> <?php echo $transition_date; ?> | <strong>Última virada:</strong> <?php echo esc_html($last_transition); ?></p>
+                <?php if ($recadastro_active === '1'): ?><p style="color:#dc3545;">Recadastramento ATIVO para <?php echo get_option('bm_recadastro_year', date('Y')); ?>.</p><?php endif; ?>
+                
+                <form method="post">
+                    <p><strong>Digite "VIRADA <?php echo $current_year; ?>" para confirmar:</strong></p>
+                    <input type="text" id="bm_confirm_text" style="width:300px;padding:8px;font-size:16px;" placeholder="VIRADA <?php echo $current_year; ?>" />
+                    <br><br>
+                    <input type="submit" name="execute_transition" id="bm_transition_btn" class="button button-primary" value="🔄 Executar Virada de Ano Letivo" disabled style="background:#dc3545;border-color:#dc3545;color:#fff;" />
+                </form>
+            </div>
+            <script>document.getElementById('bm_confirm_text').addEventListener('input', function() { document.getElementById('bm_transition_btn').disabled = this.value !== 'VIRADA <?php echo $current_year; ?>'; });</script>
+        <?php else: ?>
+            <p style="color:#666;">O sistema de virada de ano letivo está <strong>desativado</strong>. Ative-o nas configurações acima.</p>
+        <?php endif; ?>
+    </div>
+    
+    <script>
+    document.getElementById('bm_history_toggle').addEventListener('change', function() {
+        if (this.checked) {
+            var confirmed = confirm('⚠️ Atenção: Você está prestes a acessar opções que podem apagar permanentemente o histórico pedagógico dos alunos. Recomendamos fortemente exportar esses dados via CSV antes de prosseguir. Deseja continuar?');
+            if (!confirmed) { this.checked = false; return; }
+        }
+        var options = document.getElementById('bm_history_options');
+        options.style.opacity = this.checked ? '1' : '0.5';
+        options.style.pointerEvents = this.checked ? 'auto' : 'none';
+    });
+    </script>
+    <?php
+}

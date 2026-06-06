@@ -592,3 +592,61 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - Detalhes: Criada página "Etiquetas" no menu Livros com sistema de carrinho persistente via sessão PHP. Seleção de livros por checkboxes com filtros (busca textual, gênero, disciplina, classificação). Botão "Adicionar etiqueta" na página individual do livro (visível para Gestor/Admin). Visualização de impressão em nova aba com grid A4 (3 colunas × 8 linhas = 24 etiquetas por folha). Layout da etiqueta: autor (SOBRENOME, Nome), título, classificação (CDU/CDD), cutter, edição, numeração de exemplares (Ex. 1/56) e código de barras ISBN. Suporte a múltiplos exemplares (gera uma etiqueta por exemplar). Botão "Imprimir Agora" com CSS @media print. Carrinho permite adicionar/remover itens individualmente e limpar tudo. Campo Exemplares agora editável no widget Número de Chamada com padrão 1. Fontes aumentadas na impressão (autor 12px, título 10px, CDU/Cutter 16px). Itens 73-77 adicionados ao Ciclo de Polimento (preenchimento por ISBN, avaliação Google Books, livros relacionados, barra de progresso na importação, otimização de margem A4).
 - Ferramenta: write_file
 - Decisão: Fase 11C concluída. Ciclo 7 próximo da conclusão.
+
+100 - Data: 2026-06-04
+- Ação: Fase 12A concluída — Página de Configurações e integração com limites configuráveis.
+- Detalhes: Criada página "Configurações" no menu Livros (acesso Admin) com campos: máximo de reservas por aluno (padrão 3), máximo de empréstimos por aluno (padrão 1), prazo padrão de empréstimo em dias (padrão 14), prazo de reserva em horas (padrão 24). Salvos via get_option('bm_settings'). Funções atualizadas para usar configurações: bm_reserve_book() usa limite configurável e prazo de reserva, bm_confirm_loan() usa prazo configurável e verifica estoque disponível antes de emprestar. Adicionada função bm_reject_reservation() com botão "Rejeitar" na página de empréstimos. Página de empréstimos atualizada com colunas de Posição (fila) e Estoque (disponível/total com cores). Botão "Confirmar" desabilitado quando não há exemplares disponíveis. Dashboard do aluno mostra limite configurável de reservas.
+- Ferramenta: write_file
+- Decisão: Fase 12A concluída. Próximo passo: Fase 12B (White Label).
+
+101 - Data: 2026-06-05
+- Ação: Fase 12B concluída — White Label.
+- Detalhes: Criada página "Identidade Visual" no menu Livros (acesso Admin) com checkbox de ativar/desativar, campos para nome da escola, URL, upload de logo (via WordPress Media Uploader) e texto do rodapé. Salvos via get_option('bm_white_label'). Integrado ao archive-bm_book.php (nome da escola substitui "Catálogo de Livros") e single-bm_book.php (logo no topo), ambos com verificação de $wl['enabled']. Removidas cores primária/secundária (função do tema). Corrigido bug de função bm_admin_media_scripts duplicada. Item 81 adicionado ao Ciclo de Polimento (avaliar remoção futura do White Label).
+- Ferramenta: write_file
+- Decisão: Fase 12B concluída. Próximo passo: Fase 12C (Virada de Ano Letivo).
+
+102 - Data: 2026-06-05
+- Ação: Fase 12C concluída — Virada de Ano Letivo.
+- Detalhes: Criada página "Virada de Ano Letivo" no menu Livros (acesso Admin) com toggle de ativar/desativar sistema, data configurável (mês/dia) para qualquer hemisfério, checkboxes independentes para resetar XP e medalhas, limpar reservas pendentes e ativar recadastramento de alunos (apenas bm_student). Seção "Limpeza de Histórico" protegida por modal de confirmação com checkboxes para apagar fichas de leitura, resenhas, vídeos, avaliações e histórico de empréstimos com filtro por ano. Backup automático dos rankings antes da virada (bm_ranking_archive_ANO). Exportação de dados dos alunos via CSV. Log de viradas salvo em bm_year_transition_log. Confirmação dupla digitando "VIRADA ANO" para executar. Se sistema desativado, histórico continua indefinidamente. Item 83 adicionado ao Ciclo de Polimento (testar com dados reais).
+- Ferramenta: write_file
+- Decisão: Fase 12C concluída. Próximo passo: Fase 12D (Limpeza de Código Morto).
+
+**103 - Data:** 2026-06-05
+- **Ação:** Correção de bugs na Fase 12C — Virada de Ano Letivo.
+- **Detalhes:** Resolvidos 3 problemas: (1) Checkbox "Ativar sistema de virada de ano letivo" e checkboxes de ações (reset XP, reset medalhas, limpar reservas, recadastramento) não salvavam as alterações — causa: estavam no bloco `save_history` em vez de `save_settings`. Unificado o processamento no `save_settings` correto. (2) Warning "Cannot modify header information" ao exportar CSV de alunos — causa: headers enviados dentro da função de renderização da página, após output HTML. Movida a lógica de exportação para função `bm_handle_students_csv_export()` hookada em `admin_init`. (3) Botão "Exportar dados dos alunos (CSV)" não exportava após correção do admin_init — causa: botão estava no mesmo formulário que `save_settings`, fazendo o PHP processar como salvamento. Separado em formulário próprio. Testado: checkboxes salvam corretamente, CSV exporta sem warnings.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**104 - Data:** 2026-06-05
+- **Ação:** Fase 12E-T2 concluída — Criador de Taxonomias Dinâmicas.
+- **Detalhes:** Implementada subpágina "Taxonomias" no menu Biblioteca (slug: `bm_taxonomies`, acesso: Admin e Gestor). Permite criar taxonomias personalizadas com nome, slug automático e opção hierárquica ou não. Armazenamento via `get_option('bm_dynamic_taxonomies')`. Registro automático no `init` com `register_taxonomy()` na prioridade 11. Integração completa em 4 pontos: (1) dropdowns de filtro na listagem admin via `restrict_manage_posts`, (2) lógica de filtro via `pre_get_posts`, (3) metaboxes de checkboxes na edição do livro via `add_meta_box` com array de args, (4) salvamento dos termos via `wp_set_post_terms()` no hook `save_post_bm_book`. Exclusão remove taxonomia do option e executa `flush_rewrite_rules()`. Corrigido bug de sintaxe: tags `<?php` e `?>` aninhadas dentro de bloco PHP causavam parse error — removidas. Corrigido bug de duplicação: bloco com `endforeach` duplicado — removido. Testado: criação de taxonomia hierárquica (Faixa Etária), criação de termos, atribuição a livros, filtro funcional na listagem admin, criação de taxonomia não-hierárquica (Tags) e exclusão — todos os 6 testes aprovados.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**105 - Data:** 2026-06-05
+- **Ação:** Fase 12E-T3 movida para o Ciclo de Polimento.
+- **Detalhes:** A tarefa "Configuração de limites por perfil: máximo de reservas e empréstimos por aluno" foi removida da Fase 12E e adicionada ao Ciclo de Polimento. Motivo: os limites globais por aluno já funcionam via Fase 12A (bm_get_settings). A diferenciação por perfil/grupo é um refinamento futuro, não essencial para o MVP atual. Será implementada quando houver demanda real de escolas com limites diferentes por série/turma.
+- **Ferramenta:** Decisão do usuário
+
+**106 - Data:** 2026-06-05
+- **Ação:** Fase 12E-T4 concluída — Limpar roles sujas na ativação.
+- **Detalhes:** Adicionada função `bm_clean_dirty_roles()` chamada no hook de ativação. Mapeia roles antigas (`gestor_biblioteca`, `gestor da biblioteca`, `professor`, `aluno`) para as roles atuais (`bm_librarian`, `bm_teacher`, `bm_student`). Para cada role suja encontrada, migra todos os usuários para a role limpa via `WP_User::set_role()` e remove a role antiga com `remove_role()`. Isso garante que usuários criados em versões anteriores do plugin não fiquem com roles órfãs que não são mais registradas.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**108 - Data:** 2026-06-05
+- **Ação:** Fase 12E-T5 movida para o Ciclo de Polimento com escopo expandido.
+- **Detalhes:** A tarefa original "substituir manage_options por capabilities granulares" era insuficiente. O Gestor ainda não via itens de menu (subpáginas registradas com manage_options) nem metaboxes/botões na edição (que também verificam manage_options). Nova abordagem definida para o Polimento: criar interface "Permissões do Gestor" onde o Admin marca quais funcionalidades o Gestor pode acessar (importar CSV, exportar CSV, campos dinâmicos, taxonomias, atividades, disciplinas, chatbot, etiquetas, aprovar fichas, aprovar cadastros, empréstimos). Implementar função customizada bm_librarian_can('acao') aplicada em menus, metaboxes, botões AJAX e handlers. As 5 alterações já feitas (save_post, CSV import/export, campos dinâmicos) foram mantidas como ajuda parcial.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**109 - Data:** 2026-06-05
+- **Ação:** Fase 12E-T6 concluída — Seletor CDU ou CDD na central de configurações.
+- **Detalhes:** Adicionado campo `classification_system` no `bm_get_settings()` com padrão `cdu`. Interface na página de Configurações com radio buttons "Classificação CDU" e "Classificação CDD". Salvamento com validação (apenas `cdu` ou `cdd`). Prompt da IA atualizado em `bm_generate_call_number()` e `bm_generate_cdu_only()` para usar o sistema escolhido (`CDU` ou `CDD`). Rótulos na metabox e etiquetas permanecem neutros como "Classificação".
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**110 - Data:** 2026-06-05
+- **Ação:** Correção de bug — erro de sintaxe na Fase 12E-T6.
+- **Detalhes:** Dois erros corrigidos em `includes/admin.php`: (1) `bm_get_settings()` ficou grudada dentro de `bm_render_dynamic_fields_page()` por falta de quebra de linha — separadas corretamente. (2) `bm_render_dynamic_fields_page()` estava declarada duas vezes (linhas 512 e 1159) — removida a segunda declaração duplicada. (3) Chave `}` extra após `return $saved;` — removida. Plugin voltou a funcionar. Seletor CDU/CDD testado e aprovado.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**111 - Data:** 2026-06-05
+- **Ação:** Fase 12E-T7 concluída — Visibilidade configurável de campos administrativos por perfil.
+- **Detalhes:** Adicionado array `field_visibility` no `bm_get_settings()` com defaults: Aluno e Professor não veem ISBN nem Histórico; Professor vê Localização; Gestor vê tudo. Interface na página de Configurações com grid de checkboxes (Aluno | Professor | Gestor) para cada campo: ISBN, Localização, Exemplares, Histórico de Ações. Salvamento processa array associativo com 0/1 por campo e perfil. No `single-bm_book.php`, substituída a verificação binária `bm_user_can_view_admin_data()` por função anônima `$can_see()` que consulta a visibilidade por campo e perfil. Admin sempre vê tudo. Se nenhum campo estiver visível para o perfil, a seção "Informações Administrativas" não é exibida.
+- **Ferramenta:** `write_file` (manual pelo usuário)

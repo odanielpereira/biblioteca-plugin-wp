@@ -129,45 +129,48 @@
 
 ---
 
-## Ciclo 8 — Versão 8.0.0 ← PLANEJADO
+## Ciclo 8 — Versão 8.0.0 ← EM PLANEJAMENTO
 
 ### Fase 12: Infraestrutura e Configurações
 *   **Objetivo:** Tornar o plugin configurável, adaptável a qualquer escola e preparado para virada de ano letivo.
-*   **Critério de saída:** Escola configura nome, logo e limites. Virada de ano letivo funcional. Importação via Google Drive. Código limpo.
+*   **Critério de saída:** Escola configura nome, logo, cores, limites e prazos. Virada de ano letivo funcional. Código limpo e permissoes revisadas.
 
 #### Fase 12A — Página de Configurações
 *   **Descrição:** Central de configurações do plugin.
-*   **Tarefas:**
-    1.  [ ] Subpágina "Configurações" no menu Livros (acesso: Admin).
-    2.  [ ] Campos: limites de reservas por aluno, máximo de empréstimos, prazo padrão.
-    3.  [ ] Salvar como `get_option('bm_settings')`.
+*    **Tarefas:**
+    1.  [x] Subpágina "Configurações" no menu Livros (acesso: Admin).
+    2.  [x] Campos: limites de reservas por aluno, máximo de empréstimos, prazo padrão de empréstimo (dias), prazo de reserva (horas).
+    3.  [x] Salvar como get_option('bm_settings').
+    4.  [x] Integrar com funções de reserva, empréstimo e dashboard.
+    5.  [x] Verificar estoque ao confirmar empréstimo.
+    6.  [x] Botão "Rejeitar" reserva + colunas de posição e estoque.
 
 #### Fase 12B — White Label
 *   **Descrição:** Personalização da identidade visual da escola.
 *   **Tarefas:**
-    1.  [ ] Campo: nome da escola (substitui "Catálogo de Livros").
-    2.  [ ] Upload de logo (exibida no header do catálogo).
-    3.  [ ] Cores personalizáveis (primária, secundária).
-    4.  [ ] Anos letivos configuráveis.
+    1.  [x] Checkbox de ativar/desativar identidade visual.
+    2.  [x] Campo: nome da escola (substitui "Catálogo de Livros").
+    3.  [x] Upload de logo (exibida no header do catálogo).
+    4.  [x] Texto do rodapé e URL do site da escola.
+    5.  [x] Integração com archive e single.
 
 #### Fase 12C — Virada de Ano Letivo
 *   **Descrição:** Botão para resetar dados na virada do ano.
 *   **Tarefas:**
-    1.  [ ] Botão "Virada de Ano Letivo" no painel do Admin.
-    2.  [ ] Arquivar rankings atuais (salvar como histórico).
-    3.  [ ] Resetar XP e medalhas (opcional).
-    4.  [ ] Limpar reservas antigas.
-    5.  [ ] Ativar trava de recadastramento obrigatório.
-    6.  [ ] Confirmação dupla antes de executar.
+    1.  [x] Toggle ativar/desativar sistema de virada.
+    2.  [x] Data configurável (mês/dia) para qualquer hemisfério.
+    3.  [x] Checkboxes independentes: resetar XP, resetar medalhas.
+    4.  [x] Limpar reservas pendentes.
+    5.  [x] Ativar recadastramento de alunos (apenas bm_student).
+    6.  [x] Backup automático dos rankings antes da virada.
+    7.  [x] Seção "Limpeza de Histórico" com modal de confirmação.
+    8.  [x] Checkboxes: fichas, resenhas, vídeos, avaliações, empréstimos.
+    9.  [x] Filtro por ano na limpeza de histórico.
+    10. [x] Exportar dados dos alunos via CSV.
+    11. [x] Log de viradas (bm_year_transition_log).
+    12. [x] Confirmação dupla antes de executar.
 
-#### Fase 12D — Integração Google Drive
-*   **Descrição:** Importar planilhas direto do Google Sheets.
-*   **Tarefas:**
-    1.  [ ] Campo de URL do Google Sheets na importação CSV.
-    2.  [ ] Baixar planilha como CSV via `wp_remote_get()`.
-    3.  [ ] Processar com o mesmo fluxo de importação existente.
-
-#### Fase 12E — Limpeza de Código Morto
+#### Fase 12D — Limpeza de Código Morto
 *   **Descrição:** Remover funções não utilizadas identificadas no documento POSSÍVEIS LIXOS.
 *   **Tarefas:**
     1.  [ ] Remover bloco `// FASE 8G` (versão Gemini).
@@ -175,6 +178,75 @@
     3.  [ ] Remover `bm_super_admin` de `bm_register_roles()`, `bm_remove_roles()` e `bm_get_user_role()`.
     4.  [ ] Remover ou manter como fallback constantes do wp-config.
     5.  [ ] Testar todas as funcionalidades após remoção.
+
+#### Fase 12E — Refinamentos de Sistema ← CONCLUÍDA
+*   **Descrição:** Centralizar menu, revisar permissões, criar taxonomias dinâmicas e limites configuráveis.
+*   **Tarefas:**
+    1.  [x] Centralizar menu de administração (menu principal "Biblioteca").
+    2.  [x] Criador de Taxonomias Dinâmicas: gestor cria suas próprias taxonomias via interface.
+    3.  [ ] Configuração de limites por perfil: máximo de reservas e empréstimos por aluno. → MOVIDO PARA CICLO DE POLIMENTO
+    4.  [x] Limpar roles sujas (gestor_biblioteca, aluno, professor) na ativação.
+    5.  [ ] Revisão de permissões: substituir `manage_options` por capabilities granulares. → MOVIDO PARA CICLO DE POLIMENTO COM ESCOPO EXPANDIDO (Interface de permissões do Gestor)
+    6.  [x] Seletor CDU ou CDD na central de configurações.
+    7.  [x] Visibilidade configurável de campos administrativos por perfil.
+
+#### Fase 12F — Status e Diagnóstico
+*   **Descrição:** Páginas de status do sistema e logs.
+*   **Tarefas:**
+    1.  [ ] Página de Status: versão do plugin, PHP, WordPress, memória, chaves API.
+    2.  [ ] Contador de chamadas API (Groq) com estatísticas de uso.
+    3.  [ ] Logs de erro e diagnóstico.
+
+#### Fase 12G — Campos Dinâmicos para Alunos
+*   **Descrição:** Adaptar o gerenciador de campos dinâmicos para suportar também metadados de usuário (user_meta).
+*   **Tarefas:**
+    1.  [ ] Interface unificada com abas: "Campos de Livros" e "Campos de Alunos".
+    2.  [ ] Prefixo `_bm_user_` para campos dinâmicos de alunos.
+    3.  [ ] Mesmos tipos: texto curto, texto longo.
+    4.  [ ] Drag and drop, renomear, ocultar/mostrar.
+    5.  [ ] Nenhum campo fixo obrigatório — gestor define tudo.
+
+#### Fase 12H — Importação de Alunos em Massa
+*   **Descrição:** Página de importação de alunos via CSV com mapeamento dinâmico de colunas.
+*   **Tarefas:**
+    1.  [ ] Subpágina "Importar Alunos" no menu Usuários ou Livros.
+    2.  [ ] Upload de CSV com mapeamento dinâmico (igual ao de livros).
+    3.  [ ] Colunas mapeáveis: user_login, display_name, user_email, user_pass + campos dinâmicos + bm_student_group.
+    4.  [ ] Criação automática de usuários com role `bm_student`.
+    5.  [ ] Status: "approved" (direto) ou "pending" (aguardando aprovação).
+    6.  [ ] Detecção de duplicados por e-mail.
+    7.  [ ] Relatório: X importados, Y ignorados, Z duplicados.
+
+#### Fase 12I — Dashboard e Cadastro de Alunos
+*   **Descrição:** Exibir campos dinâmicos no dashboard do aluno e no formulário de autocadastro.
+*   **Tarefas:**
+    1.  [ ] Dashboard do aluno exibe campos dinâmicos preenchidos.
+    2.  [ ] Shortcode `[bm_register]` atualizado com campos dinâmicos.
+    3.  [ ] Página de edição de aluno no admin (dados nativos + campos dinâmicos + histórico).
+    4.  [ ] Professor vê dados do aluno em modo leitura.
+
+#### Fase 12J — Administração de Alunos
+*   **Descrição:** Interface completa para Admin e Gestor gerenciarem alunos.
+*   **Tarefas:**
+    1.  [ ] Subpágina "Alunos" com listagem (tabela com colunas customizáveis).
+    2.  [ ] Filtros por grupo, status, turno, série.
+    3.  [ ] Ações em lote: aprovar, suspender, excluir.
+    4.  [ ] Página individual do aluno (dados + campos dinâmicos + histórico de leitura/XP/medalhas).
+
+    #### Fase 12K — Atendimento (Empréstimo Rápido no Balcão)
+*   **Descrição:** Tela de atendimento físico para Gestor/Admin realizar empréstimos e devoluções rapidamente.
+*   **Tarefas:**
+    1.  [ ] Subpágina "Atendimento" no menu Biblioteca (acesso: Gestor e Admin).
+    2.  [ ] Campo de busca de livro com autocomplete e exibição de disponibilidade em tempo real.
+    3.  [ ] Indicador visual se o livro é "Consulta local" (não pode sair da biblioteca).
+    4.  [ ] Campo de busca de aluno com autocomplete e status (pendências, livros ativos, limite).
+    5.  [ ] Modal de cadastro rápido de aluno (nome, e-mail, telefone, campos dinâmicos) na mesma tela.
+    6.  [ ] Botão "Emprestar" que aplica regras (limite, prazo, consulta local) e atualiza estoque.
+    7.  [ ] Botão "Devolver" na mesma tela.
+    8.  [ ] Alerta visual se aluno tem devolução atrasada ou atingiu limite de empréstimos.
+    9.  [ ] Suporte a leitor de código de barras (campo com foco automático para ISBN/ID).
+    10. [ ] Histórico rápido do aluno (últimos 3 livros lidos).
+    11. [ ] Checkbox "Consulta local" no cadastro/edição do livro (metadado `_bm_consulta_local`).
 
 ## Ciclo de Polimento — Versão 8.5.0 ← PLANEJADO
 
