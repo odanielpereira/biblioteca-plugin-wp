@@ -84,7 +84,7 @@ function bm_google_books_search($title, $author, $publisher, $isbn = '') {
     $sa = mb_strtolower(trim($author));
 
     foreach ($queries as $query) {
-        $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($query) . '&key=' . BM_GOOGLE_BOOKS_API_KEY;
+        $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($query) . '&key=' . bm_get_api_key('google_books');
         $r = wp_remote_get($url, array('timeout' => 15));
         if (is_wp_error($r)) continue;
         $body = json_decode(wp_remote_retrieve_body($r), true);
@@ -153,7 +153,7 @@ function bm_search_book_cover() {
     if(empty($queries)) wp_die(__('Preencha Título, Autor ou ISBN.','book-manager'));
     $body=null; $used='';
     foreach($queries as $i=>$q){
-        $url='https://www.googleapis.com/books/v1/volumes?q='.urlencode($q).'&key='.BM_GOOGLE_BOOKS_API_KEY;
+        $url='https://www.googleapis.com/books/v1/volumes?q='.urlencode($q).'&key='.bm_get_api_key('google_books');
         $r=wp_remote_get($url,array('timeout'=>15)); if(is_wp_error($r)) continue;
         $body=json_decode(wp_remote_retrieve_body($r),true);
         if(!empty($body['items'])){$hc=false;foreach($body['items'] as $item) if(isset($item['volumeInfo']['imageLinks']['thumbnail'])){$hc=true;break;} if($hc){$used=$ln[$i];break;}}
@@ -204,7 +204,7 @@ function bm_fetch_sinopse_from_google($title, $author, $isbn = '') {
     $st = mb_strtolower(trim($title));
 
     foreach ($queries as $query) {
-        $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($query) . '&key=' . BM_GOOGLE_BOOKS_API_KEY;
+        $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($query) . '&key=' . bm_get_api_key('google_books');
         $r = wp_remote_get($url, array('timeout' => 15));
         if (is_wp_error($r)) continue;
         $body = json_decode(wp_remote_retrieve_body($r), true);
@@ -422,72 +422,8 @@ function bm_ajax_ai_classify() {
 add_action('wp_ajax_bm_ai_classify', 'bm_ajax_ai_classify');
 
 // ==========================================
-// FASE 11A: GERADOR DE ATIVIDADES POR IA (DEEPSEEK)
+// FASE 11A: GERADOR DE ATIVIDADES POR IA (GROQ)
 // ==========================================
-function bm_deepseek_request($prompt, $system = '') {
-    $ia = bm_get_active_ia_key();
-    if (empty($ia['key'])) return false;
-    
-    $url = '';
-    $headers = array('Content-Type' => 'application/json');
-    $body = array();
-    
-    if ($ia['provider'] === 'deepseek') {
-        $url = 'https://api.deepseek.com/v1/chat/completions';
-        $headers['Authorization'] = 'Bearer ' . $ia['key'];
-        $messages = array();
-        if (!empty($system)) $messages[] = array('role' => 'system', 'content' => $system);
-        $messages[] = array('role' => 'user', 'content' => $prompt);
-        $body = array(
-            'model' => 'deepseek-chat',
-            'messages' => $messages,
-            'temperature' => 0.7,
-            'max_tokens' => 500,
-        );
-    } elseif ($ia['provider'] === 'groq') {
-        $url = 'https://api.groq.com/openai/v1/chat/completions';
-        $headers['Authorization'] = 'Bearer ' . $ia['key'];
-        $messages = array();
-        if (!empty($system)) $messages[] = array('role' => 'system', 'content' => $system);
-        $messages[] = array('role' => 'user', 'content' => $prompt);
-        $body = array(
-            'model' => 'llama3-8b-8192',
-            'messages' => $messages,
-            'temperature' => 0.7,
-            'max_tokens' => 500,
-        );
-    } elseif ($ia['provider'] === 'gemini') {
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . $ia['key'];
-        $full_prompt = $system ? $system . "\n\n" . $prompt : $prompt;
-        $body = array(
-            'contents' => array(
-                array('parts' => array(array('text' => $full_prompt)))
-            )
-        );
-    }
-    
-    if (empty($url)) return false;
-    
-    $response = wp_remote_post($url, array(
-        'timeout' => 30,
-        'headers' => $headers,
-        'body' => json_encode($body),
-    ));
-    
-    if (is_wp_error($response)) return false;
-    
-    $data = json_decode(wp_remote_retrieve_body($response), true);
-    
-    if ($ia['provider'] === 'gemini') {
-        return isset($data['candidates'][0]['content']['parts'][0]['text']) 
-            ? $data['candidates'][0]['content']['parts'][0]['text'] 
-            : false;
-    } else {
-        return isset($data['choices'][0]['message']['content']) 
-            ? $data['choices'][0]['message']['content'] 
-            : false;
-    }
-}
 
 function bm_generate_activities_for_book($book_id) {
     $cache = get_post_meta($book_id, '_bm_activities', true);
@@ -582,6 +518,10 @@ function bm_ajax_generate_activities() {
         'max_tokens' => 500,
     ));
     
+    // Contador de chamadas
+    $count = intval(get_option('bm_groq_call_count', 0));
+    update_option('bm_groq_call_count', $count + 1);
+    
     $response = wp_remote_post($url, array(
         'timeout' => 30,
         'headers' => array(
@@ -606,6 +546,8 @@ function bm_ajax_generate_activities() {
     if (isset($data['choices'][0]['message']['content'])) {
         $result = $data['choices'][0]['message']['content'];
         update_post_meta($post_id, '_bm_activities', $result);
+        $success = intval(get_option('bm_groq_success_count', 0));
+        update_option('bm_groq_success_count', $success + 1);
         wp_die(__('Atividades geradas com sucesso!', 'book-manager'));
     }
     
@@ -751,6 +693,10 @@ function bm_ajax_chatbot() {
         'max_tokens' => 300,
     ));
     
+    // Contador de chamadas
+    $count = intval(get_option('bm_groq_call_count', 0));
+    update_option('bm_groq_call_count', $count + 1);
+    
     $response = wp_remote_post($url, array(
         'timeout' => 15,
         'headers' => array('Content-Type' => 'application/json', 'Authorization' => 'Bearer ' . $groq_key),
@@ -761,6 +707,11 @@ function bm_ajax_chatbot() {
     
     $data = json_decode(wp_remote_retrieve_body($response), true);
     $reply = isset($data['choices'][0]['message']['content']) ? $data['choices'][0]['message']['content'] : 'Não entendi. Pode reformular?';
+    
+    if (isset($data['choices'][0]['message']['content'])) {
+        $success = intval(get_option('bm_groq_success_count', 0));
+        update_option('bm_groq_success_count', $success + 1);
+    }
     
     wp_die(json_encode(array('reply' => $reply)));
 }
@@ -1096,7 +1047,7 @@ function bm_ajax_service_register_book_by_isbn() {
     $isbn = sanitize_text_field($_POST['isbn']);
     if (empty($isbn)) wp_die(json_encode(array('success' => false, 'message' => 'ISBN inválido.')));
     
-    $url = 'https://www.googleapis.com/books/v1/volumes?q=isbn:' . $isbn . '&key=' . BM_GOOGLE_BOOKS_API_KEY;
+    $url = 'https://www.googleapis.com/books/v1/volumes?q=isbn:' . $isbn . '&key=' . bm_get_api_key('google_books');
     $response = wp_remote_get($url, array('timeout' => 15));
     
     if (is_wp_error($response)) wp_die(json_encode(array('success' => false, 'message' => 'Erro ao buscar na Google Books.')));
@@ -1316,6 +1267,10 @@ function bm_groq_simple_request($prompt) {
     $groq_key = bm_get_api_key('groq');
     if (empty($groq_key)) return false;
     
+    // Contador de chamadas
+    $count = intval(get_option('bm_groq_call_count', 0));
+    update_option('bm_groq_call_count', $count + 1);
+    
     $url = 'https://api.groq.com/openai/v1/chat/completions';
     $body = json_encode(array(
         'model' => 'llama-3.3-70b-versatile',
@@ -1332,7 +1287,14 @@ function bm_groq_simple_request($prompt) {
     
     if (is_wp_error($response)) return false;
     $data = json_decode(wp_remote_retrieve_body($response), true);
-    return isset($data['choices'][0]['message']['content']) ? trim($data['choices'][0]['message']['content']) : false;
+    $result = isset($data['choices'][0]['message']['content']) ? trim($data['choices'][0]['message']['content']) : false;
+    
+    if ($result) {
+        $success = intval(get_option('bm_groq_success_count', 0));
+        update_option('bm_groq_success_count', $success + 1);
+    }
+    
+    return $result;
 }
 
 function bm_resolve_cutter_conflict($cutter, $post_id) {

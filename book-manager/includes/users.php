@@ -7,6 +7,34 @@
 defined('ABSPATH') || exit;
 
 // ==========================================
+// FASE 15: AUDITORIA DE AÇÕES ADMINISTRATIVAS
+// ==========================================
+function bm_log_admin_action($action, $target_user_id) {
+    $user = wp_get_current_user();
+    $log = get_option('bm_admin_audit_log', array());
+    if (!is_array($log)) $log = array();
+    
+    $target_user = get_userdata($target_user_id);
+    
+    $log[] = array(
+        'action' => $action,
+        'admin_user' => $user ? $user->user_login : 'sistema',
+        'admin_id' => get_current_user_id(),
+        'target_user' => $target_user ? $target_user->display_name : '#' . $target_user_id,
+        'target_id' => $target_user_id,
+        'time' => current_time('mysql'),
+    );
+    
+    // Manter apenas últimos 100 registros
+    if (count($log) > 100) {
+        $log = array_slice($log, -100);
+    }
+    
+    update_option('bm_admin_audit_log', $log);
+}
+
+
+// ==========================================
 // FASE 9A: VERIFICAÇÃO DE PERMISSÃO PARA NOVAS ROLES
 // ==========================================
 function bm_user_can_manage_books() {
@@ -314,14 +342,14 @@ function bm_recadastro_form($user_id) {
     return ob_get_clean();
 }
 
-function bm_add_approval_page() {
-    add_submenu_page('users.php', __('Aprovar Cadastros', 'book-manager'), __('Aprovar Cadastros', 'book-manager'), 'edit_bm_books', 'bm_approve_users', 'bm_render_approval_page');
-}
-add_action('admin_menu', 'bm_add_approval_page');
+// FASE 18: Movido para página Alunos (aba Aprovar Cadastros)
 
 function bm_render_approval_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
-    
+    bm_render_approval_page_content();
+}
+
+function bm_render_approval_page_content() {
     if (isset($_POST['bm_approve_user']) && wp_verify_nonce($_POST['bm_approval_nonce'], 'bm_approval_action')) {
         $user_id = intval($_POST['user_id']);
         $action = sanitize_text_field($_POST['bm_action']);
@@ -333,9 +361,11 @@ function bm_render_approval_page() {
             update_user_meta($user_id, 'bm_approval_status', 'approved');
             update_user_meta($user_id, 'bm_approved_by', get_current_user_id());
             update_user_meta($user_id, 'bm_approved_date', current_time('mysql'));
+            bm_log_admin_action('Aprovou cadastro', $user_id);
             echo '<div class="notice notice-success"><p>' . __('Usuário aprovado!', 'book-manager') . '</p></div>';
         } elseif ($action === 'reject') {
             update_user_meta($user_id, 'bm_approval_status', 'rejected');
+            bm_log_admin_action('Rejeitou cadastro', $user_id);
             echo '<div class="notice notice-error"><p>' . __('Usuário rejeitado.', 'book-manager') . '</p></div>';
         }
     }
@@ -829,15 +859,14 @@ function bm_get_days_remaining($due_date) {
     return intval(ceil($diff / DAY_IN_SECONDS));
 }
 
-function bm_add_loans_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Empréstimos', 'book-manager'), __('Empréstimos', 'book-manager'), 'edit_bm_books', 'bm_loans', 'bm_render_loans_page');
-}
-
-add_action('admin_menu', 'bm_add_loans_page');
+// FASE 18: Movido para Balcão de Atendimento (aba Empréstimos)
 
 function bm_render_loans_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
-    
+    bm_render_loans_page_content();
+}
+
+function bm_render_loans_page_content() {
     $settings = bm_get_settings();
     $notice = '';
     
@@ -1157,31 +1186,52 @@ add_shortcode('bm_dashboard', 'bm_user_dashboard');
 function bm_student_dashboard_content() {
     $user_id = get_current_user_id();
     $user = wp_get_current_user();
-    $active_count = bm_get_active_reservation_count($user_id);
-    $xp = bm_get_xp($user_id);
-    $badges = get_user_meta($user_id, '_bm_badges', true) ?: array();
     
-    $loan_history = get_user_meta($user_id, '_bm_loan_history', true) ?: array();
-    $active_loans = array();
-    foreach ($loan_history as $loan) {
-        if ($loan['status'] === 'active') {
-            $loan['book_title'] = get_the_title($loan['book_id']);
-            $loan['days_remaining'] = bm_get_days_remaining($loan['due_date']);
-            $active_loans[] = $loan;
-        }
-    }
+    // Cache: contagens do aluno (5 minutos)
+    $cache_key = 'student_dashboard_' . $user_id;
+    $cached = bm_get_cached($cache_key);
     
-    $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1));
-    $user_reservations = array();
-    foreach ($all_books as $book) {
-        $reservations = get_post_meta($book->ID, '_bm_reservations', true);
-        if (!is_array($reservations)) continue;
-        foreach ($reservations as $r) {
-            if ($r['user_id'] == $user_id && $r['status'] === 'waiting') {
-                $r['book_title'] = $book->post_title;
-                $user_reservations[] = $r;
+    if ($cached) {
+        $active_count = $cached['active_count'];
+        $xp = $cached['xp'];
+        $badges = $cached['badges'];
+        $active_loans = $cached['active_loans'];
+        $user_reservations = $cached['user_reservations'];
+    } else {
+        $active_count = bm_get_active_reservation_count($user_id);
+        $xp = bm_get_xp($user_id);
+        $badges = get_user_meta($user_id, '_bm_badges', true) ?: array();
+        
+        $loan_history = get_user_meta($user_id, '_bm_loan_history', true) ?: array();
+        $active_loans = array();
+        foreach ($loan_history as $loan) {
+            if ($loan['status'] === 'active') {
+                $loan['book_title'] = get_the_title($loan['book_id']);
+                $loan['days_remaining'] = bm_get_days_remaining($loan['due_date']);
+                $active_loans[] = $loan;
             }
         }
+        
+        $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1));
+        $user_reservations = array();
+        foreach ($all_books as $book) {
+            $reservations = get_post_meta($book->ID, '_bm_reservations', true);
+            if (!is_array($reservations)) continue;
+            foreach ($reservations as $r) {
+                if ($r['user_id'] == $user_id && $r['status'] === 'waiting') {
+                    $r['book_title'] = $book->post_title;
+                    $user_reservations[] = $r;
+                }
+            }
+        }
+        
+        bm_set_cached($cache_key, array(
+            'active_count' => $active_count,
+            'xp' => $xp,
+            'badges' => $badges,
+            'active_loans' => $active_loans,
+            'user_reservations' => $user_reservations,
+        ));
     }
     
     ob_start();
@@ -1391,34 +1441,54 @@ function bm_teacher_view_student($student_id) {
 function bm_teacher_dashboard_content() {
     $user = wp_get_current_user();
     
-    $students = get_users(array('role' => 'bm_student'));
+    // Cache: dados do professor (5 minutos)
+    $cache_key = 'teacher_dashboard';
+    $cached = bm_get_cached($cache_key);
     
-    $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
-    $active_loans = array();
-    $overdue_loans = array();
-    
-    foreach ($all_books as $book) {
-        $reservations = get_post_meta($book->ID, '_bm_reservations', true);
-        if (!is_array($reservations)) continue;
-        foreach ($reservations as $r) {
-            if ($r['status'] === 'active') {
-                $student = get_userdata($r['user_id']);
-                $r['book_title'] = $book->post_title;
-                $r['student_name'] = $student ? $student->display_name : '#' . $r['user_id'];
-                $r['student_phone'] = $student ? get_user_meta($student->ID, '_bm_user_' . sanitize_key('Telefone'), true) : '';
-                $r['days_remaining'] = isset($r['due_date']) ? bm_get_days_remaining($r['due_date']) : 0;
-                $r['due_date_formatted'] = isset($r['due_date']) ? date('d/m/Y', strtotime($r['due_date'])) : '—';
-                $active_loans[] = $r;
-                if ($r['days_remaining'] < 0) {
-                    $overdue_loans[] = $r;
+    if ($cached) {
+        $students_count = $cached['students_count'];
+        $active_loans = $cached['active_loans'];
+        $overdue_loans = $cached['overdue_loans'];
+        $total_books = $cached['total_books'];
+    } else {
+        $students = get_users(array('role' => 'bm_student'));
+        $students_count = count($students);
+        
+        $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
+        $total_books = count($all_books);
+        $active_loans = array();
+        $overdue_loans = array();
+        
+        foreach ($all_books as $book) {
+            $reservations = get_post_meta($book->ID, '_bm_reservations', true);
+            if (!is_array($reservations)) continue;
+            foreach ($reservations as $r) {
+                if ($r['status'] === 'active') {
+                    $student = get_userdata($r['user_id']);
+                    $r['book_title'] = $book->post_title;
+                    $r['student_name'] = $student ? $student->display_name : '#' . $r['user_id'];
+                    $r['student_phone'] = $student ? get_user_meta($student->ID, '_bm_user_' . sanitize_key('Telefone'), true) : '';
+                    $r['days_remaining'] = isset($r['due_date']) ? bm_get_days_remaining($r['due_date']) : 0;
+                    $r['due_date_formatted'] = isset($r['due_date']) ? date('d/m/Y', strtotime($r['due_date'])) : '—';
+                    $active_loans[] = $r;
+                    if ($r['days_remaining'] < 0) {
+                        $overdue_loans[] = $r;
+                    }
                 }
             }
         }
+        
+        usort($active_loans, function($a, $b) {
+            return $a['days_remaining'] - $b['days_remaining'];
+        });
+        
+        bm_set_cached($cache_key, array(
+            'students_count' => $students_count,
+            'active_loans' => $active_loans,
+            'overdue_loans' => $overdue_loans,
+            'total_books' => $total_books,
+        ));
     }
-    
-    usort($active_loans, function($a, $b) {
-        return $a['days_remaining'] - $b['days_remaining'];
-    });
     
     ob_start();
     ?>
@@ -1428,7 +1498,7 @@ function bm_teacher_dashboard_content() {
         
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin:20px 0;">
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
-                <h3 style="margin:0;font-size:28px;"><?php echo count($students); ?></h3>
+                <h3 style="margin:0;font-size:28px;"><?php echo $students_count; ?></h3>
                 <p style="margin:5px 0 0 0;color:#666;"><?php _e('Alunos', 'book-manager'); ?></p>
             </div>
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
@@ -1440,7 +1510,7 @@ function bm_teacher_dashboard_content() {
                 <p style="margin:5px 0 0 0;color:#dc3545;"><?php _e('Em atraso', 'book-manager'); ?></p>
             </div>
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
-                <h3 style="margin:0;font-size:28px;"><?php echo count($all_books); ?></h3>
+                <h3 style="margin:0;font-size:28px;"><?php echo $total_books; ?></h3>
                 <p style="margin:5px 0 0 0;color:#666;"><?php _e('Livros no acervo', 'book-manager'); ?></p>
             </div>
         </div>
@@ -1497,41 +1567,62 @@ function bm_teacher_dashboard_content() {
 function bm_librarian_dashboard_content() {
     $user = wp_get_current_user();
     
-    $total_books = wp_count_posts('bm_book');
-    $total = $total_books->publish + $total_books->draft;
+    // Cache: dados do gestor (5 minutos)
+    $cache_key = 'librarian_dashboard';
+    $cached = bm_get_cached($cache_key);
     
-    $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
-    
-    $active_loans = array();
-    $overdue_loans = array();
-    $pending_reservations = array();
-    $pending_approvals = get_users(array('meta_key' => 'bm_approval_status', 'meta_value' => 'pending'));
-    
-    foreach ($all_books as $book) {
-        $reservations = get_post_meta($book->ID, '_bm_reservations', true);
-        if (!is_array($reservations)) continue;
-        foreach ($reservations as $r) {
-            $user_data = get_userdata($r['user_id']);
-            $r['book_title'] = $book->post_title;
-            $r['user_name'] = $user_data ? $user_data->display_name : '#' . $r['user_id'];
-            $r['user_phone'] = $user_data ? get_user_meta($user_data->ID, '_bm_user_' . sanitize_key('Telefone'), true) : '';
-            
-            if ($r['status'] === 'active') {
-                $r['days_remaining'] = isset($r['due_date']) ? bm_get_days_remaining($r['due_date']) : 0;
-                $r['due_date_formatted'] = isset($r['due_date']) ? date('d/m/Y', strtotime($r['due_date'])) : '—';
-                $active_loans[] = $r;
-                if ($r['days_remaining'] < 0) {
-                    $overdue_loans[] = $r;
+    if ($cached) {
+        $total = $cached['total'];
+        $active_loans = $cached['active_loans'];
+        $overdue_loans = $cached['overdue_loans'];
+        $pending_reservations = $cached['pending_reservations'];
+        $pending_approvals_count = $cached['pending_approvals_count'];
+    } else {
+        $total_books = wp_count_posts('bm_book');
+        $total = $total_books->publish + $total_books->draft;
+        
+        $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
+        
+        $active_loans = array();
+        $overdue_loans = array();
+        $pending_reservations = array();
+        $pending_approvals = get_users(array('meta_key' => 'bm_approval_status', 'meta_value' => 'pending'));
+        $pending_approvals_count = count($pending_approvals);
+        
+        foreach ($all_books as $book) {
+            $reservations = get_post_meta($book->ID, '_bm_reservations', true);
+            if (!is_array($reservations)) continue;
+            foreach ($reservations as $r) {
+                $user_data = get_userdata($r['user_id']);
+                $r['book_title'] = $book->post_title;
+                $r['user_name'] = $user_data ? $user_data->display_name : '#' . $r['user_id'];
+                $r['user_phone'] = $user_data ? get_user_meta($user_data->ID, '_bm_user_' . sanitize_key('Telefone'), true) : '';
+                
+                if ($r['status'] === 'active') {
+                    $r['days_remaining'] = isset($r['due_date']) ? bm_get_days_remaining($r['due_date']) : 0;
+                    $r['due_date_formatted'] = isset($r['due_date']) ? date('d/m/Y', strtotime($r['due_date'])) : '—';
+                    $active_loans[] = $r;
+                    if ($r['days_remaining'] < 0) {
+                        $overdue_loans[] = $r;
+                    }
+                } elseif ($r['status'] === 'waiting') {
+                    $pending_reservations[] = $r;
                 }
-            } elseif ($r['status'] === 'waiting') {
-                $pending_reservations[] = $r;
             }
         }
+        
+        usort($active_loans, function($a, $b) {
+            return $a['days_remaining'] - $b['days_remaining'];
+        });
+        
+        bm_set_cached($cache_key, array(
+            'total' => $total,
+            'active_loans' => $active_loans,
+            'overdue_loans' => $overdue_loans,
+            'pending_reservations' => $pending_reservations,
+            'pending_approvals_count' => $pending_approvals_count,
+        ));
     }
-    
-    usort($active_loans, function($a, $b) {
-        return $a['days_remaining'] - $b['days_remaining'];
-    });
     
     ob_start();
     ?>
@@ -1557,7 +1648,7 @@ function bm_librarian_dashboard_content() {
                 <p style="margin:5px 0 0 0;color:#f0ad4e;"><?php _e('Reservas pendentes', 'book-manager'); ?></p>
             </div>
             <div style="background:#e8f5e9;padding:15px;border-radius:6px;text-align:center;">
-                <h3 style="margin:0;font-size:28px;color:#46b450;"><?php echo count($pending_approvals); ?></h3>
+                <h3 style="margin:0;font-size:28px;color:#46b450;"><?php echo $pending_approvals_count; ?></h3>
                 <p style="margin:5px 0 0 0;color:#46b450;"><?php _e('Cadastros pendentes', 'book-manager'); ?></p>
             </div>
         </div>
@@ -1971,14 +2062,14 @@ function bm_ajax_update_rating() {
 }
 add_action('wp_ajax_bm_update_rating', 'bm_ajax_update_rating');
 
-function bm_add_reading_approval_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Aprovar Fichas', 'book-manager'), __('Aprovar Fichas', 'book-manager'), 'edit_bm_books', 'bm_approve_readings', 'bm_render_reading_approval_page');
-}
-add_action('admin_menu', 'bm_add_reading_approval_page');
+// FASE 18: Movido para página Alunos (aba Aprovar Fichas)
 
 function bm_render_reading_approval_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
-    
+    bm_render_reading_approval_page_content();
+}
+
+function bm_render_reading_approval_page_content() {
     if (isset($_POST['bm_reading_action']) && wp_verify_nonce($_POST['bm_reading_nonce'], 'bm_reading_action')) {
         $user_id = intval($_POST['user_id']);
         $book_id = intval($_POST['book_id']);

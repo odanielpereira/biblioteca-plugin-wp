@@ -21,8 +21,8 @@ add_action('admin_enqueue_scripts', 'bm_admin_scripts');
 function bm_render_book_details_metabox( $post ) {
     wp_nonce_field( 'bm_save_book_details', 'bm_book_details_nonce' );
     $fixed_fields = array(
-        '_bm_author'    => array('label' => __('Autor:','book-manager'), 'type' => 'text'),
-        '_bm_publisher' => array('label' => __('Editora:','book-manager'), 'type' => 'text'),
+        '_bm_author'    => array('label' => __('Autor:','book-manager'), 'type' => 'text', 'required' => true),
+        '_bm_publisher' => array('label' => __('Editora:','book-manager'), 'type' => 'text', 'required' => true),
         '_bm_isbn'      => array('label' => __('ISBN:','book-manager'), 'type' => 'text'),
         '_bm_location'  => array('label' => __('Localização:','book-manager'), 'type' => 'text'),
         '_bm_copies'    => array('label' => __('Exemplares:','book-manager'), 'type' => 'number'),
@@ -184,11 +184,11 @@ function bm_add_book_filter_form() {
     $fa = isset($_GET['_bm_author'])?sanitize_text_field($_GET['_bm_author']):'';
     $fp = isset($_GET['_bm_publisher'])?sanitize_text_field($_GET['_bm_publisher']):'';
     ?><style>.bm-filter-form p{display:inline-block;margin-right:15px;vertical-align:top}.bm-filter-form label{margin-right:5px;font-weight:bold}.bm-filter-form input[type="text"],.bm-filter-form select{padding:5px;border:1px solid #ccc;border-radius:4px}</style>
-    <div class="wrap bm-filter-form"><form method="get">
+    <div class="bm-filter-form">
     <?php
     echo '<input type="hidden" name="post_type" value="bm_book">';
-    echo '<input type="hidden" name="orderby" value="'.esc_attr(isset($_GET['orderby'])?sanitize_text_field($_GET['orderby']):'title').'">';
-    echo '<input type="hidden" name="order" value="'.esc_attr(isset($_GET['order'])?sanitize_text_field($_GET['order']):'ASC').'">';
+    if (isset($_GET['orderby']) && !empty($_GET['orderby'])) echo '<input type="hidden" name="orderby" value="'.esc_attr(sanitize_text_field($_GET['orderby'])).'">';
+    if (isset($_GET['order']) && !empty($_GET['order'])) echo '<input type="hidden" name="order" value="'.esc_attr(sanitize_text_field($_GET['order'])).'">';
     if (isset($_GET['s'])&&!empty($_GET['s'])) echo '<input type="hidden" name="s" value="'.esc_attr(sanitize_text_field($_GET['s'])).'">';
     ?>
     <p><label for="_bm_author"><?php _e('Autor:','book-manager'); ?></label><input type="text" id="_bm_author" name="_bm_author" value="<?php echo esc_attr($fa); ?>" placeholder="<?php _e('Filtrar por autor','book-manager'); ?>"></p>
@@ -210,11 +210,15 @@ function bm_add_book_filter_form() {
     ?>
     <input type="submit" name="filter_action" class="button" value="<?php _e('Filtrar','book-manager'); ?>">
     <a href="<?php echo admin_url('edit.php?post_type=bm_book'); ?>" class="button"><?php _e('Limpar Filtros','book-manager'); ?></a>
-    </form></div><?php
+    </div><?php
 }
 add_action('restrict_manage_posts','bm_add_book_filter_form');
 function bm_filter_books_by_metadata($query) {
     if (!is_admin()||!$query->is_main_query()||'bm_book'!==$query->get('post_type')) return;
+    
+    // Não interferir em ações em lote
+    if (isset($_GET['action']) || isset($_GET['action2'])) return;
+    
     $meta = array();
     if (isset($_GET['_bm_author'])&&!empty($_GET['_bm_author'])) $meta[]=array('key'=>'_bm_author','value'=>sanitize_text_field($_GET['_bm_author']),'compare'=>'LIKE');
     if (isset($_GET['_bm_publisher'])&&!empty($_GET['_bm_publisher'])) $meta[]=array('key'=>'_bm_publisher','value'=>sanitize_text_field($_GET['_bm_publisher']),'compare'=>'LIKE');
@@ -242,9 +246,7 @@ add_action('pre_get_posts','bm_filter_books_by_metadata');
 // FASE 11B: GERAÇÃO DE NÚMERO DE CHAMADA (RESPEITA CSV)
 // ==========================================
 
-function bm_add_csv_import_submenu_page() { add_submenu_page('edit.php?post_type=bm_book','Importar CSV','Importar CSV','manage_options','bm_csv_import','bm_render_csv_import_page'); }
-
-add_action('admin_menu','bm_add_csv_import_submenu_page');
+// FASE 18: Movido para Importação/Exportação (aba Importar Livros CSV)
 function bm_render_csv_import_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     $message = ''; $preview = array(); $duplicates = array();
@@ -433,9 +435,7 @@ function bm_find_duplicate_book($title,$author,$publisher) {
 // FASE 6B/7E: EXPORTAÇÃO CSV FLEXÍVEL
 // ==========================================
 
-function bm_add_csv_export_submenu_page() { add_submenu_page('edit.php?post_type=bm_book','Exportar CSV','Exportar CSV','manage_options','bm_csv_export','bm_render_csv_export_page'); }
-
-add_action('admin_menu','bm_add_csv_export_submenu_page');
+// FASE 18: Movido para Importação/Exportação (aba Exportar Livros CSV)
 function bm_handle_csv_export() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     if (!isset($_POST['bm_csv_export_nonce'])||!wp_verify_nonce($_POST['bm_csv_export_nonce'],'bm_csv_export_action')) return;
@@ -548,6 +548,15 @@ function bm_render_dynamic_fields_page() {
             $type = isset($_POST['new_field_type']) ? sanitize_text_field($_POST['new_field_type']) : 'text';
             $name_lower = mb_strtolower(trim($name));
             
+            // Bloquear nomes reservados do Número de Chamada (apenas na aba de livros)
+            if ($active_tab === 'books') {
+                $reserved_names = array('cdu', 'cdd', 'classificação', 'classificacao', 'cutter');
+                if (in_array($name_lower, $reserved_names)) {
+                    $message = __('Este nome é reservado para o Número de Chamada. Use outro nome.','book-manager');
+                    $name = ''; // Impede a criação
+                }
+            }
+            
             // Verificar duplicatas (case-insensitive)
             $duplicate = false;
             foreach ($fields as $existing_name => $info) {
@@ -560,7 +569,8 @@ function bm_render_dynamic_fields_page() {
             if ($duplicate) {
                 $message = __('Já existe um campo com este nome.','book-manager');
             } elseif (!isset($fields[$name])) {
-                $fields[$name] = array('type' => $type);
+                $profile = isset($_POST['new_field_profile']) ? sanitize_text_field($_POST['new_field_profile']) : 'both';
+                $fields[$name] = array('type' => $type, 'profile' => $profile);
                 update_option($option_name, $fields);
                 $message = __('Campo adicionado.','book-manager');
             }
@@ -657,6 +667,13 @@ function bm_render_dynamic_fields_page() {
                 <option value="email"><?php _e('E-mail','book-manager'); ?></option>
                 <option value="textarea"><?php _e('Texto longo','book-manager'); ?></option>
             </select>
+            <?php if ($active_tab === 'users'): ?>
+                <select name="new_field_profile" style="margin-left:5px;">
+                    <option value="both"><?php _e('Aluno e Professor','book-manager'); ?></option>
+                    <option value="student"><?php _e('Apenas Aluno','book-manager'); ?></option>
+                    <option value="teacher"><?php _e('Apenas Professor','book-manager'); ?></option>
+                </select>
+            <?php endif; ?>
             <input type="submit" name="add_field" class="button" value="<?php _e('Adicionar','book-manager'); ?>" />
         </form>
         <h2><?php _e('Gerenciar Campos Existentes','book-manager'); ?></h2>
@@ -731,13 +748,6 @@ function bm_get_api_key($provider) {
     return isset($keys[$provider . '_key']) ? $keys[$provider . '_key'] : '';
 }
 
-
-function bm_add_api_settings_page() {
-    add_submenu_page('edit.php?post_type=bm_book', 'APIs', 'APIs', 'manage_options', 'bm_api_settings', 'bm_render_api_settings_page');
-}
-
-add_action('admin_menu', 'bm_add_api_settings_page');
-
 function bm_render_api_settings_page() {
     if (!current_user_can('manage_options')) return;
     
@@ -782,16 +792,48 @@ function bm_render_api_settings_page() {
 }
 
 // ==========================================
-// FASE 12K: ATENDIMENTO (EMPRÉSTIMO RÁPIDO NO BALCÃO)
+// FASE 18: PÁGINA UNIFICADA — BALCÃO DE ATENDIMENTO
 // ==========================================
-function bm_add_service_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Atendimento', 'book-manager'), __('Atendimento', 'book-manager'), 'edit_bm_books', 'bm_service', 'bm_render_service_page');
+function bm_add_service_desk_page() {
+    add_submenu_page('edit.php?post_type=bm_book', __('Balcão de Atendimento', 'book-manager'), __('Balcão de Atendimento', 'book-manager'), 'edit_bm_books', 'bm_service_desk', 'bm_render_service_desk_page');
 }
-add_action('admin_menu', 'bm_add_service_page');
+add_action('admin_menu', 'bm_add_service_desk_page');
+
+function bm_render_service_desk_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'loans';
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Balcão de Atendimento', 'book-manager'); ?></h1>
+        
+        <nav class="nav-tab-wrapper" style="margin-bottom:15px;">
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_service_desk&tab=loans'); ?>" class="nav-tab <?php echo $tab === 'loans' ? 'nav-tab-active' : ''; ?>">📋 <?php _e('Empréstimos', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_service_desk&tab=service'); ?>" class="nav-tab <?php echo $tab === 'service' ? 'nav-tab-active' : ''; ?>">📤 <?php _e('Atendimento', 'book-manager'); ?></a>
+        </nav>
+        
+        <?php
+        if ($tab === 'service') {
+            bm_render_service_page_content();
+        } else {
+            bm_render_loans_page_content();
+        }
+        ?>
+    </div>
+    <?php
+}
+
+// ==========================================
+// FASE 12K: ATENDIMENTO (EMPRÉSTIMO RÁPIDO NO BALCÃO)
+// FASE 18: Movido para Balcão de Atendimento (bm_service_desk)
+// ==========================================
 
 function bm_render_service_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
-    
+    bm_render_service_page_content();
+}
+
+function bm_render_service_page_content() {
     $nonce = wp_create_nonce('bm_service_nonce');
     ?>
     <div class="wrap" style="max-width:1100px;">
@@ -1283,15 +1325,46 @@ function bm_render_service_page() {
 
 // ==========================================
 // FASE 12J: ADMINISTRAÇÃO DE ALUNOS
+// FASE 18: Unificado em página Alunos com abas
 // ==========================================
 function bm_add_students_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Alunos', 'book-manager'), __('Alunos', 'book-manager'), 'edit_bm_books', 'bm_students', 'bm_render_students_page');
+    add_submenu_page('edit.php?post_type=bm_book', __('Alunos', 'book-manager'), __('Alunos', 'book-manager'), 'edit_bm_books', 'bm_students', 'bm_render_students_unified_page');
 }
 add_action('admin_menu', 'bm_add_students_page');
 
-function bm_render_students_page() {
+function bm_render_students_unified_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     
+    $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'list';
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Alunos', 'book-manager'); ?></h1>
+        
+        <nav class="nav-tab-wrapper" style="margin-bottom:15px;">
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=list'); ?>" class="nav-tab <?php echo $tab === 'list' ? 'nav-tab-active' : ''; ?>">👥 <?php _e('Lista de Alunos', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=approve_users'); ?>" class="nav-tab <?php echo $tab === 'approve_users' ? 'nav-tab-active' : ''; ?>">✅ <?php _e('Aprovar Cadastros', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=approve_readings'); ?>" class="nav-tab <?php echo $tab === 'approve_readings' ? 'nav-tab-active' : ''; ?>">📝 <?php _e('Aprovar Fichas', 'book-manager'); ?></a>
+        </nav>
+        
+        <?php
+        if ($tab === 'approve_users') {
+            bm_render_approval_page_content();
+        } elseif ($tab === 'approve_readings') {
+            bm_render_reading_approval_page_content();
+        } else {
+            bm_render_students_page_content();
+        }
+        ?>
+    </div>
+    <?php
+}
+
+function bm_render_students_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    bm_render_students_page_content();
+}
+
+function bm_render_students_page_content() {
     $msg = '';
     
     // Ações em lote
@@ -1309,13 +1382,16 @@ function bm_render_students_page() {
                     $requested_role = get_user_meta($uid, 'bm_requested_role', true) ?: 'bm_student';
                     wp_update_user(array('ID' => $uid, 'role' => $requested_role));
                     update_user_meta($uid, 'bm_approval_status', 'approved');
+                    bm_log_admin_action('Aprovou aluno (lote)', $uid);
                     $count++;
                 } elseif ($action === 'suspend') {
                     wp_update_user(array('ID' => $uid, 'role' => 'subscriber'));
                     update_user_meta($uid, 'bm_approval_status', 'suspended');
+                    bm_log_admin_action('Suspendeu aluno', $uid);
                     $count++;
                 } elseif ($action === 'delete') {
                     if (get_current_user_id() !== $uid) {
+                        bm_log_admin_action('Excluiu aluno', $uid);
                         wp_delete_user($uid);
                         $count++;
                     }
@@ -1489,10 +1565,7 @@ function bm_render_students_page() {
 // ==========================================
 // FASE 12H: IMPORTAÇÃO DE ALUNOS EM MASSA
 // ==========================================
-function bm_add_student_import_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Importar Alunos', 'book-manager'), __('Importar Alunos', 'book-manager'), 'edit_bm_books', 'bm_student_import', 'bm_render_student_import_page');
-}
-add_action('admin_menu', 'bm_add_student_import_page');
+// FASE 18: Movido para Importação/Exportação (aba Importar Alunos CSV)
 
 function bm_render_student_import_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
@@ -2095,6 +2168,90 @@ function bm_render_taxonomies_page() {
 }
 
 // ==========================================
+// FASE 17: PÁGINA DE STATUS DO SISTEMA
+// ==========================================
+
+function bm_render_status_page() {
+    if (!current_user_can('manage_options')) return;
+    
+    $plugin_data = get_plugin_data(plugin_dir_path(__FILE__) . '../book-manager.php');
+    $keys = bm_get_api_keys();
+    $settings = bm_get_settings();
+    $total_books = wp_count_posts('bm_book');
+    $total = $total_books->publish + $total_books->draft;
+    $students = count(get_users(array('role' => 'bm_student')));
+    
+    $audit_log = get_option('bm_admin_audit_log', array());
+    $last_actions = array_slice(array_reverse($audit_log), 0, 10);
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Status do Sistema', 'book-manager'); ?></h1>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px;margin-top:15px;">
+            
+            <!-- Card: Ambiente -->
+            <div style="background:#fff;padding:15px;border-radius:6px;border:1px solid #ddd;">
+                <h3 style="margin-top:0;">🖥️ <?php _e('Ambiente', 'book-manager'); ?></h3>
+                <p><strong>Plugin:</strong> <?php echo esc_html($plugin_data['Version']); ?></p>
+                <p><strong>WordPress:</strong> <?php echo get_bloginfo('version'); ?></p>
+                <p><strong>PHP:</strong> <?php echo phpversion(); ?></p>
+                <p><strong>Memória:</strong> <?php echo ini_get('memory_limit'); ?></p>
+            </div>
+            
+            <!-- Card: APIs -->
+            <div style="background:#fff;padding:15px;border-radius:6px;border:1px solid #ddd;">
+                <h3 style="margin-top:0;">🔌 <?php _e('APIs', 'book-manager'); ?></h3>
+                <p><strong>Google Books:</strong> <?php echo !empty($keys['google_books_key']) ? '✅ Configurada' : '❌ Não configurada'; ?></p>
+                <p><strong>Groq (IA):</strong> <?php echo !empty($keys['groq_key']) ? '✅ Configurada' : '❌ Não configurada'; ?></p>
+                <p><strong>IA Ativa:</strong> <?php echo ($keys['groq_active'] === '1' && !empty($keys['groq_key'])) ? '✅ Sim' : '❌ Não'; ?></p>
+            </div>
+            
+            <!-- Card: Acervo -->
+            <div style="background:#fff;padding:15px;border-radius:6px;border:1px solid #ddd;">
+                <h3 style="margin-top:0;">📚 <?php _e('Acervo', 'book-manager'); ?></h3>
+                <p><strong>Total de livros:</strong> <?php echo $total; ?></p>
+                <p><strong>Alunos cadastrados:</strong> <?php echo $students; ?></p>
+                <p><strong>Sistema:</strong> <?php echo $settings['classification_system'] === 'cdd' ? 'CDD' : 'CDU'; ?></p>
+            </div>
+
+                        <!-- Card: Uso da IA -->
+            <div style="background:#fff;padding:15px;border-radius:6px;border:1px solid #ddd;">
+                <h3 style="margin-top:0;">🤖 <?php _e('Uso da IA (Groq)', 'book-manager'); ?></h3>
+                <?php 
+                $groq_count = intval(get_option('bm_groq_call_count', 0));
+                $groq_success = intval(get_option('bm_groq_success_count', 0));
+                ?>
+                <p><strong>Total de chamadas:</strong> <?php echo $groq_count; ?></p>
+                <p><strong>Bem-sucedidas:</strong> <?php echo $groq_success; ?></p>
+                <p><strong>Falhas:</strong> <?php echo max(0, $groq_count - $groq_success); ?></p>
+            </div>
+            
+            
+            <!-- Card: Últimas ações administrativas -->
+            <div style="background:#fff;padding:15px;border-radius:6px;border:1px solid #ddd;">
+                <h3 style="margin-top:0;">📋 <?php _e('Últimas Ações', 'book-manager'); ?></h3>
+                <?php if (empty($last_actions)): ?>
+                    <p style="color:#999;"><?php _e('Nenhuma ação registrada.', 'book-manager'); ?></p>
+                <?php else: ?>
+                    <ul style="margin:0;padding-left:15px;font-size:12px;">
+                        <?php foreach ($last_actions as $action): ?>
+                            <li style="margin:3px 0;">
+                                <?php echo esc_html($action['time']); ?> — 
+                                <strong><?php echo esc_html($action['admin_user']); ?></strong>: 
+                                <?php echo esc_html($action['action']); ?> 
+                                <?php echo esc_html($action['target_user']); ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+            
+        </div>
+    </div>
+    <?php
+}
+
+// ==========================================
 // FASE 12A: PÁGINA DE CONFIGURAÇÕES
 // ==========================================
 function bm_get_settings() {
@@ -2121,10 +2278,43 @@ function bm_get_settings() {
 
 
 function bm_add_settings_page() {
-    add_submenu_page('edit.php?post_type=bm_book', 'Configurações', 'Configurações', 'manage_options', 'bm_settings', 'bm_render_settings_page');
+    add_submenu_page('edit.php?post_type=bm_book', 'Configurações', 'Configurações', 'manage_options', 'bm_settings', 'bm_render_settings_unified_page');
 }
 
 add_action('admin_menu', 'bm_add_settings_page');
+
+function bm_render_settings_unified_page() {
+    if (!current_user_can('manage_options')) return;
+    
+    $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general';
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Configurações', 'book-manager'); ?></h1>
+        
+        <nav class="nav-tab-wrapper" style="margin-bottom:15px;">
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=general'); ?>" class="nav-tab <?php echo $tab === 'general' ? 'nav-tab-active' : ''; ?>">⚙️ <?php _e('Limites e Prazos', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=apis'); ?>" class="nav-tab <?php echo $tab === 'apis' ? 'nav-tab-active' : ''; ?>">🔌 <?php _e('APIs', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=white_label'); ?>" class="nav-tab <?php echo $tab === 'white_label' ? 'nav-tab-active' : ''; ?>">🎨 <?php _e('Identidade Visual', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=year_transition'); ?>" class="nav-tab <?php echo $tab === 'year_transition' ? 'nav-tab-active' : ''; ?>">🔄 <?php _e('Virada de Ano', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=status'); ?>" class="nav-tab <?php echo $tab === 'status' ? 'nav-tab-active' : ''; ?>">📊 <?php _e('Status', 'book-manager'); ?></a>
+        </nav>
+        
+        <?php
+        if ($tab === 'apis') {
+            bm_render_api_settings_page();
+        } elseif ($tab === 'white_label') {
+            bm_render_white_label_page();
+        } elseif ($tab === 'year_transition') {
+            bm_render_year_transition_page();
+        } elseif ($tab === 'status') {
+            bm_render_status_page();
+        } else {
+            bm_render_settings_page();
+        }
+        ?>
+    </div>
+    <?php
+}
 
 function bm_render_settings_page() {
     if (!current_user_can('manage_options')) return;
@@ -2138,6 +2328,24 @@ function bm_render_settings_page() {
         $settings['default_loan_days'] = absint($_POST['default_loan_days']);
         $settings['reservation_hours'] = absint($_POST['reservation_hours']);
         $settings['classification_system'] = isset($_POST['classification_system']) && $_POST['classification_system'] === 'cdd' ? 'cdd' : 'cdu';
+                if (isset($_POST['librarian_permissions']) && is_array($_POST['librarian_permissions'])) {
+            $settings['librarian_permissions'] = array();
+            foreach (array('import_csv', 'export_csv', 'dynamic_fields', 'taxonomies', 'loans', 'approve_users', 'approve_readings', 'labels', 'service', 'students', 'student_import') as $perm) {
+                $settings['librarian_permissions'][$perm] = isset($_POST['librarian_permissions'][$perm]) ? '1' : '0';
+            }
+        }
+                if (isset($_POST['per_profile_limits']) && is_array($_POST['per_profile_limits'])) {
+            $settings['per_profile_limits'] = array();
+            foreach ($_POST['per_profile_limits'] as $limit) {
+                if (!empty($limit['group'])) {
+                    $settings['per_profile_limits'][] = array(
+                        'group' => sanitize_text_field($limit['group']),
+                        'max_reservations' => absint($limit['max_reservations']),
+                        'max_loans' => absint($limit['max_loans']),
+                    );
+                }
+            }
+        }
         if (isset($_POST['field_visibility']) && is_array($_POST['field_visibility'])) {
             $settings['field_visibility'] = array();
             foreach (array('isbn', 'location', 'copies', 'audit_log') as $field) {
@@ -2158,6 +2366,8 @@ function bm_render_settings_page() {
         
         <form method="post" style="max-width:600px;">
             <h2>Limites e Prazos</h2>
+            
+            <h3>Limites Globais</h3>
             <table class="form-table">
                 <tr>
                     <th><label>Máximo de reservas por aluno</label></th>
@@ -2217,7 +2427,86 @@ function bm_render_settings_page() {
                 <?php endforeach; ?>
             </table>
             
+                        
+            <h3>Limites por Grupo (opcional)</h3>
+            <p class="description">Defina limites diferentes para grupos específicos de alunos. Se vazio, usa o limite global acima.</p>
+            <table class="form-table">
+                <tr>
+                    <th><label>Grupo</label></th>
+                    <th><label>Máx. Reservas</label></th>
+                    <th><label>Máx. Empréstimos</label></th>
+                    <th></th>
+                </tr>
+                <?php 
+                $per_profile = isset($settings['per_profile_limits']) ? $settings['per_profile_limits'] : array();
+                if (!empty($per_profile)):
+                    foreach ($per_profile as $i => $limit):
+                ?>
+                <tr>
+                    <td><input type="text" name="per_profile_limits[<?php echo $i; ?>][group]" value="<?php echo esc_attr($limit['group']); ?>" placeholder="Ex: 1º Ano" style="width:120px;" /></td>
+                    <td><input type="number" name="per_profile_limits[<?php echo $i; ?>][max_reservations]" value="<?php echo esc_attr($limit['max_reservations']); ?>" min="0" max="10" style="width:80px;" /></td>
+                    <td><input type="number" name="per_profile_limits[<?php echo $i; ?>][max_loans]" value="<?php echo esc_attr($limit['max_loans']); ?>" min="0" max="10" style="width:80px;" /></td>
+                    <td><button type="button" class="button button-small" onclick="this.closest('tr').remove()">✕</button></td>
+                </tr>
+                <?php 
+                    endforeach;
+                endif;
+                ?>
+                <tr id="bm-new-limit-row">
+                    <td colspan="4">
+                        <button type="button" class="button" id="bm-add-limit">+ Adicionar limite por grupo</button>
+                    </td>
+                </tr>
+            </table>
+            <script>
+            document.getElementById('bm-add-limit').addEventListener('click', function() {
+                var tbody = this.closest('table').querySelector('tbody') || this.closest('table');
+                var rows = tbody.querySelectorAll('tr');
+                var count = rows.length;
+                var newRow = document.createElement('tr');
+                newRow.innerHTML = '<td><input type="text" name="per_profile_limits[' + count + '][group]" placeholder="Ex: 1º Ano" style="width:120px;" /></td>' +
+                    '<td><input type="number" name="per_profile_limits[' + count + '][max_reservations]" value="" min="0" max="10" style="width:80px;" /></td>' +
+                    '<td><input type="number" name="per_profile_limits[' + count + '][max_loans]" value="" min="0" max="10" style="width:80px;" /></td>' +
+                    '<td><button type="button" class="button button-small" onclick="this.closest(\'tr\').remove()">✕</button></td>';
+                var addRow = document.getElementById('bm-new-limit-row');
+                addRow.parentNode.insertBefore(newRow, addRow);
+            });
+            </script>
             
+                        
+            <h2>Permissões do Gestor</h2>
+            <p class="description">Marque quais funcionalidades o Gestor da Biblioteca pode acessar.</p>
+            <?php 
+            $librarian_perms = isset($settings['librarian_permissions']) ? $settings['librarian_permissions'] : array(
+                'import_csv' => '1', 'export_csv' => '1', 'dynamic_fields' => '1',
+                'taxonomies' => '1', 'loans' => '1', 'approve_users' => '1',
+                'approve_readings' => '1', 'labels' => '1', 'service' => '1',
+                'students' => '1', 'student_import' => '1',
+            );
+            $perm_options = array(
+                'import_csv' => 'Importar CSV',
+                'export_csv' => 'Exportar CSV',
+                'dynamic_fields' => 'Gerenciar Campos',
+                'taxonomies' => 'Taxonomias',
+                'loans' => 'Empréstimos',
+                'approve_users' => 'Aprovar Cadastros',
+                'approve_readings' => 'Aprovar Fichas',
+                'labels' => 'Etiquetas',
+                'service' => 'Atendimento',
+                'students' => 'Alunos',
+                'student_import' => 'Importar Alunos',
+            );
+            ?>
+            <table class="form-table">
+                <?php foreach ($perm_options as $key => $label): ?>
+                <tr>
+                    <th><label><?php echo $label; ?></label></th>
+                    <td><label><input type="checkbox" name="librarian_permissions[<?php echo $key; ?>]" value="1" <?php checked(isset($librarian_perms[$key]) && $librarian_perms[$key] === '1'); ?> /> Permitir</label></td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+            
+
             <h2>Sistema de Classificação</h2>
             <table class="form-table">
                 <tr>
@@ -2263,12 +2552,6 @@ function bm_admin_media_scripts($hook) {
 }
 add_action('admin_enqueue_scripts', 'bm_admin_media_scripts');
 
-
-function bm_add_white_label_page() {
-    add_submenu_page('edit.php?post_type=bm_book', 'Identidade Visual', 'Identidade Visual', 'manage_options', 'bm_white_label', 'bm_render_white_label_page');
-}
-
-add_action('admin_menu', 'bm_add_white_label_page');
 
 function bm_render_white_label_page() {
     if (!current_user_can('manage_options')) return;
@@ -2374,12 +2657,6 @@ function bm_get_year_transition_settings() {
     }
     return $saved;
 }
-
-function bm_add_year_transition_page() {
-    add_submenu_page('edit.php?post_type=bm_book', 'Virada de Ano Letivo', 'Virada de Ano Letivo', 'manage_options', 'bm_year_transition', 'bm_render_year_transition_page');
-}
-
-add_action('admin_menu', 'bm_add_year_transition_page');
 
 // ==========================================
 // FASE 12C: EXPORTAÇÃO CSV DE ALUNOS (admin_init)

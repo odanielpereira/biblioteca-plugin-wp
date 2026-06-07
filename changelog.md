@@ -730,3 +730,33 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Ação:** Correção do drag and drop + ordem dos campos no modal movida para o Polimento.
 - **Detalhes:** (1) Corrigido bug no Gerenciar Campos: $saved_order e $saved_visibility eram carregados depois de montar $all_fields, fazendo a ordem não persistir ao recarregar a página. Agora são carregados antes — drag and drop funciona em ambas as abas. (2) Ordem dos campos dinâmicos no modal de cadastro/edição do Atendimento não reflete a ordem do drag and drop. Movido para o Ciclo de Polimento — é cosmético, não afeta o salvamento dos dados.
 - **Ferramenta:** write_file (manual pelo usuário)
+
+**131 - Data:** 2026-06-06
+- **Ação:** Fase 14 concluída — Limpeza de Código Morto.
+- **Detalhes:** Removida função bm_deepseek_request() com suporte legado a DeepSeek/Gemini/Groq (~65 linhas) de includes/frontend.php. Removido bm_super_admin de bm_register_roles() e bm_remove_roles() em book-manager.php. Substituídas 3 referências diretas à constante BM_GOOGLE_BOOKS_API_KEY por bm_get_api_key('google_books') em bm_google_books_search(), bm_search_book_cover() e bm_ajax_service_register_book_by_isbn(). bm_fetch_sinopse_from_google() já estava atualizada. Versão no cabeçalho atualizada de 1.0.0 para 8.0.0.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**132 - Data:** 2026-06-06
+- **Ação:** Fase 15 concluída — Performance, Auditoria e uninstall.
+- **Detalhes:** Tarefa 1 (uninstall.php autocontido) movida para Pós-Polimento. Tarefa 2: criadas funções bm_get_cached() e bm_set_cached() em book-manager.php usando transients (5 min). Cache aplicado nos dashboards do Aluno, Professor e Gestor em includes/users.php — consultas pesadas agora usam cache, reduzindo carga no banco. Tarefa 3: criada função bm_log_admin_action() em includes/users.php. Integrada na aprovação/rejeição de cadastros e nas ações em lote de alunos (aprovar, suspender, excluir) em includes/admin.php. Log armazenado em bm_admin_audit_log (option, últimos 100 registros).
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**133 - Data:** 2026-06-06
+- **Ação:** Fase 16 concluída — Gerenciar Campos e Taxonomias.
+- **Detalhes:** Tarefa 1 já estava concluída (changelog #130). Tarefa 2: campos fixos ISBN, Localização e Exemplares agora podem ser ocultados via Gerenciar Campos; Autor e Editora permanecem obrigatórios. Tarefa 3: adicionado seletor de perfil (Aluno/Professor/Ambos) ao criar campos dinâmicos de alunos. Tarefa 4: nomes reservados (CDU, CDD, Classificação, Cutter) bloqueados ao criar campos dinâmicos de livros. Tarefa 5 já estava funcionando — ordem do drag and drop refletia corretamente no modal de Atendimento.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**134 - Data:** 2026-06-06
+- **Ação:** Fase 17 concluída — Status, Diagnóstico e Configurações.
+- **Detalhes:** Tarefa 1: criada subpágina "Status" (bm_status) com cards de Ambiente, APIs, Acervo e Últimas Ações administrativas. Tarefa 2: adicionados contadores bm_groq_call_count e bm_groq_success_count em bm_groq_simple_request(), bm_ajax_chatbot() e bm_ajax_generate_activities(). Card "Uso da IA" exibe total, sucessos e falhas. Tarefa 3: criada função bm_log_error() com armazenamento em bm_error_log (option, últimos 50). Card "Log de Erros" na página Status. Tarefa 4: adicionada interface de limites por grupo (per_profile_limits) nas Configurações, com adição/remoção dinâmica de grupos. Tarefa 5: adicionada interface de permissões do Gestor (librarian_permissions) com 11 checkboxes de funcionalidades.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**135 - Data:** 2026-06-07
+- **Ação:** Fase 18 concluída — Listagem, Menu e Usabilidade.
+- **Detalhes:** Reorganizado menu Biblioteca em 8 grupos com abas. Balcão de Atendimento (bm_service_desk) unifica Empréstimos e Atendimento — criados wrappers bm_render_loans_page_content() em users.php e bm_render_service_page_content() em admin.php. Alunos (bm_students) unifica Lista de Alunos, Aprovar Cadastros e Aprovar Fichas — criados wrappers bm_render_approval_page_content(), bm_render_reading_approval_page_content() em users.php e bm_render_students_page_content() em admin.php. Importação/Exportação (bm_data_io) unifica Importar CSV, Exportar CSV e Importar Alunos. Configurações (bm_settings) unifica Limites e Prazos, APIs, Identidade Visual, Virada de Ano e Status em abas — funções originais preservadas. Removidos menus duplicados de Empréstimos, Atendimento, Aprovar Cadastros, Aprovar Fichas, APIs, Status, Identidade Visual e Virada de Ano. Menu reduzido de 20 para 12 itens.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**136 - Data:** 2026-06-07
+- **Ação:** Fase 18, Tarefa 1 concluída — Bulk action corrigida.
+- **Detalhes:** Ações em lote (Mover para lixeira, Editar) na listagem de livros voltaram a funcionar. Causa: formulário de filtro customizado estava aninhado incorretamente, quebrando a estrutura do formulário nativo #posts-filter do WordPress e deixando os checkboxes post[] fora de qualquer form. Solução: substituído <form> por <div> no filtro, mantendo os campos dentro do formulário nativo. Adicionada verificação para ignorar filtro customizado durante execução de bulk actions. Adicionado 'hierarchical' => false ao registro do CPT.
+- **Ferramenta:** write_file (manual pelo usuário)

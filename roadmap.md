@@ -75,7 +75,7 @@
 
 ## Ciclo 7 — Versão 7.0.0 ← CONCLUÍDO
 
-### Fase 11: Ferramentas Pedagógicas ← FASE ATIVA
+### Fase 11: Ferramentas Pedagógicas ← FASE CONCLUÍDA
 *   **Objetivo:** Fornecer ferramentas de apoio pedagógico: gerador de atividades, classificação por disciplina, CDU/Cutter, chatbot e geração de etiquetas.
 *   **Critério de saída:** Professores geram atividades por IA. Livros classificados por disciplina automaticamente. CDU/Cutter atribuídos. Etiquetas podem ser impressas. Chatbot responde sobre o acervo.
 
@@ -253,104 +253,209 @@
     11. [x] Cadastro de livro por ISBN via Google Books API.
     12. [x] Fila de espera visível.
 
-## Ciclo de Polimento — Versão 8.5.0 ← PLANEJADO
 
-### 68 itens mapeados (consolidados em documento separado)
+## Ciclo 9 — Versão 9.0.0 ← CICLO DE POLIMENTO EM ANDAMENTO
 
-### Imagens de Capa (Fase 7D / Fase 8E)
-1. Aumentar resolução das capas (zoom=2) — ✅ concluído
-2. Hotlink vs download local
-3. Placeholder no single — ✅ concluído
+### Fase 14 (Polimento) — Limpeza de Código Morto
+*   **Descrição:** Remover código obsoleto e funções não utilizadas.
+*   **Tarefas:**
+    1.  [x] Remover bloco FASE 8G (versão Gemini).
+    2.  [x] Remover função bm_deepseek_request().
+    3.  [x] Remover bm_super_admin de bm_register_roles(), bm_remove_roles() e bm_get_user_role().
+    4.  [x] Remover ou manter como fallback constantes do wp-config.
+    5.  [ ] Testar todas as funcionalidades após remoção.
+    6.  [x] Varredura completa de código órfão: funções não chamadas, hooks sem callback, options não utilizadas.
+    7.  [x] Atualizar versão no cabeçalho de book-manager.php de 1.0.0 para 8.0.0.
 
-### Importação CSV (Fase 6A / Fase 7D / Fase 7G)
-4. Checkbox "Buscar capas" e "Buscar sinopses" com aviso de lentidão
-5. Importação assíncrona para grandes arquivos
-6. Melhorar detecção de título/autor
+### Fase 15 (Polimento) — Performance, Auditoria e uninstall
+*   **Descrição:** Otimizar performance, expandir logs e ajustar desinstalação.
+*   **Tarefas:**
+    1.  [ ] Tornar uninstall.php autocontido. → MOVIDO PARA CICLO DE PÓS-POLIMENTO
+    2.  [x] Otimizar performance: cache de queries repetidas (transients), paginação.
+    3.  [x] Expandir auditoria para ações de alunos: aprovar, suspender, excluir (log de quem fez o quê).
 
-### Exportação CSV (Fase 6B / Fase 6C)
-7. Aviso de sucesso pós-download
+### Fase 16 (Polimento) — Gerenciar Campos e Taxonomias
+*   **Descrição:** Refinar gerenciador de campos dinâmicos e unificar classificações.
+*   **Tarefas:**
+    1.  [x] Corrigir ordem do drag and drop que às vezes sai do lugar ao recarregar a página. (✅ concluído)
+    2.  [x] Permitir que campos fixos (ISBN, Localização, Exemplares) sejam removíveis/ocultáveis.
+    3.  [x] Campos dinâmicos conforme perfil (Aluno: série/ano; Professor: disciplinas).
+    4.  [x] Unificar campo de Classificação: bloquear criação de campo dinâmico "CDU", "CDD" ou "Classificação".
+    5.  [x] Ordem dos campos dinâmicos no modal de cadastro/edição do Atendimento não reflete drag and drop.
 
-### Gerenciamento de Campos (Fase 7H)
-8. Corrigir drag and drop
-9. Campos fixos removíveis
-10. Página de configurações para API Keys — ✅ (Fase 10E)
+### Fase 17 (Polimento) — Status, Diagnóstico e Configurações
+*   **Descrição:** Painel de controle do sistema e configurações avançadas.
+*   **Tarefas:**
+    1.  [x] Página de Status: versão do plugin, PHP, WordPress, memória, chaves API configuradas.
+    2.  [x] Contador de chamadas API (Groq) com estatísticas de uso.
+    3.  [x] Logs de erro e diagnóstico.
+    4.  [x] Configuração de limites por perfil: máximo de reservas e empréstimos por aluno.
+    5.  [x] Interface de permissões do Gestor: Admin marca quais funcionalidades o Gestor pode acessar.
 
-### Interface e Usabilidade (Fase 7E / Fase 8B / Ciclo 2)
-11. Bulk action quebrado
-12. Seleção individual de duplicados
-13. Layout visual (protótipo Stitch)
+### Fase 18 (Polimento) — Listagem, Menu e Usabilidade
+*   **Descrição:** Corrigir bugs de interface e organizar navegação.
+*   **Tarefas:**
+    1.  [x] Diagnosticar e corrigir bulk action quebrado (mover vários livros para lixeira).
+    2.  [x] Organizar menu Biblioteca no wp-admin: unir submenus relacionados em abas/telas unificadas.
 
-### Segurança e Performance (Fase 8C-B)
-14. Nonces e sanitização — ✅ concluído
-15. Unificar funções de capa — ✅ concluída
+### Fase 19 (Polimento) — Importação e Exportação CSV
+*   **Descrição:** Melhorias no fluxo de importação/exportação de dados.
+*   **Tarefas:**
+    1.  [ ] Checkbox individuais para cada funcionalidade da Google Books API com aviso de impacto na velocidade.
+    2.  [ ] Importação assíncrona para grandes arquivos (evitar timeout).
+    3.  [ ] Melhorar detecção de título/autor (evitar que autor vire parte do título em snippets).
+    4.  [ ] Aviso de sucesso pós-download na exportação ("X livros exportados").
+    5.  [ ] Seleção individual de duplicados com checkbox na importação.
+    6.  [ ] Relatório visual de importação com status colorido (verde/vermelho/amarelo/cinza).
+    7.  [ ] Importação CSV com coluna de URL de vídeo-resenha.
+    8.  [ ] Importação dedicada de Número de Chamada via CSV para bibliotecas em migração.
+    9.  [ ] Barra de progresso na importação CSV com animação CSS.
 
-### Funcionalidades Adicionais (Fase 6A / Fase 8D / Fase 8E)
-16. Relatório visual de importação com cores
-17. Responsividade das capas no archive
-18. Cruzamento de filtros no archive
+### Fase 20 (Polimento) — Capas, Filtros, IA e APIs
+*   **Descrição:** Refinar integração com Google Books, Groq e ChatGPT.
+*   **Tarefas:**
+    1.  [ ] Avaliar opção de hotlink vs download local para economizar espaço.
+    2.  [ ] Ajustar responsividade das capas no archive.
+    3.  [ ] Corrigir cruzamento de filtros no archive nativo (/livros/).
+    4.  [ ] Refatorar constantes do wp-config para usar central de APIs.
+    5.  [ ] Refinar prompt da classificação por IA: respostas mais detalhadas e lúdicas.
+    6.  [ ] Configurar persona/tom da IA na central de APIs.
+    7.  [ ] Configurações do Chatbot: ativar/desativar, restringir por perfil, definir persona.
+    8.  [ ] Preenchimento automático via ISBN: buscar dados completos via Google Books API.
+    9.  [ ] Buscar avaliação (rating) do Google Books e exibir na página do livro.
+    10. [ ] Buscar livros relacionados via Google Books API e exibir como "Leituras recomendadas".
 
-### Integração IA (Fase 8G / Fase 11A-B)
-19. Chave API Gemini válida — ✅ (substituída por Groq)
+### Fase 21 (Polimento) — Páginas Públicas (archive e single)
+*   **Descrição:** Refinar layout e exibição pública dos livros.
+*   **Tarefas:**
+    1.  [x] Placeholder para capas quebradas ou ausentes no single. (✅ concluído)
+    2.  [ ] Layout visual das páginas públicas (aplicar protótipo do Stitch).
+    3.  [ ] Exibir resenhas aprovadas na página individual do livro.
 
-### Ciclo 5 — Pendências
-20. Página de instalação (primeiro acesso)
-21. Portal de login com redirecionamento
-22. Visibilidade configurável de campos por perfil
-23. Campos dinâmicos conforme perfil
-24. Revisar hierarquia de perfis
-25. Centralizar menu de administração
-26. Substituir alert() por modal
-27. Dashboard de leitura com seletor de período
-28. Interface de reserva para Professor/Gestor (dropdown)
-29. Clareza visual do estoque
-30. Contador regressivo refinado
-31. Contador de mensagens WhatsApp
-32. Desmembrar book-manager.php — ✅ (Fase 9H)
-33. Criador de Taxonomias Dinâmicas
-34. Configuração de limites por perfil
-35. Ajustar limite de reservas (bug)
-36. Refinar monitoramento do Professor
-37. Limpar roles sujas na ativação
-38. Remover role bm_super_admin redundante
+### Fase 22 (Polimento) — Central de Exportar/Importar Tudo
+*   **Descrição:** Interface unificada para exportação e importação completa de dados.
+*   **Tarefas:**
+    1.  [ ] Subpágina "Exportar/Importar Dados" com abas Exportar e Importar.
+    2.  [ ] Exportar: checkboxes para módulos (livros, alunos, histórico, fichas, taxonomias, configurações) ou "Tudo". ZIP com CSVs ou CSV único. Opção XML.
+    3.  [ ] Importar: upload de ZIP ou CSVs individuais com mapeamento dinâmico.
 
-### Análise Gemini — Correções
-39. Tornar uninstall.php autocontido
-40. Substituir manage_options por capabilities granulares
+### Fase 23 (Polimento) — Sistema de Multas
+*   **Descrição:** Sistema configurável de penalidades por atraso.
+*   **Tarefas:**
+    1.  [ ] Página "Regras de Multa" nas Configurações: tipo, duração/valor, progressão.
+    2.  [ ] Cálculo automático ao devolver com atraso.
+    3.  [ ] Histórico de multas na página individual do aluno.
+    4.  [ ] Bloqueio automático se multa ativa.
+    5.  [ ] Notificação de multa via WhatsApp.
 
-### Performance
-41. Otimizar queries dos dashboards
+### Fase 24 (Polimento) — Empréstimos, Reservas e WhatsApp
+*   **Descrição:** Refinar fluxo de circulação e notificações.
+*   **Tarefas:**
+    1.  [ ] Melhorar interface de reserva para Professor/Gestor (dropdown de alunos).
+    2.  [ ] Melhorar clareza visual dos números de estoque.
+    3.  [ ] Refinar contador regressivo: notificações automáticas por e-mail.
+    4.  [ ] Contador de mensagens WhatsApp enviadas por empréstimo.
+    5.  [ ] Corrigir bug: aluno sem limites de reserva.
+    6.  [ ] Refinar monitoramento do Professor.
+    7.  [ ] Notificação por e-mail: lembrete de devolução, reserva disponível, multa.
+    8.  [ ] Renovação online pelo aluno sem intervenção do Gestor.
 
-### Ranking e Fichas (Ciclo 6)
-42. Ranking no dashboard do aluno
-43. Filtros configuráveis no ranking
-44. Perfil público do leitor
-45. Exibir resenhas aprovadas no single
-46. Vitrine de resenhas no perfil público
-47. Curadoria de resenhas na página do livro
-48. Ranking de livros [bm_top_books]
-49. Vídeo-resenhas na página do livro via CSV
-50. Redirecionamento após login
-51. Dashboard enriquecido com relatórios
-52. Design system para dashboards
+### Fase 25 (Polimento) — Funcionalidades para Biblioteca Escolar
+*   **Descrição:** Recursos específicos para o contexto escolar brasileiro.
+*   **Tarefas:**
+    1.  [ ] Reserva antecipada para professor.
+    2.  [ ] Lista de leitura obrigatória.
+    3.  [ ] Relatório de turma.
+    4.  [ ] Painel de aniversariantes.
+    5.  [ ] Empréstimo entre bibliotecas.
 
-### Vídeo e Embed (Ciclo 6)
-53. Suporte a Instagram Reels
-54. Importação CSV com coluna de vídeo
-55. Resenha oficial do Gestor/Admin — ✅ (Fase 10C)
-56. Estrelas opcionais na ficha de leitura — ✅ (Fase 10B)
-57. Corrigir embed de TikTok e Instagram
+### Fase 26 (Polimento) — Funcionalidades para Qualquer Biblioteca
+*   **Descrição:** Recursos universais para qualquer tipo de biblioteca.
+*   **Tarefas:**
+    1.  [ ] Sugestão de aquisição.
+    2.  [ ] Catálogo público com busca avançada expandida.
+    3.  [ ] Integração com redes sociais.
+    4.  [ ] Modo acessibilidade.
+    5.  [ ] API pública do acervo.
+    6.  [ ] Estatísticas de uso.
+    7.  [ ] Checklist de inventário.
 
-### XP e Medalhas (Ciclo 6)
-58. Exibir XP ganho por ficha
-59. Gestor definir XP manualmente ao aprovar
-60. Exibir XP na seção Minhas Fichas
-61. Link Minhas Fichas no dashboard
+### Fase 27 (Polimento) — Dashboards, Perfis e Gamificação
+*   **Descrição:** Refinar painéis de controle e sistema de engajamento.
+*   **Tarefas:**
+    1.  [ ] Substituir todos os alert() restantes por modal.
+    2.  [ ] Dashboard de leitura com seletor de período.
+    3.  [ ] Ranking no dashboard do aluno: exibir posição e comparação.
+    4.  [ ] Filtros configuráveis no ranking.
+    5.  [ ] Perfil público do leitor.
+    6.  [ ] Vitrine de resenhas no perfil público do aluno.
+    7.  [ ] Curadoria de resenhas na página do livro.
+    8.  [ ] Ranking de livros: shortcode [bm_top_books].
+    9.  [ ] Dashboard enriquecido com relatórios e gráficos.
+    10. [ ] Design system para dashboards: cards interativos, gráficos, ícones.
+    11. [ ] Exibir XP ganho por ficha na seção "Minhas Fichas".
+    12. [ ] Gestor/Admin definir XP manualmente ao aprovar ficha.
+    13. [ ] Exibir XP na seção Minhas Fichas.
+    14. [ ] Link "Minhas Fichas" no dashboard do aluno.
+    15. [ ] Duplicação de Nome e E-mail na edição nativa de usuário.
 
-### APIs e IA (Ciclo 7)
-62. Refatorar constantes para usar central de APIs
-63. Substituir Gemini por Groq/DeepSeek — ✅ (Fase 11A-B)
-64. Avaliar remoção do bloco 8G (lixo)
-65. Refinar prompt da classificação por IA
-66. Configurar persona/tom da IA na central
-67. Configurações do Chatbot (ativar/desativar, perfil, persona)
-68. Criar Fase 12E — Limpeza de código morto
+### Fase 28 (Polimento) — Vídeo e Embed
+*   **Descrição:** Suporte a vídeos e correções de embed.
+*   **Tarefas:**
+    1.  [ ] Vídeo-resenhas na página do livro via importação CSV.
+    2.  [ ] Suporte a Instagram Reels no embed.
+    3.  [ ] Corrigir embed de TikTok e Instagram: altura, largura, scrollbar.
+
+### Fase 29 (Polimento) — Etiquetas e Número de Chamada
+*   **Descrição:** Refinar impressão e catalogação.
+*   **Tarefas:**
+    1.  [ ] Reordenação configurável das linhas do Número de Chamada.
+    2.  [ ] Otimizar layout da folha A4: reduzir margem para 27 etiquetas.
+
+### Fase 30 (Polimento) — Página de Instalação e Identidade Visual
+*   **Descrição:** Primeiro acesso e personalização inicial.
+*   **Tarefas:**
+    1.  [ ] Página de instalação (primeiro acesso): obriga criação do Super Admin + nome da escola.
+    2.  [x] Página de configurações para API Keys. (✅ concluído)
+
+### Fase 31 (Polimento) — Sistema de Relatórios
+*   **Descrição:** Motor completo de relatórios configuráveis.
+*   **Tarefas:**
+    1.  [ ] Motor de relatórios: função central com parâmetros configuráveis.
+    2.  [ ] Interface de relatórios: subpágina "Relatórios" com seletores.
+    3.  [ ] Relatórios pré-definidos: Histórico do aluno, Leitura por turma, Visão geral, Multas ativas, Ranking por gênero.
+    4.  [ ] Visualização em tela: tabelas + gráficos.
+    5.  [ ] Exportação para PDF.
+    6.  [ ] Relatório totalmente configurável pelo usuário.
+
+---
+
+## Pós — Ciclos Futuros
+
+### MARC21
+93. Suporte a MARC21: importação e exportação de registros no formato .mrc (binário) e .mrk (texto). Mapeamento de campos MARC para metadados do plugin.
+
+### Leitor de Livros Digitais
+94. Leitor integrado com PDF.js e EPUB.js: upload de PDF/EPUB, leitor com virar página, ajuste de fonte, modo noturno, progresso de leitura. Botão "Ler Agora" na página do livro. Integração com APIs de domínio público.
+
+### Google Drive
+95. Integração Google Drive: importar planilhas direto do Google Sheets via URL.
+
+### Extras
+90. Pesquisa por filtros no dashboard do aluno (expandir busca rápida).
+91. Impressão de comprovante de empréstimo no balcão.
+92. Máscara de telefone com formatação automática.
+132. Backup automático periódico (não só na virada de ano).
+
+### Internacionalização (i18n/l10n)
+133. Gerar arquivo .pot e traduzir formalmente o plugin para português do Brasil.
+
+### Segurança e Testes Rigorosos
+125. Executar Plugin Check (WordPress.org) e corrigir todos os warnings/errors.
+126. Passar PHP_CodeSniffer com WordPress Coding Standards.
+127. Testar com OWASP ZAP: XSS, CSRF, injeção.
+128. Revisão manual de nonces, sanitização e capabilities.
+129. Varredura completa de código órfão e lixo gerado durante o desenvolvimento.
+
+### Testes Automatizados de Interface (E2E)
+130. Criar suíte de testes E2E com Selenium IDE cobrindo todos os fluxos principais: cadastro de aluno, importação CSV, empréstimo/devolução no balcão, virada de ano letivo, gerenciar campos, exportação de dados.

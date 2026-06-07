@@ -3,7 +3,7 @@
  * Plugin Name:       Gestão de Livros
  * Plugin URI:        https://github.com/odanielpereira/biblioteca-plugin-wp
  * Description:       Gerenciador de livros para o tema Biblioteca.
- * Version:           1.0.0
+ * Version:           8.0.0
  * Author:            Daniel Pereira
  * Author URI:        https://odanielpereira.com/
  * License:           GPL-2.0+
@@ -53,6 +53,7 @@ function bm_register_book_cpt() {
         'supports'           => array( 'title', 'thumbnail' ),
         'delete_with_user'   => false,
         'menu_icon'          => 'dashicons-book',
+        'hierarchical'       => false,
     );
     register_post_type( 'bm_book', $args );
 }
@@ -180,30 +181,13 @@ function bm_register_roles() {
         'edit_published_bm_books' => true,
     ));
 
-    add_role('bm_super_admin', __('Super Administrador', 'book-manager'), array(
-        'read' => true,
-        'manage_options' => true,
-        'read_bm_book' => true,
-        'edit_bm_book' => true,
-        'edit_bm_books' => true,
-        'edit_others_bm_books' => true,
-        'publish_bm_books' => true,
-        'read_private_bm_books' => true,
-        'delete_bm_book' => true,
-        'delete_bm_books' => true,
-        'delete_private_bm_books' => true,
-        'delete_published_bm_books' => true,
-        'delete_others_bm_books' => true,
-        'edit_private_bm_books' => true,
-        'edit_published_bm_books' => true,
-    ));
+    
 }
 
 function bm_remove_roles() {
     remove_role('bm_student');
     remove_role('bm_teacher');
     remove_role('bm_librarian');
-    remove_role('bm_super_admin');
 }
 
 // FASE 12G: Pré-instalar campos dinâmicos padrão para alunos
@@ -270,6 +254,18 @@ function bm_plugin_activation() {
 register_activation_hook(__FILE__, 'bm_plugin_activation');
 function bm_plugin_deactivation() { flush_rewrite_rules(); }
 register_deactivation_hook(__FILE__, 'bm_plugin_deactivation');
+
+
+// ==========================================
+// FASE 15: CACHE DE QUERIES (TRANSIENTS)
+// ==========================================
+function bm_get_cached($key) {
+    return get_transient('bm_cache_' . $key);
+}
+
+function bm_set_cached($key, $data, $expiry = 300) {
+    set_transient('bm_cache_' . $key, $data, $expiry);
+}
 
 // FASE 12E: Renomear submenu "Biblioteca" para "Livros"
 function bm_rename_first_submenu() {

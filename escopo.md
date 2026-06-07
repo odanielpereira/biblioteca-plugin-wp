@@ -6,7 +6,7 @@
 - **Text Domain:** `book-manager`
 - **Prefixo de funções:** `bm_`
 - **Prefixo de meta keys:** `_bm_`
-- **Versão atual:** 7.0.0
+- **Versão atual:** 8.0.0
 
 ## 2. REFERÊNCIA ÚNICA
 - 100% do código deve seguir: https://developer.wordpress.org/
@@ -34,8 +34,15 @@
   - `add_role()` → https://developer.wordpress.org/reference/functions/add_role/
   - `wp_cron()` → https://developer.wordpress.org/reference/functions/wp_cron/
   - `wp_schedule_event()` → https://developer.wordpress.org/reference/functions/wp_schedule_event/
+  - `get_plugin_data()` → https://developer.wordpress.org/reference/functions/get_plugin_data/
+  - `get_bloginfo()` → https://developer.wordpress.org/reference/functions/get_bloginfo/
+  - `email_exists()` → https://developer.wordpress.org/reference/functions/email_exists/
+  - `sanitize_email()` → https://developer.wordpress.org/reference/functions/sanitize_email/
+  - `wp_delete_user()` → https://developer.wordpress.org/reference/functions/wp_delete_user/
+  - `wp_mail()` → https://developer.wordpress.org/reference/functions/wp_mail/
+  - `register_rest_route()` → https://developer.wordpress.org/reference/functions/register_rest_route/
 
-## 3. FUNCIONALIDADES EXISTENTES (CONSOLIDADO — Ciclos 1 a 7)
+## 3. FUNCIONALIDADES EXISTENTES (CONSOLIDADO — Ciclos 1 a 8)
 
 ### 3.1 Custom Post Type
 - **Slug do CPT:** `bm_book`
@@ -160,10 +167,38 @@
 - 4 roles customizadas: bm_student (Aluno), bm_teacher (Professor), bm_librarian (Gestor), Administrator (Super Admin)
 - Autocadastro com aprovação pendente
 - Dashboard por perfil (Aluno, Professor, Gestor)
-- Sistema de reservas com fila de espera e limite de 3 para estudantes
+- Sistema de reservas com fila de espera e limite configurável
 - Empréstimos com prazo configurável (0-60 dias) e contador regressivo (4 cores)
 - Controle de estoque matemático
 - WhatsApp com mensagens pré-programadas e contador de envios
+
+### 3.18 Campos Dinâmicos para Alunos
+- Interface unificada com abas: "Campos de Livros" e "Campos de Alunos"
+- Prefixo `_bm_user_` para campos dinâmicos de alunos
+- Tipos: texto curto, texto longo, e-mail
+- Drag and drop, renomear, ocultar/mostrar, migração de dados ao renomear
+- Campos pré-instalados na ativação: Nome completo, E-mail, Telefone (bloqueados), Série/Ano, Turno, Turma
+
+### 3.19 Importação de Alunos em Massa
+- Subpágina "Importar Alunos" com fluxo Upload → Mapeamento → Processamento
+- Mapeamento dinâmico com campos `_bm_user_*`
+- Detecção de duplicados por e-mail
+- Opção: approved ou pending
+- Relatório: X importados, Y ignorados, Z duplicados
+
+### 3.20 Administração de Alunos
+- Subpágina "Alunos" com listagem, filtros e ações em lote
+- Página individual com cards, histórico de empréstimos, medalhas
+- Exportar histórico do aluno via CSV
+- Indicador visual de atraso, WhatsApp, observações internas
+
+### 3.21 Atendimento (Empréstimo Rápido no Balcão)
+- Tela unificada com busca de livro e aluno via AJAX
+- Botões Emprestar, Devolver (com registro de danos), Renovar (+7 dias)
+- Leitor de código de barras com foco automático para ISBN
+- Modal de cadastro/edição rápida de aluno
+- Cadastro de livro por ISBN via Google Books API
+- Fila de espera visível e bloqueio por atraso
 
 ## 4. IMPORTAÇÃO CSV (Fase 6A) ← CONCLUÍDO (Ciclo 2)
 
@@ -275,9 +310,9 @@
 ### 11.4 Geração de Etiquetas (11C) ✅
 ### 11.5 Chatbot da Biblioteca (11E) ✅
 
-## 12. CICLO 8 — INFRAESTRUTURA E CONFIGURAÇÕES ← EM PLANEJAMENTO
+## 12. CICLO 8 — INFRAESTRUTURA E CONFIGURAÇÕES ← CONCLUÍDO
 
-> **Status:** Ciclo 8 em planejamento. Foco em adaptabilidade, white label, virada de ano, limpeza de código e refinamentos.
+> **Status:** Ciclo 8 concluído. Ver changelog entradas 100-129.
 
 ### 12.0 Requisitos de Segurança (OBRIGATÓRIO)
 - **Configurações:** Acesso restrito a `manage_options` (apenas Admin)
@@ -301,161 +336,210 @@
 
 ### 12.4 Limpeza de Código Morto (Fase 12D) — MOVIDO PARA CICLO DE POLIMENTO
 
-### 12.5 Refinamentos de Sistema (Fase 12E)
+### 12.5 Refinamentos de Sistema (Fase 12E) ✅
 - **Centralizar menu:** Menu principal "Biblioteca" ✅
-- **Criador de Taxonomias Dinâmicas:** Gestor cria suas próprias taxonomias via interface
-- **Configuração de limites por perfil:** Máximo de reservas e empréstimos por aluno
-- **Limpar roles sujas** na ativação do plugin
-- **Revisão de permissões:** Substituir `manage_options` por capabilities granulares
-- **Seletor CDU ou CDD** na central de configurações
-- **Visibilidade configurável** de campos administrativos por perfil
+- **Criador de Taxonomias Dinâmicas:** Gestor cria suas próprias taxonomias via interface ✅
+- **Configuração de limites por perfil:** Máximo de reservas e empréstimos por aluno → MOVIDO PARA CICLO DE POLIMENTO
+- **Limpar roles sujas** na ativação do plugin ✅
+- **Revisão de permissões:** Substituir `manage_options` por capabilities granulares → MOVIDO PARA CICLO DE POLIMENTO
+- **Seletor CDU ou CDD** na central de configurações ✅
+- **Visibilidade configurável** de campos administrativos por perfil ✅
 
-### 12.6 Status e Diagnóstico (Fase 12F)
-- **Acesso:** Exclusivo Admin (`manage_options`)
-- **Subpágina:** "Status" no menu Biblioteca (slug: `bm_status`)
-- **Armazenamento:** Nenhum — apenas leitura de dados do sistema
-- **Campos e funções:**
-  - `bm_get_system_status()` — retorna array com: versão do plugin (`get_plugin_data()`), versão PHP (`phpversion()`), versão WordPress (`get_bloginfo('version')`), limite de memória (`ini_get('memory_limit')`), status das chaves API (`bm_get_api_keys()`)
-  - `bm_get_groq_usage()` — contador de chamadas via `get_option('bm_groq_call_count')` e `get_option('bm_groq_call_log')`
-  - `bm_get_error_log()` — últimos 20 registros de `get_option('bm_error_log')`
-- **Interface:** Cards com métricas principais + tabela de logs
-- **Funções WordPress obrigatórias:**
-  - `get_plugin_data()` → https://developer.wordpress.org/reference/functions/get_plugin_data/
-  - `get_bloginfo()` → https://developer.wordpress.org/reference/functions/get_bloginfo/
-  - `get_option()` → https://developer.wordpress.org/reference/functions/get_option/
-- **Barreiras:**
-  - ❌ Não modificar wp-config.php
-  - ❌ Não expor dados sensíveis (chaves API aparecem como "Configurada" / "Não configurada")
+### 12.6 Status e Diagnóstico (Fase 12F) — MOVIDO PARA CICLO DE POLIMENTO
 
-### 12.7 Campos Dinâmicos para Alunos (Fase 12G)
-- **Acesso:** Admin e Gestor (`manage_options` ou `edit_bm_books`)
-- **Armazenamento:** `get_option('bm_user_dynamic_fields')` — array associativo igual ao de livros
-- **Meta keys:** Prefixo `_bm_user_` (ex: `_bm_user_serie`, `_bm_user_turno`)
-- **Campos:** Tipos suportados: `text` (texto curto) e `textarea` (texto longo). Sem campos fixos obrigatórios — gestor define tudo
-- **Funções:**
-  - Adaptar `bm_render_dynamic_fields_page()` para suportar abas: "Campos de Livros" e "Campos de Alunos"
-  - `bm_render_user_dynamic_fields_metabox()` — exibir na edição do usuário
-  - `bm_save_user_dynamic_fields()` — hook em `edit_user_profile_update` e `personal_options_update`
-- **Funções WordPress obrigatórias:**
-  - `get_users()` → https://developer.wordpress.org/reference/functions/get_users/
-  - `get_user_meta()` → https://developer.wordpress.org/reference/functions/get_user_meta/
-  - `update_user_meta()` → https://developer.wordpress.org/reference/functions/update_user_meta/
-  - `add_action('edit_user_profile', ...)` → https://developer.wordpress.org/reference/hooks/edit_user_profile/
-  - `add_action('edit_user_profile_update', ...)` → https://developer.wordpress.org/reference/hooks/edit_user_profile_update/
-- **Barreiras:**
-  - ❌ Não criar tabelas customizadas
-  - ❌ Não modificar a tabela `wp_users` — apenas `wp_usermeta`
+### 12.7 Campos Dinâmicos para Alunos (Fase 12G) ✅
+- Interface unificada com abas: "Campos de Livros" e "Campos de Alunos"
+- Prefixo `_bm_user_` para campos dinâmicos de alunos
+- Tipos: texto curto, texto longo, e-mail
+- Drag and drop, renomear, ocultar/mostrar, migração de dados
+- Campos pré-instalados: Nome completo, E-mail, Telefone (bloqueados), Série/Ano, Turno, Turma
 
-### 12.8 Importação de Alunos em Massa (Fase 12H)
-- **Acesso:** Admin e Gestor (`manage_options` ou `edit_bm_books`)
-- **Subpágina:** "Importar Alunos" no menu Biblioteca (slug: `bm_student_import`)
-- **Armazenamento:** `wp_users` (nativo) + `wp_usermeta` (meta keys com prefixo `_bm_`)
-- **Fluxo:** Upload → Mapeamento → Processamento (idêntico ao de livros — Fase 6A/7G)
-- **Colunas mapeáveis:**
-  - Fixas: `user_login`, `display_name`, `user_email`, `user_pass`
-  - Dinâmicas: prefixo `_bm_user_` (ex: `_bm_user_serie`, `_bm_user_turno`)
-  - Meta nativa: `bm_student_group` (agrupamento de alunos)
-- **Regras:**
-  - Status: `bm_approval_status` = `'approved'` (direto) ou `'pending'`
-  - Role padrão: `bm_student`
-  - Detecção de duplicados por `user_email` (não por nome)
-  - Relatório: X importados, Y ignorados (sem e-mail), Z duplicados
-- **Funções WordPress obrigatórias:**
-  - `wp_insert_user()` → https://developer.wordpress.org/reference/functions/wp_insert_user/
-  - `email_exists()` → https://developer.wordpress.org/reference/functions/email_exists/
-  - `fgetcsv()` → https://www.php.net/manual/pt_BR/function.fgetcsv.php
-  - `sanitize_email()` → https://developer.wordpress.org/reference/functions/sanitize_email/
-  - `sanitize_text_field()` → https://developer.wordpress.org/reference/functions/sanitize_text_field/
-- **Barreiras:**
-  - ❌ Não permitir importar Administradores ou Gestores via CSV
-  - ❌ Não criar tabelas customizadas
+### 12.8 Importação de Alunos em Massa (Fase 12H) ✅
+- Subpágina "Importar Alunos" com fluxo Upload → Mapeamento → Processamento
+- Mapeamento dinâmico com campos `_bm_user_*`
+- Detecção de duplicados por e-mail
+- Relatório detalhado
 
-### 12.9 Dashboard e Cadastro de Alunos (Fase 12I)
-- **Acesso:** Aluno logado (dashboard próprio), Admin/Gestor (edição)
-- **Armazenamento:** `wp_usermeta` (campos dinâmicos `_bm_user_*`)
-- **Funções:**
-  - `bm_student_dashboard_content()` — já existe, expandir para exibir campos dinâmicos preenchidos
-  - `bm_register_form()` — já existe como shortcode `[bm_register]`, expandir para incluir campos dinâmicos do gestor
-  - `bm_render_student_edit_page()` — página de edição de aluno no admin com: dados nativos (nome, e-mail) + campos dinâmicos + histórico de leitura/XP/medalhas
-  - `bm_teacher_view_student()` — Professor vê dados do aluno em modo leitura (sem edição)
-- **Funções WordPress obrigatórias:**
-  - `get_user_meta()` → https://developer.wordpress.org/reference/functions/get_user_meta/
-  - `update_user_meta()` → https://developer.wordpress.org/reference/functions/update_user_meta/
-  - `get_users()` → https://developer.wordpress.org/reference/functions/get_users/
-  - `wp_update_user()` → https://developer.wordpress.org/reference/functions/wp_update_user/
-- **Barreiras:**
-  - ❌ Professor NÃO pode editar dados de alunos (apenas leitura)
-  - ❌ Não expor senhas em tela alguma
+### 12.9 Dashboard e Cadastro de Alunos (Fase 12I) ✅
+- Dashboard do aluno exibe campos dinâmicos e busca rápida
+- Shortcode `[bm_register]` com perfil primeiro e campos condicionais
+- Trava de recadastramento pós-virada
+- Professor vê dados do aluno em modo leitura
 
-### 12.10 Administração de Alunos (Fase 12J)
-- **Acesso:** Admin e Gestor (`manage_options` ou `edit_bm_books`)
-- **Subpágina:** "Alunos" no menu Biblioteca (slug: `bm_students`)
-- **Armazenamento:** `wp_users` + `wp_usermeta` (apenas leitura/atualização, sem criação de tabelas)
-- **Funções:**
-  - `bm_add_students_list_page()` — subpágina "Alunos"
-  - `bm_render_students_list_page()` — tabela com:
-    - Colunas: Nome, E-mail, Grupo, Status, XP, Empréstimos ativos
-    - Filtros: grupo (`bm_student_group`), status (`bm_approval_status`), busca textual
-    - Ações em lote: Aprovar, Suspender (mudar para `subscriber`), Excluir (`wp_delete_user()`)
-  - `bm_render_student_detail_page()` — página individual do aluno com:
-    - Dados cadastrais (nativos + dinâmicos)
-    - Histórico de leitura (fichas, resenhas, vídeos)
-    - XP e medalhas
-    - Empréstimos ativos e histórico
-- **Funções WordPress obrigatórias:**
-  - `get_users()` → https://developer.wordpress.org/reference/functions/get_users/
-  - `wp_delete_user()` → https://developer.wordpress.org/reference/functions/wp_delete_user/
-  - `get_user_meta()` → https://developer.wordpress.org/reference/functions/get_user_meta/
-  - `wp_update_user()` → https://developer.wordpress.org/reference/functions/wp_update_user/
-- **Barreiras:**
-  - ❌ Não usar `WP_List_Table` (simplicidade)
-  - ❌ Não permitir exclusão do próprio usuário logado
-  - ❌ Não permitir que Gestor exclua Admin
+### 12.10 Administração de Alunos (Fase 12J) ✅
+- Subpágina "Alunos" com listagem, filtros e ações em lote
+- Página individual com histórico, XP, medalhas, exportação CSV
+- Indicador visual de atraso, WhatsApp, observações internas
 
-### 12.11 Atendimento — Empréstimo Rápido no Balcão (Fase 12K)
-- **Acesso:** Admin e Gestor (`manage_options` ou `edit_bm_books`)
-- **Subpágina:** "Atendimento" no menu Biblioteca (slug: `bm_service`)
-- **Armazenamento:** Post meta (`_bm_reservations`, `_bm_borrowed_count`) + User meta (`_bm_loan_history`)
-- **Meta keys novas:** `_bm_consulta_local` — checkbox no cadastro/edição do livro (0 ou 1)
-- **Funções:**
-  - `bm_add_service_page()` — subpágina "Atendimento"
-  - `bm_render_service_page()` — interface unificada com:
-    - **Busca de livro:** Campo com autocomplete AJAX (`bm_ajax_search_books()`), exibindo disponibilidade em tempo real
-    - **Busca de aluno:** Campo com autocomplete AJAX (`bm_ajax_search_students()`), exibindo pendências, livros ativos, limite
-    - **Botão "Emprestar":** Aplica regras existentes (`bm_confirm_loan()`), verifica estoque, exibe alerta se limite atingido ou atraso
-    - **Botão "Devolver":** Chama `bm_return_book()`
-    - **Indicador "Consulta local":** Se `_bm_consulta_local` = '1', exibe "📌 Consulta local — não pode sair"
-    - **Modal de cadastro rápido:** Nome, e-mail, telefone + campos dinâmicos — cria usuário na hora
-    - **Histórico rápido:** Últimos 3 livros lidos pelo aluno
-    - **Leitor de código de barras:** Campo com foco automático para ISBN/ID, escaneia e preenche busca do livro
-- **Funções WordPress obrigatórias:**
-  - `wp_insert_user()` → https://developer.wordpress.org/reference/functions/wp_insert_user/
-  - `get_users()` → https://developer.wordpress.org/reference/functions/get_users/
-  - `get_post_meta()` → https://developer.wordpress.org/reference/functions/get_post_meta/
-  - `update_post_meta()` → https://developer.wordpress.org/reference/functions/update_post_meta/
-  - `wp_verify_nonce()` → https://developer.wordpress.org/reference/functions/wp_verify_nonce/
-- **Barreiras:**
-  - ❌ Não criar tabelas customizadas para fila de atendimento
-  - ❌ Não usar WebSockets (atualização é via AJAX)
-  - ❌ Não modificar a estrutura de `_bm_reservations`
+### 12.11 Atendimento — Empréstimo Rápido no Balcão (Fase 12K) ✅
+- Tela unificada com busca livro/aluno via AJAX
+- Emprestar, Devolver (com danos), Renovar
+- Leitor de código de barras, cadastro rápido de aluno/livro
+- Fila de espera visível e bloqueio por atraso
 
-## 12.12 NOVAS META KEYS E OPÇÕES (CICLO 8)
+## 13. CICLO 9 — POLIMENTO (EM ANDAMENTO)
+
+### 13.1 Limpeza de Código Morto (Fase 14)
+- **Acesso:** Admin
+- **Arquivos:** `admin.php`, `book-manager.php`, `frontend.php`
+- **Tarefas:** Remover bloco FASE 8G (Gemini), `bm_deepseek_request()`, `bm_super_admin`, constantes wp-config, código órfão
+- **Teste:** Verificar todas as funcionalidades após remoção
+
+### 13.2 Performance, Auditoria e uninstall (Fase 15)
+- **Acesso:** Admin
+- **Arquivos:** `uninstall.php`, `users.php`, `book-manager.php`
+- **Auditoria expandida:** `bm_log_admin_action()` para ações de alunos (aprovar, suspender, excluir)
+- **Armazenamento:** `bm_admin_audit_log` (option, array com últimos 100 registros)
+- **Performance:** Wrapper `bm_get_cached()` / `bm_set_cached()` para transients. Substituir `get_posts()` sem limite por queries paginadas nos dashboards (limite 20 + link "Ver todos")
+- **Funções obrigatórias:** `get_transient()`, `set_transient()`
+
+### 13.3 Gerenciar Campos e Taxonomias (Fase 16)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `admin.php`
+- **Tarefas:** Campos fixos removíveis/ocultáveis, campos por perfil, unificar Classificação, ordem no modal de Atendimento
+
+### 13.4 Status, Diagnóstico e Configurações (Fase 17)
+- **Acesso:** Admin (Status, Configurações), Admin e Gestor (Permissões)
+- **Arquivos:** `admin.php`
+- **Subpágina:** "Status" (slug: `bm_status`)
+- **Funções:** `bm_get_system_status()`, `bm_get_groq_usage()`, `bm_get_error_log()`
+- **Armazenamento:** `bm_groq_call_count` (option), `bm_groq_call_log` (option), `bm_error_log` (option)
+- **Limites por perfil:** Expandir `bm_get_settings()` com `per_profile_limits`
+- **Permissões do Gestor:** Interface com checkboxes para cada funcionalidade
+- **Funções obrigatórias:** `get_plugin_data()`, `get_bloginfo()`, `phpversion()`, `ini_get()`
+
+### 13.5 Listagem, Menu e Usabilidade (Fase 18)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `admin.php`
+- **Tarefas:** Corrigir bulk action, organizar menu com abas/telas unificadas
+
+### 13.6 Importação e Exportação CSV (Fase 19)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `admin.php`
+- **Tarefas:** Checkbox Google Books API, importação assíncrona, barra de progresso, relatório visual, detecção de título/autor, aviso pós-download, seleção individual de duplicados, coluna de vídeo-resenha, importação dedicada de Número de Chamada
+
+### 13.7 Capas, Filtros, IA e APIs (Fase 20)
+- **Acesso:** Admin (APIs), Todos (filtros, capas), Admin/Gestor (IA)
+- **Arquivos:** `frontend.php`, `archive-bm_book.php`
+- **Tarefas:** Hotlink vs download, responsividade, cruzamento de filtros, refatorar constantes, prompt IA, persona/tom, chatbot configurável, preenchimento por ISBN, avaliação Google Books, livros relacionados
+
+### 13.8 Páginas Públicas (Fase 21)
+- **Acesso:** Todos
+- **Arquivos:** `archive-bm_book.php`, `single-bm_book.php`
+- **Tarefas:** Placeholder capas (✅), layout Stitch, resenhas aprovadas no single
+
+### 13.9 Central de Exportar/Importar Tudo (Fase 22)
+- **Acesso:** Admin e Gestor
+- **Subpágina:** "Exportar/Importar Dados" (slug: `bm_data_io`)
+- **Arquivos:** `admin.php`
+- **Módulos exportáveis:** Livros (CSV), Alunos (CSV), Histórico de empréstimos (CSV), Fichas de leitura (CSV), Taxonomias (CSV), Configurações (JSON)
+- **Exportar:** Checkboxes por módulo + "Tudo" + formato (CSV/XML). ZIP com múltiplos arquivos.
+- **Importar:** Upload de ZIP ou CSV individual + preview + mapeamento dinâmico
+- **Funções:** `bm_add_data_io_page()`, `bm_export_data()`, `bm_import_data()`
+- **Geração de ZIP:** `ZipArchive` (nativo PHP)
+- **Funções obrigatórias:** `ZipArchive`, `wp_upload_dir()`
+- **Barreiras:** ❌ Não exportar senhas (`user_pass` nunca incluso)
+
+### 13.10 Sistema de Multas (Fase 23)
+- **Acesso:** Admin e Gestor (configurar), Aluno (consultar próprias)
+- **Arquivos:** `admin.php`, `users.php`, `frontend.php`
+- **Armazenamento:** `bm_penalty_rules` (option), `_bm_penalties` (user_meta), `_bm_penalty_active` (user_meta 0/1), `_bm_penalty_until` (user_meta date)
+- **Regras:** Tipo (advertência/suspensão/valor), progressão (1ª vez = X, 2ª vez = Y), moeda (BRL)
+- **Funções:** `bm_calculate_penalty()`, `bm_apply_penalty()`, `bm_check_penalty_block()`, `bm_display_penalties()`
+- **Integração:** `bm_return_book()` calcula multa se atraso, `bm_ajax_service_loan()` verifica bloqueio, página do aluno (12J) exibe multas, WhatsApp notifica
+- **Barreiras:** ❌ Não integrar gateways de pagamento reais
+
+### 13.11 Empréstimos, Reservas e WhatsApp (Fase 24)
+- **Acesso:** Aluno (renovação própria), Professor/Gestor (todas)
+- **Arquivos:** `users.php`
+- **Renovação online:** Botão "Renovar" no dashboard do aluno. Regra: só se não houver fila de espera. +7 dias a partir da data atual.
+- **Notificações por e-mail:** `bm_send_email_notification()` wrapper para `wp_mail()`. Tipos: `overdue`, `due_today`, `overdue_alert`, `reservation_available`, `penalty_applied`.
+- **Armazenamento:** `bm_email_settings` (option)
+- **Funções obrigatórias:** `wp_mail()`
+
+### 13.12 Funcionalidades para Biblioteca Escolar (Fase 25)
+- **Acesso:** Professor (reserva, lista, relatório), Gestor/Admin (todas)
+- **Arquivos:** `users.php`, `admin.php`
+- **Reserva antecipada:** `bm_add_bulk_reservation()` — Professor reserva lote para data futura. Armazenamento: `_bm_bulk_reservation` (post_meta)
+- **Lista de leitura:** `bm_add_reading_list()` — Professor cria lista por turma. Armazenamento: `_bm_reading_list` (option)
+- **Relatório de turma:** `bm_get_class_report($group, $period)`
+- **Painel aniversariantes:** `bm_get_birthdays($month)` no dashboard do Gestor
+- **Empréstimo entre bibliotecas:** `bm_set_library_unit()` — campo "Unidade" no livro. Armazenamento: `_bm_library_unit` (post_meta)
+- **Barreiras:** ❌ Não integrar sistemas externos de matrícula
+
+### 13.13 Funcionalidades para Qualquer Biblioteca (Fase 26)
+- **Acesso:** Todos logados (sugestão), Todos (catálogo, compartilhar, acessibilidade), Gestor/Admin (estatísticas, inventário)
+- **Arquivos:** `users.php`, `frontend.php`, `single-bm_book.php`, `archive-bm_book.php`
+- **Sugestão de aquisição:** `bm_add_acquisition_suggestion()`. Armazenamento: `_bm_acquisition_suggestions` (option)
+- **Catálogo avançado:** Filtros expandidos (idioma, ano, faixa etária)
+- **Redes sociais:** Botões de compartilhamento no single
+- **Acessibilidade:** Modo alto contraste/fonte aumentada (CSS toggle)
+- **API pública (opcional):** `register_rest_route('bm/v1', '/books')` — ativar/desativar nas Configurações. Sem autenticação, sem dados pessoais.
+- **Estatísticas:** `bm_get_library_stats($period)`. Cache em `bm_stats_cache` (option)
+- **Checklist de inventário:** `bm_inventory_check($post_id)`. Armazenamento: `_bm_inventory_check` (post_meta date)
+- **Funções obrigatórias:** `register_rest_route()`
+- **Barreiras:** ❌ API não expor dados pessoais, ❌ sem CDN para fontes
+
+### 13.14 Dashboards, Perfis e Gamificação (Fase 27)
+- **Acesso:** Aluno (seu dashboard), Professor (monitoramento), Gestor/Admin (todos)
+- **Arquivos:** `users.php`, `single-bm_book.php`
+- **Tarefas:** Substituir alert() por modal, seletor de período, ranking no dashboard, filtros no ranking, perfil público, vitrine de resenhas, curadoria, `[bm_top_books]`, dashboard enriquecido, design system, XP por ficha, XP manual, link Minhas Fichas, duplicação Nome/E-mail
+
+### 13.15 Vídeo e Embed (Fase 28)
+- **Acesso:** Todos (visualização), Admin/Gestor (importação)
+- **Arquivos:** `users.php`, `single-bm_book.php`
+- **Tarefas:** Vídeo-resenhas via CSV, Instagram Reels, correção TikTok/Instagram embed
+
+### 13.16 Etiquetas e Número de Chamada (Fase 29)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `admin.php`, `frontend.php`
+- **Tarefas:** Reordenação configurável do Número de Chamada, layout A4 27 etiquetas
+
+### 13.17 Página de Instalação e Identidade Visual (Fase 30)
+- **Acesso:** Admin (primeiro acesso)
+- **Arquivos:** `admin.php`, `book-manager.php`
+- **Página de instalação:** Obriga criação do Super Admin + nome da escola no primeiro acesso. Autodestrói após uso.
+- **API Keys:** (✅ concluído)
+
+### 13.18 Sistema de Relatórios (Fase 31)
+- **Acesso:** Gestor/Admin (administrativos), Professor (turma), Aluno (próprio)
+- **Subpágina:** "Relatórios" (slug: `bm_reports`)
+- **Arquivos:** `admin.php` (novo módulo `includes/reports.php` opcional)
+- **Motor:** `bm_generate_report($args)` — parâmetros: tipo, sujeito, período, filtros, formato
+- **Tipos pré-definidos:** Histórico do aluno, Leitura por turma, Visão geral, Multas ativas, Ranking por gênero, Relatório configurável
+- **Visualização:** Tabelas HTML + gráficos (Chart.js inline ou CSS puro)
+- **PDF:** TCPDF incluso como arquivo único no plugin
+- **Interface:** Dropdown tipo, seletor período, filtros dinâmicos, botão Gerar + Exportar PDF
+- **Funções obrigatórias:** `get_users()`, `get_posts()`, `wp_localize_script()`
+- **Barreiras:** ❌ Sem CDN para Chart.js, ❌ sem serviços externos de PDF, ❌ sem tabelas customizadas
+
+## 14. NOVAS META KEYS E OPÇÕES (CICLO 9)
 
 | Meta Key / Option | Tipo | Fase |
 |----------|------|------|
-| `_bm_user_*` | User meta (dinâmico) | 12G, 12H, 12I |
-| `bm_student_group` | User meta (texto) | 12H, 12J |
-| `_bm_consulta_local` | Post meta (0/1) | 12K |
-| `bm_groq_call_count` | Option (inteiro) | 12F |
-| `bm_groq_call_log` | Option (array) | 12F |
-| `bm_error_log` | Option (array) | 12F |
-| `bm_user_dynamic_fields` | Option (array) | 12G |
+| `bm_penalty_rules` | Option (array) | 23 |
+| `_bm_penalties` | User meta (array) | 23 |
+| `_bm_penalty_active` | User meta (0/1) | 23 |
+| `_bm_penalty_until` | User meta (date) | 23 |
+| `_bm_bulk_reservation` | Post meta (array) | 25 |
+| `_bm_reading_list` | Option (array) | 25 |
+| `_bm_library_unit` | Post meta (texto) | 25 |
+| `_bm_acquisition_suggestions` | Option (array) | 26 |
+| `bm_stats_cache` | Option (array) | 26 |
+| `_bm_inventory_check` | Post meta (date) | 26 |
+| `bm_admin_audit_log` | Option (array) | 15 |
+| `bm_email_settings` | Option (array) | 24 |
 
-## 13. BARREIRAS DO ESCOPO (Proibido)
+## 15. BARREIRAS DO ESCOPO (Proibido)
 - ❌ Alterar a estrutura do CPT existente
 - ❌ Modificar os hooks de activation/deactivation/uninstall
 - ❌ Usar bibliotecas externas (Laravel-Excel, PhpSpreadsheet, etc.)
 - ❌ Criar tabelas customizadas no banco (usar post meta e user meta)
 - ❌ Shortcodes, widgets ou blocos Gutenberg (para a vitrine)
-- ❌ REST API endpoints customizados
+- ❌ REST API endpoints customizados (exceto Fase 26, opcional e configurável)
 - ❌ Qualquer dependência de composer, npm ou CDN externo
+- ❌ Não usar CDN para Chart.js ou qualquer biblioteca JS (incluir no plugin)
+- ❌ Não exportar senhas de usuários em nenhum formato
+- ❌ API pública não expor dados pessoais de alunos
+- ❌ Não integrar gateways de pagamento reais
+- ❌ TCPDF deve ser incluído como arquivo único no plugin (sem composer)
