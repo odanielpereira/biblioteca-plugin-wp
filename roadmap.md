@@ -301,29 +301,29 @@
 ### Fase 19 (Polimento) — Importação e Exportação CSV
 *   **Descrição:** Melhorias no fluxo de importação/exportação de dados.
 *   **Tarefas:**
-    1.  [ ] Checkbox individuais para cada funcionalidade da Google Books API com aviso de impacto na velocidade.
-    2.  [ ] Importação assíncrona para grandes arquivos (evitar timeout).
-    3.  [ ] Melhorar detecção de título/autor (evitar que autor vire parte do título em snippets).
-    4.  [ ] Aviso de sucesso pós-download na exportação ("X livros exportados").
-    5.  [ ] Seleção individual de duplicados com checkbox na importação.
-    6.  [ ] Relatório visual de importação com status colorido (verde/vermelho/amarelo/cinza).
-    7.  [ ] Importação CSV com coluna de URL de vídeo-resenha.
-    8.  [ ] Importação dedicada de Número de Chamada via CSV para bibliotecas em migração.
-    9.  [ ] Barra de progresso na importação CSV com animação CSS.
+    1.  [x] Checkbox individuais para cada funcionalidade da Google Books API com aviso de impacto na velocidade.
+    2.  [ ] Importação assíncrona para grandes arquivos (evitar timeout). → MOVIDO PARA CICLO DE PÓS-POLIMENTO
+    3.  [ ] Melhorar detecção de título/autor (evitar que autor vire parte do título em snippets). → MOVIDO PARA CICLO DE PÓS-POLIMENTO
+    4.  [x] Aviso de sucesso pós-download na exportação ("X livros exportados").
+    5.  [ ] Seleção individual de duplicados com checkbox na importação. → MOVIDO PARA CICLO DE PÓS-POLIMENTO
+    6.  [x] Relatório visual de importação com status colorido (verde/vermelho/amarelo/cinza).
+    7.  [x] Importação CSV com coluna de URL de vídeo-resenha.
+    8.  [x] Importação dedicada de Número de Chamada via CSV para bibliotecas em migração.
+    9.  [ ] Barra de progresso na importação CSV com animação CSS. → MOVIDO PARA CICLO DE PÓS-POLIMENTO
 
 ### Fase 20 (Polimento) — Capas, Filtros, IA e APIs
 *   **Descrição:** Refinar integração com Google Books, Groq e ChatGPT.
 *   **Tarefas:**
-    1.  [ ] Avaliar opção de hotlink vs download local para economizar espaço.
+    1.  [x] Avaliar opção de hotlink vs download local para economizar espaço.
     2.  [ ] Ajustar responsividade das capas no archive.
     3.  [ ] Corrigir cruzamento de filtros no archive nativo (/livros/).
-    4.  [ ] Refatorar constantes do wp-config para usar central de APIs.
+    4.  [x] Refatorar constantes do wp-config para usar central de APIs.
     5.  [ ] Refinar prompt da classificação por IA: respostas mais detalhadas e lúdicas.
     6.  [ ] Configurar persona/tom da IA na central de APIs.
     7.  [ ] Configurações do Chatbot: ativar/desativar, restringir por perfil, definir persona.
-    8.  [ ] Preenchimento automático via ISBN: buscar dados completos via Google Books API.
-    9.  [ ] Buscar avaliação (rating) do Google Books e exibir na página do livro.
-    10. [ ] Buscar livros relacionados via Google Books API e exibir como "Leituras recomendadas".
+    8.  [ ] Preenchimento automático via ISBN: buscar dados completos via Google Books API. → MOVIDO PARA CICLO DE PÓS-POLIMENTO
+    9.  [ ] Buscar avaliação (rating) do Google Books e exibir na página do livro. → MOVIDO PARA CICLO DE PÓS-POLIMENTO
+    10. [ ] Buscar livros relacionados via Google Books API e exibir como "Leituras recomendadas". → MOVIDO PARA CICLO DE PÓS-POLIMENTOlivros relacionados via Google Books API e exibir como "Leituras recomendadas".
 
 ### Fase 21 (Polimento) — Páginas Públicas (archive e single)
 *   **Descrição:** Refinar layout e exibição pública dos livros.

@@ -133,7 +133,154 @@ function bm_google_books_search($title, $author, $publisher, $isbn = '') {
 }
 
 function bm_fetch_cover_from_google($title, $author, $publisher, $isbn = '') {
-    return bm_google_books_search($title, $author, $publisher, $isbn);
+    $settings = bm_get_settings();
+    $cover_mode = isset($settings['cover_mode']) ? $settings['cover_mode'] : 'download';
+    $cover_url = bm_google_books_search($title, $author, $publisher, $isbn);
+    
+    if (!$cover_url) return false;
+    
+    // Se hotlink, retorna a URL direta sem baixar
+    if ($cover_mode === 'hotlink') {
+        return array('mode' => 'hotlink', 'url' => $cover_url);
+    }
+    
+    return $cover_url;
+}
+
+// ==========================================
+// FASE 19: BUSCA COMPLETA DE DADOS VIA GOOGLE BOOKS API
+// ==========================================
+
+
+
+// ==========================================
+// FASE 19: BUSCA DE VÍDEO NO YOUTUBE
+// ==========================================
+function bm_search_youtube_video($title, $author = '', $publisher = '') {
+    $keys = bm_get_api_keys();
+    $youtube_key = isset($keys['youtube_key']) ? $keys['youtube_key'] : '';
+    if (empty($youtube_key)) return false;
+    
+    // Tentar na ordem: título + autor + editora → título + autor → título
+    $queries = array();
+    if (!empty($title) && !empty($author) && !empty($publisher)) $queries[] = $title . ' ' . $author . ' ' . $publisher . ' livro resenha';
+    if (!empty($title) && !empty($author)) $queries[] = $title . ' ' . $author . ' livro';
+    if (!empty($title)) $queries[] = $title . ' livro';
+    
+    foreach ($queries as $query) {
+        $url = 'https://www.googleapis.com/youtube/v3/search?part=snippet&q=' . urlencode($query) . '&type=video&maxResults=1&key=' . $youtube_key;
+        $response = wp_remote_get($url, array('timeout' => 10));
+        
+        if (is_wp_error($response)) continue;
+        
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+        
+        if (!empty($data['items'][0]['id']['videoId'])) {
+            $video_id = $data['items'][0]['id']['videoId'];
+            return array(
+                'video_id' => $video_id,
+                'url' => 'https://www.youtube.com/watch?v=' . $video_id,
+                'embed_url' => 'https://www.youtube.com/embed/' . $video_id,
+                'title' => $data['items'][0]['snippet']['title'],
+            );
+        }
+    }
+    
+    return false;
+}
+
+
+// ==========================================
+// FASE 19: BUSCA COMPLETA DE DADOS VIA GOOGLE BOOKS API
+// ==========================================
+function bm_fetch_google_book_data($title, $author = '', $publisher = '', $isbn = '') {
+    $queries = array();
+    if (!empty($isbn)) { $c = preg_replace('/[^0-9]/', '', $isbn); if (strlen($c) >= 10) $queries[] = 'isbn:' . $c; }
+    if (!empty($title) && !empty($author) && !empty($publisher)) $queries[] = $title . ' ' . $author . ' ' . $publisher;
+    if (!empty($title) && !empty($author)) $queries[] = $title . ' ' . $author;
+    if (!empty($title) && !empty($publisher)) $queries[] = $title . ' ' . $publisher;
+    if (!empty($title)) $queries[] = $title;
+    if (empty($queries)) return false;
+
+    $st = mb_strtolower(trim($title));
+    $sa = mb_strtolower(trim($author));
+
+    foreach ($queries as $query) {
+        $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($query) . '&key=' . bm_get_api_key('google_books');
+        $r = wp_remote_get($url, array('timeout' => 15));
+        if (is_wp_error($r)) continue;
+        $body = json_decode(wp_remote_retrieve_body($r), true);
+        if (empty($body['items'])) continue;
+
+        $best = null;
+        foreach ($body['items'] as $item) {
+            $it = isset($item['volumeInfo']['title']) ? mb_strtolower(trim($item['volumeInfo']['title'])) : '';
+            if ($it === $st) {
+                $ia = isset($item['volumeInfo']['authors']) ? mb_strtolower(implode(' ', $item['volumeInfo']['authors'])) : '';
+                if (empty($sa) || strpos($ia, $sa) !== false) { $best = $item; break; }
+                if (!$best) $best = $item;
+            }
+            if (strpos($it, $st) !== false && !$best) {
+                $ia = isset($item['volumeInfo']['authors']) ? mb_strtolower(implode(' ', $item['volumeInfo']['authors'])) : '';
+                if (empty($sa) || strpos($ia, $sa) !== false) $best = $item;
+            }
+        }
+        if (!$best) $best = $body['items'][0];
+
+        if ($best && isset($best['volumeInfo'])) {
+            $info = $best['volumeInfo'];
+            $mt = mb_strtolower(trim($info['title']));
+            similar_text($st, $mt, $pct);
+            $min = (mb_strlen($st) < 10) ? 30 : 50;
+            if ($pct >= $min || strpos($mt, $st) !== false || strpos($st, $mt) !== false) {
+                $data = array();
+                
+                // Capa
+                if (isset($info['imageLinks']['thumbnail'])) {
+                    $thumb = str_replace('http://', 'https://', $info['imageLinks']['thumbnail']);
+                    $thumb = str_replace('&zoom=1', '&zoom=2', $thumb);
+                    if (strpos($thumb, '&zoom=') === false) $thumb .= '&zoom=2';
+                    $data['cover_url'] = $thumb;
+                }
+                
+                // Sinopse
+                if (isset($info['description'])) {
+                    $data['description'] = wp_kses_post($info['description']);
+                }
+                
+                // Avaliação
+                if (isset($info['averageRating'])) {
+                    $data['rating'] = floatval($info['averageRating']);
+                }
+                
+                // Subtítulo
+                if (isset($info['subtitle'])) {
+                    $data['subtitle'] = sanitize_text_field($info['subtitle']);
+                }
+                
+                // Data de publicação
+                if (isset($info['publishedDate'])) {
+                    $data['published_date'] = sanitize_text_field($info['publishedDate']);
+                }
+                
+                // Número de páginas
+                if (isset($info['pageCount'])) {
+                    $data['page_count'] = intval($info['pageCount']);
+                }
+                
+                // ISBNs
+                if (isset($info['industryIdentifiers'])) {
+                    foreach ($info['industryIdentifiers'] as $identifier) {
+                        if ($identifier['type'] === 'ISBN_13') $data['isbn13'] = $identifier['identifier'];
+                        if ($identifier['type'] === 'ISBN_10') $data['isbn10'] = $identifier['identifier'];
+                    }
+                }
+                
+                return $data;
+            }
+        }
+    }
+    return false;
 }
 
 // ==========================================

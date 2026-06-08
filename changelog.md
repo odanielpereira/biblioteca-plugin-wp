@@ -631,6 +631,11 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Adicionada função `bm_clean_dirty_roles()` chamada no hook de ativação. Mapeia roles antigas (`gestor_biblioteca`, `gestor da biblioteca`, `professor`, `aluno`) para as roles atuais (`bm_librarian`, `bm_teacher`, `bm_student`). Para cada role suja encontrada, migra todos os usuários para a role limpa via `WP_User::set_role()` e remove a role antiga com `remove_role()`. Isso garante que usuários criados em versões anteriores do plugin não fiquem com roles órfãs que não são mais registradas.
 - **Ferramenta:** `write_file` (manual pelo usuário)
 
+**107 - Data:** 2026-06-05
+- **Ação:** Fase 12E-T5 movida para o Ciclo de Polimento com escopo expandido.
+- **Detalhes:** A tarefa original "substituir manage_options por capabilities granulares" era insuficiente. O Gestor ainda não via itens de menu (subpáginas registradas com manage_options) nem metaboxes/botões na edição (que também verificam manage_options). Nova abordagem definida para o Polimento: criar interface "Permissões do Gestor" onde o Admin marca quais funcionalidades o Gestor pode acessar. As alterações já feitas (save_post, CSV import/export, campos dinâmicos) foram mantidas como ajuda parcial.
+- **Ferramenta:** Decisão do usuário
+
 **108 - Data:** 2026-06-05
 - **Ação:** Fase 12E-T5 movida para o Ciclo de Polimento com escopo expandido.
 - **Detalhes:** A tarefa original "substituir manage_options por capabilities granulares" era insuficiente. O Gestor ainda não via itens de menu (subpáginas registradas com manage_options) nem metaboxes/botões na edição (que também verificam manage_options). Nova abordagem definida para o Polimento: criar interface "Permissões do Gestor" onde o Admin marca quais funcionalidades o Gestor pode acessar (importar CSV, exportar CSV, campos dinâmicos, taxonomias, atividades, disciplinas, chatbot, etiquetas, aprovar fichas, aprovar cadastros, empréstimos). Implementar função customizada bm_librarian_can('acao') aplicada em menus, metaboxes, botões AJAX e handlers. As 5 alterações já feitas (save_post, CSV import/export, campos dinâmicos) foram mantidas como ajuda parcial.
@@ -686,6 +691,16 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Detalhes:** Implementados 12I-T1 e 12I-T5. (T1) Dashboard do aluno agora exibe seção "Meus Dados" com todos os campos dinâmicos preenchidos (_bm_user_*), buscados via get_user_meta(). (T5) Adicionada busca rápida de livros no topo do dashboard: campo de texto + botão com AJAX. Handler bm_ajax_quick_search() em frontend.php busca por título com get_posts() e retorna JSON com título, autor, disponibilidade (available/total) e link. Resultados exibidos em tempo real com indicador visual verde/vermelho. Enter no campo também aciona a busca.
 - **Ferramenta:** write_file (manual pelo usuário)
 
+**119 - Data:** 2026-06-06
+- **Ação:** Pesquisa por filtros no dashboard do aluno adicionada ao Pós-Polimento.
+- **Detalhes:** A busca rápida atual busca apenas por título (usando o parâmetro s do WordPress). Adicionado ao Pós-Polimento: expandir para busca por filtros (gênero, disciplina, autor, faixa etária) com dropdowns no dashboard do aluno, similar aos filtros da vitrine pública.
+- **Ferramenta:** write_file
+
+**120 - Data:** 2026-06-06
+- **Ação:** Máscara de telefone adicionada ao Pós-Polimento.
+- **Detalhes:** Campo de telefone com formatação automática (máscara) enquanto o usuário digita — padrão brasileiro: (55) 11 9 9999-9999. Cosmético, não essencial. WhatsApp já funciona com número puro.
+- **Ferramenta:** write_file
+
 **121 - Data:** 2026-06-06
 - **Ação:** Correção — Telefone como campo dinâmico bloqueado.
 - **Detalhes:** Telefone adicionado como campo pré-instalado e bloqueado nos campos dinâmicos de alunos (bm_install_default_user_fields). Tipo: texto curto, locked: true. Não é obrigatório para cadastro — apenas não pode ser removido da lista. WhatsApp (bm_whatsapp_link) e todas as 4 ocorrências de consulta (empréstimos, dashboard professor, dashboard gestor, aprovação de cadastros) atualizadas para buscar de _bm_user_telefone em vez do antigo bm_phone. Option do banco atualizado via SQL.
@@ -705,6 +720,11 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Ação:** Correção — Removida duplicação de Nome e E-mail na edição de usuário.
 - **Detalhes:** A seção "Dados da Biblioteca" na tela de edição de usuário agora pula Nome completo e E-mail (já são campos nativos do WordPress). Evita duplicação visual. Campos como Telefone, Série/Ano, Turno, Turma continuam aparecendo normalmente.
 - **Ferramenta:** write_file (manual pelo usuário)
+
+**125 - Data:** 2026-06-06
+- **Ação:** Problemas de duplicação na edição nativa de usuário movidos para o Pós-Polimento.
+- **Detalhes:** A tela /wp-admin/user-edit.php exibe campos nativos do WordPress (First Name, Last Name, Nickname, Email, Display name) lado a lado com a seção Dados da Biblioteca (campos dinâmicos _bm_user_*), causando duplicação visual. As correções via in_array() e mb_strtolower() não surtiram efeito. Decisão: não investir mais tempo nessa tela. A interface definitiva de edição de alunos será a página própria da Fase 12J, fora do wp-admin. A tela nativa será substituída/ignorada no futuro.
+- **Ferramenta:** write_file
 
 **126 - Data:** 2026-06-06
 - **Ação:** Fase 12J concluída — Administração de Alunos.
@@ -759,4 +779,14 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 **136 - Data:** 2026-06-07
 - **Ação:** Fase 18, Tarefa 1 concluída — Bulk action corrigida.
 - **Detalhes:** Ações em lote (Mover para lixeira, Editar) na listagem de livros voltaram a funcionar. Causa: formulário de filtro customizado estava aninhado incorretamente, quebrando a estrutura do formulário nativo #posts-filter do WordPress e deixando os checkboxes post[] fora de qualquer form. Solução: substituído <form> por <div> no filtro, mantendo os campos dentro do formulário nativo. Adicionada verificação para ignorar filtro customizado durante execução de bulk actions. Adicionado 'hierarchical' => false ao registro do CPT.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**137 - Data:** 2026-06-07
+- **Ação:** Fase 19 concluída — Importação e Exportação CSV.
+- **Detalhes:** Tarefa 1: checkboxes individuais para Google Books API na importação CSV — toggle para habilitar/desabilitar, capa e sinopse marcados por padrão, avaliação/subtítulo/data/páginas desmarcados, ISBN-13 e ISBN-10 mutuamente exclusivos. Criada função bm_fetch_google_book_data() em frontend.php para centralizar busca. Tarefas 2, 3, 5 e 9 movidas para Pós-Polimento. Tarefa 4: aviso de sucesso na exportação CSV via transient. Tarefa 6: relatório de importação com emojis coloridos (✅ 🟡 ⚠️ ⚪). Tarefa 7: integração YouTube Data API — campo na central de APIs, checkbox na importação CSV, função bm_search_youtube_video() busca por título+autor+editora e salva em _bm_official_link. Tarefa 8: novas abas em Importação/Exportação para importar e exportar Número de Chamada via CSV. Correção: exportação de Nº Chamada movida para admin_init (bm_handle_call_number_export) para evitar warnings de headers.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+**138 - Data:** 2026-06-07
+- **Ação:** Fase 20 parcial — Tarefas 1, 2, 3, 4, 5, 6, 7 iniciadas. Tarefa 1 (Hotlink vs download) concluída.
+- **Detalhes:** Tarefa 1: adicionada opção "Armazenamento de Capas" nas Configurações (download/hotlink). Função bm_fetch_cover_from_google() adaptada para retornar URL quando modo hotlink. Importação CSV adaptada para salvar _bm_cover_hotlink em vez de baixar imagem. Templates single-bm_book.php e archive-bm_book.php atualizados para exibir capa via URL quando hotlink ativo. Correção: função bm_fetch_google_book_data() duplicada removida de frontend.php. Testado: capa aparece no frontend via URL do Google Books.
 - **Ferramenta:** write_file (manual pelo usuário)

@@ -6,7 +6,7 @@
 - **Text Domain:** `book-manager`
 - **Prefixo de funções:** `bm_`
 - **Prefixo de meta keys:** `_bm_`
-- **Versão atual:** 8.0.0
+- **Versão atual:** 8.1.0
 
 ## 2. REFERÊNCIA ÚNICA
 - 100% do código deve seguir: https://developer.wordpress.org/
@@ -543,3 +543,106 @@
 - ❌ API pública não expor dados pessoais de alunos
 - ❌ Não integrar gateways de pagamento reais
 - ❌ TCPDF deve ser incluído como arquivo único no plugin (sem composer)
+
+## 16. SEGURANÇA (OBRIGATÓRIO)
+
+### 16.1 Nonces — Formulários e Handlers AJAX
+Todo formulário administrativo e toda requisição AJAX devem conter nonce de verificação.
+
+**Formulários com nonce:**
+- Detalhes do livro (`bm_save_book_details`)
+- Resenha oficial (`bm_official_review_nonce`)
+- Importação CSV livros (`bm_csv_import_action`)
+- Exportação CSV livros (`bm_csv_export_action`)
+- Gerenciar campos (`bm_dynamic_action`)
+- Importação alunos CSV (`bm_student_import_action`)
+- Importação Nº Chamada (`bm_cn_import_action`)
+- Exportação Nº Chamada (`bm_cn_export_action`)
+- Taxonomias dinâmicas (`bm_taxonomy_action`)
+- Empréstimos (`bm_loan_action`)
+- Aprovação de cadastros (`bm_approval_action`)
+- Aprovação de fichas (`bm_reading_action`)
+- Alunos — ações em lote (`bm_students_action`)
+- Detalhes do aluno (`bm_student_detail_action`)
+- Autocadastro `[bm_register]` (`bm_register_action`)
+- Recadastramento (`bm_recadastro_action`)
+- Nº Chamada — metabox (`bm_call_number_nonce`)
+
+**Handlers AJAX com nonce:**
+- `bm_search_book_cover` (`bm_search_cover`)
+- `bm_fetch_sinopse` (`bm_sinopse_nonce`)
+- `bm_ai_classify` (`bm_ai_classify_nonce`)
+- `bm_generate_activities` (`bm_activities_nonce`)
+- `bm_chatbot` (`bm_chatbot_nonce`)
+- `bm_reserve_book` / `bm_cancel_reservation` (`bm_reserve_nonce`)
+- `bm_update_rating` (`bm_rating_nonce`)
+- `bm_track_whatsapp` (`bm_whatsapp_nonce`)
+- `bm_service_search_book` / `bm_service_search_student` (`bm_service_nonce`)
+- `bm_service_loan` / `bm_service_return` / `bm_service_renew` (`bm_service_nonce`)
+- `bm_service_quick_register` / `bm_service_edit_student` (`bm_service_nonce`)
+- `bm_service_register_book_by_isbn` (`bm_service_nonce`)
+- `bm_generate_call_number` / `bm_restore_call_number` (`bm_call_number_nonce`)
+
+**AJAX sem nonce (dívida técnica — Pós-Polimento):**
+- `bm_toggle_label` — adicionar/remover etiqueta
+- `bm_print_labels` — visualização de impressão (verifica capability)
+- `bm_quick_search` — busca rápida no dashboard
+
+### 16.2 Verificação de Capabilities
+Toda função administrativa deve verificar permissão antes de executar.
+
+| Funcionalidade | Capability |
+|---------------|-----------|
+| Configurações, APIs, Virada de ano, Status, White label | `manage_options` (exclusivo Admin) |
+| CRUD livros, Empréstimos, Atendimento, Alunos, CSV, Etiquetas, Taxonomias | `edit_bm_books` ou `manage_options` |
+| Gerar atividades, Classificar com IA | `edit_bm_book` ou `manage_options` |
+| Buscar capa/sinopse (Google Books) | `manage_options` (exclusivo Admin) |
+| Reservar, Ficha de leitura | Logado (qualquer perfil) |
+| Catálogo, Página do livro, Chatbot, Ranking | Público (sem restrição) |
+
+### 16.3 Sanitização de Entrada
+Todo dado externo deve ser sanitizado antes de processamento ou armazenamento.
+
+| Tipo | Função |
+|------|--------|
+| Dados de `$_POST`/`$_GET` | `wp_unslash()` antes de `sanitize_text_field()` |
+| Texto simples | `sanitize_text_field()` |
+| E-mail | `sanitize_email()` |
+| Texto longo | `sanitize_textarea_field()` |
+| Inteiros | `absint()` |
+| URL para banco | `esc_url_raw()` |
+| HTML de APIs | `wp_kses_post()` |
+| Upload CSV | `wp_check_filetype()` |
+
+### 16.4 Escape de Saída
+Todo dado exibido em HTML deve ser escapado no contexto correto.
+
+| Contexto | Função |
+|----------|--------|
+| Texto em HTML | `esc_html()` |
+| Atributos HTML | `esc_attr()` |
+| URLs | `esc_url()` |
+| Textarea | `esc_textarea()` |
+| Texto traduzível com echo | `esc_html_e()` em vez de `_e()` |
+
+### 16.5 Proteções Estruturais
+- Todos os arquivos PHP iniciam com `defined('ABSPATH') || exit;`
+- Todos os saves de metabox verificam `DOING_AUTOSAVE`
+- Senhas nunca exportadas em CSV
+- Senhas geradas via `wp_generate_password()` na importação
+- Virada de ano letivo exige confirmação por escrito (`VIRADA {ano}`)
+- Chatbot não revela dados pessoais de alunos
+- API pública futura (Fase 26) não exporá dados pessoais
+- Número de telefone acessível apenas por Gestor/Admin
+
+### 16.6 Proibições de Segurança
+- ❌ Formulário administrativo sem nonce
+- ❌ Handler AJAX sem `check_ajax_referer()`
+- ❌ `manage_options` onde capability granular é suficiente
+- ❌ Dado de `$_POST`/`$_GET` sem sanitização
+- ❌ Output HTML sem escape
+- ❌ Senha em CSV de exportação
+- ❌ Dado pessoal exposto em endpoint público
+- ❌ Ação irreversível sem confirmação explícita
+- ❌ Arquivo PHP acessível diretamente sem `ABSPATH`
+- ❌ Usar `$_REQUEST` — sempre `$_POST` ou `$_GET` explícitos

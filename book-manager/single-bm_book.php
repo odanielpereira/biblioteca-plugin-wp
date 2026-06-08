@@ -12,9 +12,15 @@ $wl = bm_get_white_label();
 
     <?php while (have_posts()): the_post(); ?>
         <div class="bm-book-header" style="display:flex;gap:30px;margin-bottom:30px;flex-wrap:wrap;">
-            <?php if (has_post_thumbnail()): ?>
+            <?php 
+            $hotlink = get_post_meta(get_the_ID(), '_bm_cover_hotlink', true);
+            if (has_post_thumbnail()): ?>
                 <div class="bm-book-cover" style="flex:0 0 200px;">
                     <?php the_post_thumbnail('medium', array('style' => 'width:100%;height:auto;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.15);')); ?>
+                </div>
+            <?php elseif (!empty($hotlink)): ?>
+                <div class="bm-book-cover" style="flex:0 0 200px;">
+                    <img src="<?php echo esc_url($hotlink); ?>" style="width:100%;height:auto;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.15);" alt="<?php the_title(); ?>" />
                 </div>
             <?php else: ?>
                 <div class="bm-book-no-cover" style="flex:0 0 200px;height:280px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999;font-size:14px;border-radius:4px;text-align:center;padding:10px;">
@@ -111,7 +117,7 @@ $wl = bm_get_white_label();
         if (!empty($official_review) || !empty($official_link)):
         ?>
             <hr>
-            <h2><?php _e('Resenha da Biblioteca', 'book-manager'); ?></h2>
+            <h2><?php _e('Resenha', 'book-manager'); ?></h2>
             <div style="background:#fff8e1;padding:20px;border-radius:8px;border-left:4px solid #ffc107;margin-bottom:20px;">
                 <?php if (!empty($official_embed)): ?>
                     <iframe src="<?php echo esc_url($official_embed); ?>" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px;margin-bottom:15px;" allowfullscreen></iframe>

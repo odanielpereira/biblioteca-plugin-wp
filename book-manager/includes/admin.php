@@ -246,6 +246,47 @@ add_action('pre_get_posts','bm_filter_books_by_metadata');
 // FASE 11B: GERAÇÃO DE NÚMERO DE CHAMADA (RESPEITA CSV)
 // ==========================================
 
+// ==========================================
+// FASE 18: PÁGINA UNIFICADA — IMPORTAÇÃO/EXPORTAÇÃO
+// ==========================================
+function bm_add_data_io_page() {
+    add_submenu_page('edit.php?post_type=bm_book', __('Importação/Exportação', 'book-manager'), __('Importação/Exportação', 'book-manager'), 'edit_bm_books', 'bm_data_io', 'bm_render_data_io_page');
+}
+add_action('admin_menu', 'bm_add_data_io_page');
+
+function bm_render_data_io_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'import_books';
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Importação/Exportação', 'book-manager'); ?></h1>
+        
+        <nav class="nav-tab-wrapper" style="margin-bottom:15px;">
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_data_io&tab=import_books'); ?>" class="nav-tab <?php echo $tab === 'import_books' ? 'nav-tab-active' : ''; ?>">📥 <?php _e('Importar Livros CSV', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_data_io&tab=export_books'); ?>" class="nav-tab <?php echo $tab === 'export_books' ? 'nav-tab-active' : ''; ?>">📤 <?php _e('Exportar Livros CSV', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_data_io&tab=import_students'); ?>" class="nav-tab <?php echo $tab === 'import_students' ? 'nav-tab-active' : ''; ?>">👥 <?php _e('Importar Alunos CSV', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_data_io&tab=import_call_number'); ?>" class="nav-tab <?php echo $tab === 'import_call_number' ? 'nav-tab-active' : ''; ?>">📋 <?php _e('Importar Nº Chamada', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_data_io&tab=export_call_number'); ?>" class="nav-tab <?php echo $tab === 'export_call_number' ? 'nav-tab-active' : ''; ?>">📋 <?php _e('Exportar Nº Chamada', 'book-manager'); ?></a>
+        </nav>
+        
+        <?php
+        if ($tab === 'export_books') {
+            bm_render_csv_export_page();
+        } elseif ($tab === 'import_students') {
+            bm_render_student_import_page();
+        } elseif ($tab === 'import_call_number') {
+            bm_render_call_number_import_page();
+        } elseif ($tab === 'export_call_number') {
+            bm_render_call_number_export_page();
+        } else {
+            bm_render_csv_import_page();
+        }
+        ?>
+    </div>
+    <?php
+}
+
 // FASE 18: Movido para Importação/Exportação (aba Importar Livros CSV)
 function bm_render_csv_import_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
@@ -256,6 +297,16 @@ function bm_render_csv_import_page() {
         $skip_duplicates = isset($_POST['skip_duplicates'])&&'1'===$_POST['skip_duplicates'];
         $classify_with_ai = isset($_POST['classify_with_ai']) && '1' === $_POST['classify_with_ai'];
         $generate_call_number = isset($_POST['generate_call_number']) && '1' === $_POST['generate_call_number'];
+        $google_enabled = isset($_POST['google_covers']) || isset($_POST['google_sinopse']) || isset($_POST['google_rating']) || isset($_POST['google_subtitle']) || isset($_POST['google_published_date']) || isset($_POST['google_page_count']) || isset($_POST['google_isbn13']) || isset($_POST['google_isbn10']);
+        $youtube_search = isset($_POST['youtube_search']) && '1' === $_POST['youtube_search'];
+        $google_covers = isset($_POST['google_covers']) && '1' === $_POST['google_covers'];
+        $google_sinopse = isset($_POST['google_sinopse']) && '1' === $_POST['google_sinopse'];
+        $google_rating = isset($_POST['google_rating']) && '1' === $_POST['google_rating'];
+        $google_subtitle = isset($_POST['google_subtitle']) && '1' === $_POST['google_subtitle'];
+        $google_published_date = isset($_POST['google_published_date']) && '1' === $_POST['google_published_date'];
+        $google_page_count = isset($_POST['google_page_count']) && '1' === $_POST['google_page_count'];
+        $google_isbn13 = isset($_POST['google_isbn13']) && '1' === $_POST['google_isbn13'];
+        $google_isbn10 = isset($_POST['google_isbn10']) && '1' === $_POST['google_isbn10'];
         $imported=0; $skipped=0; $dup_skipped=0; $dup_forced=0;
         $mapping_raw = isset($_POST['mapping']) ? array_map('sanitize_text_field',$_POST['mapping']) : array();
         $mapping = array();
@@ -280,32 +331,85 @@ function bm_render_csv_import_page() {
                         if (isset($row[$index])&&!empty($row[$index])) update_post_meta($post_id,$field,sanitize_text_field($row[$index]));
                     }
                     $imported++;
-                    $cover_url = bm_fetch_cover_from_google($title, $author, $publisher);
-                    if ($cover_url) {
-                        require_once ABSPATH . 'wp-admin/includes/media.php';
-                        require_once ABSPATH . 'wp-admin/includes/file.php';
-                        require_once ABSPATH . 'wp-admin/includes/image.php';
-                        $ir = wp_remote_get($cover_url, array('timeout' => 15));
-                        if (!is_wp_error($ir)) {
-                            $id = wp_remote_retrieve_body($ir);
-                            if (!empty($id)) {
-                                $ud = wp_upload_dir(); $fn = 'book-cover-' . $post_id . '-' . time() . '.jpg'; $fp = $ud['path'] . '/' . $fn;
-                                file_put_contents($fp, $id);
-                                $att = array('post_mime_type' => 'image/jpeg', 'post_title' => $title, 'post_content' => '', 'post_status' => 'inherit');
-                                $aid = wp_insert_attachment($att, $fp, $post_id);
-                                if (!is_wp_error($aid)) { $ad = wp_generate_attachment_metadata($aid, $fp); wp_update_attachment_metadata($aid, $ad); set_post_thumbnail($post_id, $aid); }
+                    
+                    // Google Books API — buscar apenas se habilitado
+                    if ($google_enabled) {
+                        // Buscar dados da Google Books
+                        $google_data = bm_fetch_google_book_data($title, $author, $publisher);
+                        
+                        if ($google_data) {
+                                                        $settings = bm_get_settings();
+                            $cover_mode = isset($settings['cover_mode']) ? $settings['cover_mode'] : 'download';
+                            // Capa
+                            if ($google_covers && !empty($google_data['cover_url'])) {
+                                if ($cover_mode === 'hotlink') {
+                                    // Hotlink: salva a URL como meta
+                                    update_post_meta($post_id, '_bm_cover_hotlink', $google_data['cover_url']);
+                                } else {
+                                    // Download: baixa a imagem para o servidor
+                                    require_once ABSPATH . 'wp-admin/includes/media.php';
+                                    require_once ABSPATH . 'wp-admin/includes/file.php';
+                                    require_once ABSPATH . 'wp-admin/includes/image.php';
+                                    $ir = wp_remote_get($google_data['cover_url'], array('timeout' => 15));
+                                    if (!is_wp_error($ir)) {
+                                        $id = wp_remote_retrieve_body($ir);
+                                        if (!empty($id)) {
+                                            $ud = wp_upload_dir(); $fn = 'book-cover-' . $post_id . '-' . time() . '.jpg'; $fp = $ud['path'] . '/' . $fn;
+                                            file_put_contents($fp, $id);
+                                            $att = array('post_mime_type' => 'image/jpeg', 'post_title' => $title, 'post_content' => '', 'post_status' => 'inherit');
+                                            $aid = wp_insert_attachment($att, $fp, $post_id);
+                                            if (!is_wp_error($aid)) { $ad = wp_generate_attachment_metadata($aid, $fp); wp_update_attachment_metadata($aid, $ad); set_post_thumbnail($post_id, $aid); }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Sinopse
+                            if ($google_sinopse && !empty($google_data['description'])) {
+                                $dynamic_fields = get_option('bm_dynamic_fields', array());
+                                if (!isset($dynamic_fields['Sinopse'])) {
+                                    $dynamic_fields['Sinopse'] = array('type' => 'textarea');
+                                    update_option('bm_dynamic_fields', $dynamic_fields);
+                                }
+                                update_post_meta($post_id, '_bm_dynamic_sinopse', $google_data['description']);
+                            }
+                            
+                            // Avaliação
+                            if ($google_rating && !empty($google_data['rating'])) {
+                                update_post_meta($post_id, '_bm_google_rating', $google_data['rating']);
+                            }
+                            
+                            // Subtítulo
+                            if ($google_subtitle && !empty($google_data['subtitle'])) {
+                                update_post_meta($post_id, '_bm_google_subtitle', $google_data['subtitle']);
+                            }
+                            
+                            // Data de publicação
+                            if ($google_published_date && !empty($google_data['published_date'])) {
+                                update_post_meta($post_id, '_bm_google_published_date', $google_data['published_date']);
+                            }
+                            
+                            // Número de páginas
+                            if ($google_page_count && !empty($google_data['page_count'])) {
+                                update_post_meta($post_id, '_bm_google_page_count', $google_data['page_count']);
+                            }
+                            
+                            // ISBN
+                            if ($google_isbn13 && !empty($google_data['isbn13'])) {
+                                update_post_meta($post_id, '_bm_isbn', $google_data['isbn13']);
+                            } elseif ($google_isbn10 && !empty($google_data['isbn10'])) {
+                                update_post_meta($post_id, '_bm_isbn', $google_data['isbn10']);
                             }
                         }
                     }
-                    $sinopse = bm_fetch_sinopse_from_google($title, $author);
-                    if (!empty($sinopse)) {
-                        $dynamic_fields = get_option('bm_dynamic_fields', array());
-                        if (!isset($dynamic_fields['Sinopse'])) {
-                            $dynamic_fields['Sinopse'] = array('type' => 'textarea');
-                            update_option('bm_dynamic_fields', $dynamic_fields);
+                                        // YouTube — buscar vídeo-resenha oficial
+                    if ($youtube_search) {
+                        $youtube_data = bm_search_youtube_video($title, $author, $publisher);
+                        if ($youtube_data && !empty($youtube_data['url'])) {
+                            update_post_meta($post_id, '_bm_official_link', $youtube_data['url']);
                         }
-                        update_post_meta($post_id, '_bm_dynamic_sinopse', $sinopse);
                     }
+                    
                     if ($classify_with_ai) {
                         $groq_key = bm_get_api_key('groq');
                         if (!empty($groq_key)) {
@@ -341,7 +445,13 @@ function bm_render_csv_import_page() {
                 } else { $skipped++; }
             }
         }
-        $message = sprintf(__('%d importados, %d ignorados (sem título), %d duplicados pulados, %d duplicados forçados.','book-manager'),$imported,$skipped,$dup_skipped,$dup_forced);
+        $parts = array();
+        if ($imported > 0) $parts[] = '✅ ' . $imported . ' ' . __('importados', 'book-manager');
+        if ($dup_forced > 0) $parts[] = '🟡 ' . $dup_forced . ' ' . __('duplicados forçados', 'book-manager');
+        if ($dup_skipped > 0) $parts[] = '⚠️ ' . $dup_skipped . ' ' . __('duplicados pulados', 'book-manager');
+        if ($skipped > 0) $parts[] = '⚪ ' . $skipped . ' ' . __('ignorados (sem título)', 'book-manager');
+        if (empty($parts)) $parts[] = __('nenhum livro processado', 'book-manager');
+        $message = __('Importação concluída!', 'book-manager') . ' ' . implode(' | ', $parts) . '.';
     }
     if ('map'===$stage && isset($_POST['bm_csv_import_nonce']) && wp_verify_nonce($_POST['bm_csv_import_nonce'],'bm_csv_import_action')) {
         $headers = isset($_POST['csv_headers']) ? json_decode(stripslashes($_POST['csv_headers']), true) : array();
@@ -404,6 +514,49 @@ function bm_render_csv_import_page() {
                         <?php endforeach; ?>
                     </select></p>
                 <?php endforeach; ?>
+                <h3><?php _e('Google Books API', 'book-manager'); ?></h3>
+                <p>
+                    <label>
+                        <input type="checkbox" id="bm-enable-google-api" onchange="bmToggleGoogleApi()">
+                        <strong><?php _e('Habilitar busca automática via Google Books', 'book-manager'); ?></strong>
+                    </label>
+                </p>
+                
+                <div id="bm-google-api-options" style="display:none;padding:10px;background:#f9f9f9;border-radius:4px;margin-bottom:10px;">
+                    <p><strong><?php _e('Selecione o que importar:', 'book-manager'); ?></strong></p>
+                    <p>
+                        <label><input type="checkbox" name="google_covers" value="1" checked> <?php _e('Capa do livro', 'book-manager'); ?></label><br>
+                        <label><input type="checkbox" name="google_sinopse" value="1" checked> <?php _e('Sinopse', 'book-manager'); ?></label>
+                    </p>
+                    <p style="color:#999;font-size:12px;"><?php _e('Estes campos são buscados automaticamente durante a importação.', 'book-manager'); ?></p>
+                    <p>
+                        <label><input type="checkbox" name="google_rating" value="1"> <?php _e('Avaliação (estrelas)', 'book-manager'); ?></label><br>
+                        <label><input type="checkbox" name="google_subtitle" value="1"> <?php _e('Subtítulo', 'book-manager'); ?></label><br>
+                        <label><input type="checkbox" name="google_published_date" value="1"> <?php _e('Data de publicação', 'book-manager'); ?></label><br>
+                        <label><input type="checkbox" name="google_page_count" value="1"> <?php _e('Número de páginas', 'book-manager'); ?></label>
+                    </p>
+                    <p style="color:#999;font-size:12px;"><?php _e('Acima: dados complementares (desmarcados por padrão).', 'book-manager'); ?></p>
+                    <p>
+                        <strong><?php _e('ISBN:', 'book-manager'); ?></strong><br>
+                        <label><input type="checkbox" name="google_isbn13" value="1" checked onchange="if(this.checked)document.querySelector('[name=google_isbn10]').checked=false"> <?php _e('ISBN-13', 'book-manager'); ?></label>
+                        <span style="color:#666;font-size:11px;"><?php _e('Mais utilizado no Brasil', 'book-manager'); ?></span><br>
+                        <label><input type="checkbox" name="google_isbn10" value="1" onchange="if(this.checked)document.querySelector('[name=google_isbn13]').checked=false"> <?php _e('ISBN-10', 'book-manager'); ?></label>
+                        <span style="color:#666;font-size:11px;"><?php _e('Para acervos publicados antes de 2007', 'book-manager'); ?></span>
+                    </p>
+                </div>
+                
+                <script>
+                function bmToggleGoogleApi() {
+                    var enabled = document.getElementById('bm-enable-google-api').checked;
+                    document.getElementById('bm-google-api-options').style.display = enabled ? 'block' : 'none';
+                }
+                </script>
+                                <h3><?php _e('YouTube', 'book-manager'); ?></h3>
+                <p>
+                    <label><input type="checkbox" name="youtube_search" value="1"> <strong><?php _e('Buscar vídeo-resenha oficial no YouTube', 'book-manager'); ?></strong></label>
+                    <br><small><?php _e('Busca por título + autor + editora e salva como resenha oficial do livro.', 'book-manager'); ?></small>
+                </p>
+                
                 <p><strong><?php _e('Classificação por IA:','book-manager'); ?></strong>
                     <label><input type="checkbox" name="classify_with_ai" value="1" checked> <?php _e('Classificar livros por disciplina (Groq)', 'book-manager'); ?></label></p>
                 <p><strong><?php _e('Número de Chamada:','book-manager'); ?></strong>
@@ -429,6 +582,28 @@ function bm_find_duplicate_book($title,$author,$publisher) {
     if (empty($existing)) return false;
     foreach ($existing as $book) if ($author===get_post_meta($book->ID,'_bm_author',true)&&$publisher===get_post_meta($book->ID,'_bm_publisher',true)) return $book->ID;
     return false;
+}
+
+// ==========================================
+// FASE 19: EXPORTAÇÃO DE NÚMERO DE CHAMADA
+// ==========================================
+function bm_render_call_number_export_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    
+    $total = wp_count_posts('bm_book');
+    $total = $total->publish + $total->draft + $total->trash;
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Exportar Número de Chamada', 'book-manager'); ?></h1>
+        <p><?php echo sprintf(__('%d livros no acervo. Apenas livros com Classificação ou Cutter preenchidos serão exportados.', 'book-manager'), $total); ?></p>
+        <form method="post">
+            <?php wp_nonce_field('bm_cn_export_action', 'bm_cn_export_nonce'); ?>
+            <p><?php _e('Exporta: Título, Classificação, Cutter, Edição, Volume.', 'book-manager'); ?></p>
+            <?php submit_button(__('Exportar CSV', 'book-manager')); ?>
+        </form>
+    </div>
+    <?php
 }
 
 // ==========================================
@@ -477,9 +652,37 @@ function bm_handle_csv_export() {
     }
     fclose($output); exit;
 }
-add_action('admin_init','bm_handle_csv_export');
+
+// Redirecionar após exportação com mensagem de sucesso
+function bm_csv_export_redirect() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    if (!isset($_POST['bm_csv_export_nonce']) || !wp_verify_nonce($_POST['bm_csv_export_nonce'], 'bm_csv_export_action')) return;
+    
+    $books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
+    $count = count($books);
+    
+    $redirect_url = add_query_arg(array(
+        'post_type' => 'bm_book',
+        'page' => 'bm_data_io',
+        'tab' => 'export_books',
+        'exported' => $count,
+    ), admin_url('edit.php'));
+    
+    // Salvar mensagem para exibir
+    set_transient('bm_export_message', $count, 60);
+}
+add_action('admin_init', 'bm_csv_export_redirect', 9);
+add_action('admin_init', 'bm_handle_csv_export', 10);
 function bm_render_csv_export_page() {
     if (!current_user_can('manage_options')) return;
+    
+    // Mensagem de exportação bem-sucedida
+    $export_msg = get_transient('bm_export_message');
+    if ($export_msg) {
+        echo '<div class="notice notice-success is-dismissible"><p>' . sprintf(__('%d livros exportados com sucesso!', 'book-manager'), $export_msg) . '</p></div>';
+        delete_transient('bm_export_message');
+    }
+    
     $total = wp_count_posts('bm_book'); $total = $total->publish + $total->draft + $total->trash;
     $fields = array('_bm_author'=>'Autor','_bm_publisher'=>'Editora','_bm_isbn'=>'ISBN','_bm_location'=>'Localização','_bm_copies'=>'Exemplares','bm_genre'=>'Gênero','bm_category'=>'Categoria');
     $dynamic_fields = get_option('bm_dynamic_fields',array());
@@ -737,6 +940,7 @@ function bm_get_api_keys() {
     if (!isset($saved['google_books_key'])) $saved['google_books_key'] = '';
     if (!isset($saved['groq_key'])) $saved['groq_key'] = '';
     if (!isset($saved['groq_active'])) $saved['groq_active'] = '1';
+    if (!isset($saved['youtube_key'])) $saved['youtube_key'] = '';
     return $saved;
 }
 
@@ -759,6 +963,7 @@ function bm_render_api_settings_page() {
         $new['google_books_key'] = trim(sanitize_text_field($_POST['google_books_key']));
         $new['groq_key'] = trim(sanitize_text_field($_POST['groq_key']));
         $new['groq_active'] = isset($_POST['groq_active']) ? '1' : '0';
+        $new['youtube_key'] = trim(sanitize_text_field($_POST['youtube_key']));
         
         update_option('bm_api_settings', $new);
         $keys = $new;
@@ -780,6 +985,11 @@ function bm_render_api_settings_page() {
             <p><input type="text" name="google_books_key" value="<?php echo esc_attr($keys['google_books_key']); ?>" style="width:100%;" placeholder="AIza..." /></p>
             <p class="description">Busca automática de capas e sinopses.</p>
             
+            <h2>▶️ YouTube Data API</h2>
+            <p><input type="text" name="youtube_key" value="<?php echo esc_attr(isset($keys['youtube_key']) ? $keys['youtube_key'] : ''); ?>" style="width:100%;" placeholder="AIza..." /></p>
+            <p class="description">Busca automática de vídeo-resenhas oficiais na importação CSV.</p>
+            
+
             <h2>🤖 Groq (IA Gratuita)</h2>
             <p><input type="text" name="groq_key" value="<?php echo esc_attr($keys['groq_key']); ?>" style="width:100%;" placeholder="gsk_..." /></p>
             <p><label><input type="checkbox" name="groq_active" <?php checked($keys['groq_active'], '1'); ?> /> Ativar Groq</label></p>
@@ -1563,6 +1773,135 @@ function bm_render_students_page_content() {
 }
 
 // ==========================================
+// FASE 19: IMPORTAÇÃO DE NÚMERO DE CHAMADA VIA CSV
+// ==========================================
+function bm_render_call_number_import_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $message = '';
+    $stage = isset($_POST['import_stage']) ? $_POST['import_stage'] : '';
+    $headers = array();
+    
+    if ('process' === $stage && isset($_POST['bm_cn_import_nonce']) && wp_verify_nonce($_POST['bm_cn_import_nonce'], 'bm_cn_import_action')) {
+        $imported = 0; $skipped = 0;
+        
+        $mapping_raw = isset($_POST['mapping']) ? array_map('sanitize_text_field', $_POST['mapping']) : array();
+        $mapping = array();
+        foreach ($mapping_raw as $csv_index => $field) {
+            if (!empty($field)) $mapping[$field] = intval($csv_index);
+        }
+        
+        if (!empty($_POST['csv_data'])) {
+            $rows = json_decode(stripslashes($_POST['csv_data']), true);
+            foreach ($rows as $row) {
+                $title = '';
+                if (isset($mapping['title']) && isset($row[$mapping['title']])) $title = trim(sanitize_text_field($row[$mapping['title']]));
+                if (empty($title)) { $skipped++; continue; }
+                
+                // Buscar livro por título
+                $existing = get_posts(array('post_type' => 'bm_book', 'title' => $title, 'posts_per_page' => 1, 'post_status' => 'any'));
+                if (empty($existing)) { $skipped++; continue; }
+                
+                $post_id = $existing[0]->ID;
+                
+                if (isset($mapping['_bm_cdu']) && isset($row[$mapping['_bm_cdu']])) {
+                    update_post_meta($post_id, '_bm_cdu', sanitize_text_field($row[$mapping['_bm_cdu']]));
+                }
+                if (isset($mapping['_bm_cutter']) && isset($row[$mapping['_bm_cutter']])) {
+                    update_post_meta($post_id, '_bm_cutter', sanitize_text_field($row[$mapping['_bm_cutter']]));
+                }
+                if (isset($mapping['_bm_edition']) && isset($row[$mapping['_bm_edition']])) {
+                    update_post_meta($post_id, '_bm_edition', sanitize_text_field($row[$mapping['_bm_edition']]));
+                }
+                if (isset($mapping['_bm_volume']) && isset($row[$mapping['_bm_volume']])) {
+                    update_post_meta($post_id, '_bm_volume', sanitize_text_field($row[$mapping['_bm_volume']]));
+                }
+                
+                update_post_meta($post_id, '_bm_cutter_cached', '1');
+                update_post_meta($post_id, '_bm_cutter_locked', '1');
+                $imported++;
+            }
+        }
+        $message = sprintf(__('%d números de chamada importados, %d ignorados.', 'book-manager'), $imported, $skipped);
+    }
+    
+    if ('' === $stage && isset($_FILES['csv_file']) && isset($_POST['bm_cn_import_nonce'])) {
+        if (!wp_verify_nonce($_POST['bm_cn_import_nonce'], 'bm_cn_import_action')) {
+            $message = __('Erro de segurança.', 'book-manager');
+        } elseif (empty($_FILES['csv_file']['tmp_name'])) {
+            $message = __('Nenhum arquivo enviado.', 'book-manager');
+        } else {
+            $filetype = wp_check_filetype($_FILES['csv_file']['name']);
+            if ('csv' !== $filetype['ext']) {
+                $message = __('Formato inválido.', 'book-manager');
+            } else {
+                $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
+                if ($handle) {
+                    $line = 0; $all_rows = array();
+                    while (($data = fgetcsv($handle, 0, ';')) !== false) {
+                        if (1 === ++$line) { $headers = array_map('sanitize_text_field', $data); continue; }
+                        $all_rows[] = $data;
+                    }
+                    fclose($handle);
+                    if (empty($headers)) {
+                        $message = __('Arquivo sem cabeçalho.', 'book-manager');
+                    } else {
+                        $stage = 'map';
+                    }
+                    $_POST['csv_data_preview'] = json_encode($all_rows, JSON_UNESCAPED_UNICODE);
+                    $_POST['csv_headers'] = json_encode($headers, JSON_UNESCAPED_UNICODE);
+                }
+            }
+        }
+    }
+    
+    $system_fields = array(
+        'title' => __('Título (obrigatório)', 'book-manager'),
+        '_bm_cdu' => __('Classificação (CDU/CDD)', 'book-manager'),
+        '_bm_cutter' => __('Cutter', 'book-manager'),
+        '_bm_edition' => __('Edição', 'book-manager'),
+        '_bm_volume' => __('Volume', 'book-manager'),
+    );
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Importar Número de Chamada via CSV', 'book-manager'); ?></h1>
+        <?php if ($message): ?><div class="notice notice-success is-dismissible"><p><?php echo esc_html($message); ?></p></div><?php endif; ?>
+        
+        <?php if ('map' === $stage && !empty($headers)): ?>
+            <h2><?php _e('Mapeamento de Colunas', 'book-manager'); ?></h2>
+            <p><?php _e('Associe cada coluna do seu arquivo ao campo correspondente.', 'book-manager'); ?></p>
+            <form method="post">
+                <?php wp_nonce_field('bm_cn_import_action', 'bm_cn_import_nonce'); ?>
+                <input type="hidden" name="import_stage" value="process">
+                <input type="hidden" name="csv_data" value="<?php echo esc_attr(json_encode(json_decode(stripslashes($_POST['csv_data_preview']), true), JSON_UNESCAPED_UNICODE)); ?>">
+                <?php foreach ($headers as $i => $h): ?>
+                    <p><strong><?php echo esc_html($h); ?></strong> →
+                    <select name="mapping[<?php echo $i; ?>]">
+                        <option value=""><?php _e('— Ignorar —', 'book-manager'); ?></option>
+                        <?php foreach ($system_fields as $key => $label): ?>
+                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+                        <?php endforeach; ?>
+                    </select></p>
+                <?php endforeach; ?>
+                <?php submit_button(__('Importar', 'book-manager')); ?>
+            </form>
+        <?php else: ?>
+            <form method="post" enctype="multipart/form-data">
+                <?php wp_nonce_field('bm_cn_import_action', 'bm_cn_import_nonce'); ?>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="csv_file"><?php _e('Arquivo CSV', 'book-manager'); ?></label></th>
+                        <td><input type="file" id="csv_file" name="csv_file" accept=".csv" /><p class="description"><?php _e('CSV com colunas: Título, Classificação, Cutter, Edição, Volume.', 'book-manager'); ?></p></td>
+                    </tr>
+                </table>
+                <?php submit_button(__('Enviar Arquivo', 'book-manager')); ?>
+            </form>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
+// ==========================================
 // FASE 12H: IMPORTAÇÃO DE ALUNOS EM MASSA
 // ==========================================
 // FASE 18: Movido para Importação/Exportação (aba Importar Alunos CSV)
@@ -2328,7 +2667,10 @@ function bm_render_settings_page() {
         $settings['default_loan_days'] = absint($_POST['default_loan_days']);
         $settings['reservation_hours'] = absint($_POST['reservation_hours']);
         $settings['classification_system'] = isset($_POST['classification_system']) && $_POST['classification_system'] === 'cdd' ? 'cdd' : 'cdu';
-                if (isset($_POST['librarian_permissions']) && is_array($_POST['librarian_permissions'])) {
+                    if (isset($_POST['cover_mode'])) {
+            $settings['cover_mode'] = $_POST['cover_mode'] === 'hotlink' ? 'hotlink' : 'download';
+        }    
+        if (isset($_POST['librarian_permissions']) && is_array($_POST['librarian_permissions'])) {
             $settings['librarian_permissions'] = array();
             foreach (array('import_csv', 'export_csv', 'dynamic_fields', 'taxonomies', 'loans', 'approve_users', 'approve_readings', 'labels', 'service', 'students', 'student_import') as $perm) {
                 $settings['librarian_permissions'][$perm] = isset($_POST['librarian_permissions'][$perm]) ? '1' : '0';
@@ -2504,6 +2846,19 @@ function bm_render_settings_page() {
                     <td><label><input type="checkbox" name="librarian_permissions[<?php echo $key; ?>]" value="1" <?php checked(isset($librarian_perms[$key]) && $librarian_perms[$key] === '1'); ?> /> Permitir</label></td>
                 </tr>
                 <?php endforeach; ?>
+            </table>
+            
+                        <h2>Armazenamento de Capas</h2>
+            <table class="form-table">
+                <tr>
+                    <th><label>Modo de capa</label></th>
+                    <td>
+                        <?php $cover_mode = isset($settings['cover_mode']) ? $settings['cover_mode'] : 'download'; ?>
+                        <label><input type="radio" name="cover_mode" value="download" <?php checked($cover_mode, 'download'); ?> /> Baixar para o servidor (recomendado)</label><br>
+                        <label><input type="radio" name="cover_mode" value="hotlink" <?php checked($cover_mode, 'hotlink'); ?> /> Hotlink do Google Books (não ocupa espaço)</label>
+                        <p class="description">Hotlink exibe a imagem direto do Google. Se o Google alterar a URL, a capa pode sumir.</p>
+                    </td>
+                </tr>
             </table>
             
 
@@ -2690,6 +3045,40 @@ function bm_handle_students_csv_export() {
     exit;
 }
 add_action('admin_init', 'bm_handle_students_csv_export');
+
+
+function bm_handle_call_number_export() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    if (!isset($_POST['bm_cn_export_nonce']) || !wp_verify_nonce($_POST['bm_cn_export_nonce'], 'bm_cn_export_action')) return;
+    
+    $books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
+    
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="numero_chamada.csv"');
+    echo "\xEF\xBB\xBF";
+    $output = fopen('php://output', 'w');
+    fputcsv($output, array('Título', 'Classificação', 'Cutter', 'Edição', 'Volume'), ';');
+    
+    foreach ($books as $book) {
+        $cdu = get_post_meta($book->ID, '_bm_cdu', true);
+        $cutter = get_post_meta($book->ID, '_bm_cutter', true);
+        $edition = get_post_meta($book->ID, '_bm_edition', true);
+        $volume = get_post_meta($book->ID, '_bm_volume', true);
+        
+        if (!empty($cdu) || !empty($cutter)) {
+            fputcsv($output, array(
+                $book->post_title,
+                $cdu,
+                $cutter,
+                $edition,
+                $volume,
+            ), ';');
+        }
+    }
+    fclose($output);
+    exit;
+}
+add_action('admin_init', 'bm_handle_call_number_export');
 
 
 function bm_render_year_transition_page() {

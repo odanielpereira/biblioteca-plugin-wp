@@ -76,9 +76,15 @@ $wl = bm_get_white_label();
             <?php while (have_posts()): the_post(); ?>
                 <div class="bm-book-card">
                     <a href="<?php the_permalink(); ?>">
-                        <?php if (has_post_thumbnail()): ?>
+                        <?php 
+                        $hotlink = get_post_meta(get_the_ID(), '_bm_cover_hotlink', true);
+                        if (has_post_thumbnail()): ?>
                             <div class="bm-card-cover">
                                 <?php the_post_thumbnail('medium', array('style' => 'width:100%;height:220px;object-fit:cover;')); ?>
+                            </div>
+                        <?php elseif (!empty($hotlink)): ?>
+                            <div class="bm-card-cover">
+                                <img src="<?php echo esc_url($hotlink); ?>" style="width:100%;height:220px;object-fit:cover;" alt="<?php the_title(); ?>" />
                             </div>
                         <?php else: ?>
                             <div class="bm-card-no-cover">
