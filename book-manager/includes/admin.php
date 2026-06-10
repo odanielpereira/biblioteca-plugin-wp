@@ -940,7 +940,9 @@ function bm_get_api_keys() {
     if (!isset($saved['google_books_key'])) $saved['google_books_key'] = '';
     if (!isset($saved['groq_key'])) $saved['groq_key'] = '';
     if (!isset($saved['groq_active'])) $saved['groq_active'] = '1';
-    if (!isset($saved['youtube_key'])) $saved['youtube_key'] = '';
+     if (!isset($saved['groq_persona'])) $saved['groq_persona'] = '';
+        if (!isset($saved['chatbot_active'])) $saved['chatbot_active'] = '1';
+     if (!isset($saved['youtube_key'])) $saved['youtube_key'] = '';
     return $saved;
 }
 
@@ -964,6 +966,8 @@ function bm_render_api_settings_page() {
         $new['groq_key'] = trim(sanitize_text_field($_POST['groq_key']));
         $new['groq_active'] = isset($_POST['groq_active']) ? '1' : '0';
         $new['youtube_key'] = trim(sanitize_text_field($_POST['youtube_key']));
+        $new['groq_persona'] = sanitize_textarea_field(wp_unslash($_POST['groq_persona']));
+        $new['chatbot_active'] = isset($_POST['chatbot_active']) ? '1' : '0';
         
         update_option('bm_api_settings', $new);
         $keys = $new;
@@ -990,11 +994,21 @@ function bm_render_api_settings_page() {
             <p class="description">Busca automática de vídeo-resenhas oficiais na importação CSV.</p>
             
 
+            
+            
             <h2>🤖 Groq (IA Gratuita)</h2>
             <p><input type="text" name="groq_key" value="<?php echo esc_attr($keys['groq_key']); ?>" style="width:100%;" placeholder="gsk_..." /></p>
             <p><label><input type="checkbox" name="groq_active" <?php checked($keys['groq_active'], '1'); ?> /> Ativar Groq</label></p>
             <p class="description">1.500 req/dia grátis · Llama 3 · <a href="https://console.groq.com" target="_blank">console.groq.com</a></p>
-            
+            <p>
+                <label><strong>Tom e personalidade para classificação e atividades:</strong></label>
+                <textarea name="groq_persona" rows="4" style="width:100%;max-width:600px;" placeholder="Ex: Você é um educador brasileiro, use tom lúdico e acessível..."><?php echo esc_textarea(isset($keys['groq_persona']) ? $keys['groq_persona'] : ''); ?></textarea>
+            </p>
+            <p class="description">Define como a IA se comporta ao classificar livros e gerar atividades. Se vazio, usa o tom padrão.</p>
+                        
+            <h2>💬 Chatbot</h2>
+            <p><label><input type="checkbox" name="chatbot_active" <?php checked(isset($keys['chatbot_active']) ? $keys['chatbot_active'] : '1', '1'); ?> /> Ativar chatbot da Diva no site</label></p>
+            <p class="description">Mostra o botão flutuante no canto inferior direito do site.</p>
             <p><input type="submit" name="save_keys" class="button button-primary" value="Salvar" /></p>
         </form>
     </div>
@@ -1735,6 +1749,8 @@ function bm_render_students_page_content() {
                             }
                             
                             $row_style = $has_overdue ? 'background:#fff3f3;' : '';
+                            $penalty_check = bm_check_penalty_block($student->ID);
+                            if ($penalty_check) $row_style = 'background:#fff3e0;';
                             $status_labels = array('approved' => '✅', 'pending' => '⏳', 'suspended' => '🚫');
                             $status_label = isset($status_labels[$status]) ? $status_labels[$status] : '✅';
                         ?>
@@ -1743,7 +1759,8 @@ function bm_render_students_page_content() {
                                 <td>
                                     <strong><?php echo esc_html($student->display_name); ?></strong>
                                     <?php if ($has_overdue): ?> <span style="color:#dc3545;" title="<?php _e('Em atraso', 'book-manager'); ?>">🔴</span><?php endif; ?>
-                                </td>
+                                                                    <?php if ($penalty_check): ?> <span style="color:#ff9800;" title="<?php _e('Penalidade ativa', 'book-manager'); ?>">🚫</span><?php endif; ?>
+                                    </td>
                                 <td><?php echo esc_html($student->user_email); ?></td>
                                 <td><?php echo $status_label . ' ' . $status; ?></td>
                                 <td><?php echo esc_html($group); ?></td>
@@ -2510,6 +2527,92 @@ function bm_render_taxonomies_page() {
 // FASE 17: PÁGINA DE STATUS DO SISTEMA
 // ==========================================
 
+function bm_render_penalty_rules_page() {
+    if (!current_user_can('manage_options')) return;
+    
+    $msg = '';
+    $rules = get_option('bm_penalty_rules', array());
+    if (!is_array($rules)) $rules = array();
+    
+    // Salvar regras
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_penalty_rules'])) {
+        $new_rules = array();
+        if (isset($_POST['rules']) && is_array($_POST['rules'])) {
+            foreach ($_POST['rules'] as $rule) {
+                if (!empty($rule['min_days']) || !empty($rule['penalty_value'])) {
+                    $new_rules[] = array(
+                        'min_days' => intval($rule['min_days']),
+                        'max_days' => !empty($rule['max_days']) ? intval($rule['max_days']) : null,
+                        'occurrence' => !empty($rule['occurrence']) ? intval($rule['occurrence']) : 0,
+                        'penalty_type' => sanitize_text_field($rule['penalty_type']),
+                        'penalty_value' => floatval($rule['penalty_value']),
+                    );
+                }
+            }
+        }
+        update_option('bm_penalty_rules', $new_rules);
+        $rules = $new_rules;
+        $msg = '<div class="notice notice-success"><p>' . __('Regras de multa salvas!', 'book-manager') . '</p></div>';
+    }
+    
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Regras de Multa', 'book-manager'); ?></h1>
+        <?php echo $msg; ?>
+        <p class="description"><?php _e('Configure as penalidades aplicadas automaticamente quando um aluno devolve um livro com atraso. Deixe vazio para não aplicar multas automáticas.', 'book-manager'); ?></p>
+        
+        <form method="post">
+            <table class="wp-list-table widefat fixed striped" style="max-width:800px;">
+                <thead>
+                    <tr>
+                        <th><?php _e('Atraso (dias)', 'book-manager'); ?></th>
+                        <th><?php _e('Ocorrência', 'book-manager'); ?></th>
+                        <th><?php _e('Tipo', 'book-manager'); ?></th>
+                        <th><?php _e('Valor', 'book-manager'); ?></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="bm-penalty-rules">
+                    <?php if (!empty($rules)): ?>
+                        <?php foreach ($rules as $i => $rule): ?>
+                        <tr>
+                            <td><input type="number" name="rules[<?php echo $i; ?>][min_days]" value="<?php echo esc_attr($rule['min_days']); ?>" min="1" style="width:70px;" placeholder="<?php _e('Mín.', 'book-manager'); ?>" /> — <input type="number" name="rules[<?php echo $i; ?>][max_days]" value="<?php echo esc_attr($rule['max_days']); ?>" min="1" style="width:70px;" placeholder="<?php _e('Máx.', 'book-manager'); ?>" /></td>
+                            <td><input type="number" name="rules[<?php echo $i; ?>][occurrence]" value="<?php echo esc_attr($rule['occurrence']); ?>" min="0" style="width:70px;" placeholder="0" /></td>
+                            <td>
+                                <select name="rules[<?php echo $i; ?>][penalty_type]" style="width:130px;">
+                                    <option value="warning" <?php selected($rule['penalty_type'], 'warning'); ?>><?php _e('Advertência', 'book-manager'); ?></option>
+                                    <option value="suspension" <?php selected($rule['penalty_type'], 'suspension'); ?>><?php _e('Suspensão (dias)', 'book-manager'); ?></option>
+                                    <option value="fine" <?php selected($rule['penalty_type'], 'fine'); ?>><?php _e('Multa (R$)', 'book-manager'); ?></option>
+                                </select>
+                            </td>
+                            <td><input type="number" name="rules[<?php echo $i; ?>][penalty_value]" value="<?php echo esc_attr($rule['penalty_value']); ?>" min="0" step="0.01" style="width:90px;" /></td>
+                            <td><button type="button" class="button button-small" onclick="this.closest('tr').remove()">✕</button></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+            <p><button type="button" class="button" id="bm-add-penalty-rule">+ <?php _e('Adicionar Regra', 'book-manager'); ?></button></p>
+            <p><input type="submit" name="save_penalty_rules" class="button button-primary" value="<?php _e('Salvar Regras', 'book-manager'); ?>" /></p>
+        </form>
+    </div>
+    <script>
+    document.getElementById('bm-add-penalty-rule').addEventListener('click', function() {
+        var tbody = document.getElementById('bm-penalty-rules');
+        var rows = tbody.querySelectorAll('tr');
+        var i = rows.length;
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td><input type="number" name="rules[' + i + '][min_days]" min="1" style="width:70px;" placeholder="Mín." /> — <input type="number" name="rules[' + i + '][max_days]" min="1" style="width:70px;" placeholder="Máx." /></td>' +
+            '<td><input type="number" name="rules[' + i + '][occurrence]" min="0" style="width:70px;" placeholder="0" /></td>' +
+            '<td><select name="rules[' + i + '][penalty_type]" style="width:130px;"><option value="warning">Advertência</option><option value="suspension">Suspensão (dias)</option><option value="fine">Multa (R$)</option></select></td>' +
+            '<td><input type="number" name="rules[' + i + '][penalty_value]" min="0" step="0.01" style="width:90px;" /></td>' +
+            '<td><button type="button" class="button button-small" onclick="this.closest(\'tr\').remove()">✕</button></td>';
+        tbody.appendChild(tr);
+    });
+    </script>
+    <?php
+}
+
 function bm_render_status_page() {
     if (!current_user_can('manage_options')) return;
     
@@ -2636,6 +2739,7 @@ function bm_render_settings_unified_page() {
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=white_label'); ?>" class="nav-tab <?php echo $tab === 'white_label' ? 'nav-tab-active' : ''; ?>">🎨 <?php _e('Identidade Visual', 'book-manager'); ?></a>
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=year_transition'); ?>" class="nav-tab <?php echo $tab === 'year_transition' ? 'nav-tab-active' : ''; ?>">🔄 <?php _e('Virada de Ano', 'book-manager'); ?></a>
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=status'); ?>" class="nav-tab <?php echo $tab === 'status' ? 'nav-tab-active' : ''; ?>">📊 <?php _e('Status', 'book-manager'); ?></a>
+                        <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=penalties'); ?>" class="nav-tab <?php echo $tab === 'penalties' ? 'nav-tab-active' : ''; ?>">🚫 <?php _e('Regras de Multa', 'book-manager'); ?></a>
         </nav>
         
         <?php
@@ -2647,6 +2751,8 @@ function bm_render_settings_unified_page() {
             bm_render_year_transition_page();
         } elseif ($tab === 'status') {
             bm_render_status_page();
+        } elseif ($tab === 'penalties') {
+            bm_render_penalty_rules_page();
         } else {
             bm_render_settings_page();
         }

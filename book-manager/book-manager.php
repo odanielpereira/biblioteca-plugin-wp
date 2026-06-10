@@ -3,7 +3,7 @@
  * Plugin Name:       Gestão de Livros
  * Plugin URI:        https://github.com/odanielpereira/biblioteca-plugin-wp
  * Description:       Gerenciador de livros para o tema Biblioteca.
- * Version:           8.0.0
+ * Version:           8.1.1
  * Author:            Daniel Pereira
  * Author URI:        https://odanielpereira.com/
  * License:           GPL-2.0+

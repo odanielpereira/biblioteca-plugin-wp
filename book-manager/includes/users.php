@@ -429,6 +429,21 @@ function bm_render_approval_page_content() {
 // ==========================================
 function bm_reserve_book($book_id, $user_id, $reserved_for = null) {
     $target_user_id = $reserved_for ? intval($reserved_for) : $user_id;
+    
+    // Verificar atraso antes de reservar
+    $loan_history = get_user_meta($target_user_id, '_bm_loan_history', true) ?: array();
+    foreach ($loan_history as $loan) {
+        if ($loan['status'] === 'active' && isset($loan['due_date']) && strtotime($loan['due_date']) < time()) {
+            $overdue_title = get_the_title($loan['book_id']);
+            $overdue_author = get_post_meta($loan['book_id'], '_bm_author', true);
+            $overdue_date = date('d/m/Y', strtotime($loan['due_date']));
+            $message = "🚫 RESERVAS E EMPRÉSTIMOS BLOQUEADOS\n\nVocê não entregou \"{$overdue_title}\"";
+            if ($overdue_author) $message .= " de {$overdue_author}";
+            $message .= ".\nDeveria ter sido devolvido em {$overdue_date}.\n\nQue tal passar na biblioteca para devolvê-lo? Assim você já pode reservar e pegar novos livros!";
+            return array('error' => $message);
+        }
+    }
+    
     $settings = bm_get_settings();
     
     if (bm_is_student_by_id($target_user_id)) {
@@ -532,7 +547,17 @@ function bm_is_student_by_id($user_id) {
 }
 
 function bm_get_active_reservation_count($user_id) {
-    return intval(get_user_meta($user_id, '_bm_reservation_count', true));
+    $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
+    $count = 0;
+    foreach ($all_books as $book) {
+        $reservations = get_post_meta($book->ID, '_bm_reservations', true) ?: array();
+        foreach ($reservations as $r) {
+            if ($r['user_id'] == $user_id && $r['status'] === 'waiting') {
+                $count++;
+            }
+        }
+    }
+    return $count;
 }
 
 function bm_reserve_button($book_id = null) {
@@ -607,20 +632,147 @@ function bm_reserve_scripts() {
     </div>
     <script>
     function bmShowModal(msg) {
-        document.getElementById('bm-modal-message').textContent = msg;
-        document.getElementById('bm-modal').style.display = 'flex';
+        var modal = document.getElementById('bm-modal');
+        var msgEl = document.getElementById('bm-modal-message');
+        if (!msgEl) {
+            modal.innerHTML = '<div style="background:#fff;padding:30px;border-radius:8px;max-width:400px;text-align:center;">' +
+                '<p id="bm-modal-message"></p>' +
+                '<button onclick="bmCloseModal()" style="padding:8px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-top:10px;">OK</button>' +
+                '</div>';
+            msgEl = document.getElementById('bm-modal-message');
+        }
+        msgEl.textContent = msg;
+        modal.style.display = 'flex';
     }
     function bmCloseModal() {
-        document.getElementById('bm-modal').style.display = 'none';
+        var modal = document.getElementById('bm-modal');
+        modal.style.display = 'none';
+        modal.innerHTML = '<div style="background:#fff;padding:30px;border-radius:8px;max-width:400px;text-align:center;">' +
+            '<p id="bm-modal-message"></p>' +
+            '<button onclick="bmCloseModal()" style="padding:8px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-top:10px;">OK</button>' +
+            '</div>';
     }
+
+    function bmRenewLoan(bookId, userId) {
+        var btn = event.target;
+        btn.disabled = true;
+        btn.textContent = '...';
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            var r = JSON.parse(xhr.responseText);
+            if (r.success) {
+                bmShowModal(r.message);
+                setTimeout(function() { location.reload(); }, 1500);
+            } else {
+                bmShowModal(r.message);
+                btn.disabled = false;
+                btn.textContent = '🔄 <?php _e('Renovar', 'book-manager'); ?>';
+            }
+        };
+        xhr.send('action=bm_renew_loan&book_id=' + bookId + '&user_id=' + userId + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+    }
+
+    function bmShowReserveChoiceModal(bookId, nonce, reserveBtn) {
+        var modal = document.getElementById('bm-modal');
+        modal.innerHTML = '<div style="background:#fff;padding:30px;border-radius:8px;max-width:400px;text-align:center;">' +
+            '<h3 style="margin-top:0;">📚 <?php _e('Reservar Livro', 'book-manager'); ?></h3>' +
+            '<p><?php _e('Deseja reservar para você ou para um aluno?', 'book-manager'); ?></p>' +
+            '<button onclick="bmReserveForSelf(' + bookId + ', \'' + nonce + '\', this)" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;margin:5px;width:100%;">👤 <?php _e('Reservar para mim', 'book-manager'); ?></button>' +
+            '<button onclick="bmShowStudentSearchModal(' + bookId + ', \'' + nonce + '\', this)" style="padding:10px 20px;background:#2196f3;color:#fff;border:none;border-radius:4px;cursor:pointer;margin:5px;width:100%;">👥 <?php _e('Reservar para um aluno', 'book-manager'); ?></button>' +
+            '<button onclick="bmCloseModal()" style="padding:8px 20px;background:#eee;color:#333;border:none;border-radius:4px;cursor:pointer;margin-top:10px;"><?php _e('Cancelar', 'book-manager'); ?></button>' +
+            '</div>';
+        modal._reserveBtn = reserveBtn;
+        modal.style.display = 'flex';
+    }
+    
+    function bmReserveForSelf(bookId, nonce) {
+        var reserveBtn = document.getElementById('bm-modal')._reserveBtn;
+        bmCloseModal();
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            var r = JSON.parse(xhr.responseText);
+            if (r.error) {
+                bmShowModal(r.error);
+            } else {
+                bmShowModal(r.message);
+                if (reserveBtn) {
+                    reserveBtn.textContent = '<?php _e('Cancelar reserva', 'book-manager'); ?>';
+                    reserveBtn.className = 'bm-btn-cancel';
+                    reserveBtn.style.background = '#c00';
+                    reserveBtn.onclick = function() { bmCancelReserve(bookId, nonce); };
+                }
+            }
+        };
+        xhr.send('action=bm_reserve_book&book_id=' + bookId + '&nonce=' + nonce);
+    }
+
+    function bmShowStudentSearchModal(bookId, nonce, choiceBtn) {
+        var modal = document.getElementById('bm-modal');
+        modal.innerHTML = '<div style="background:#fff;padding:30px;border-radius:8px;max-width:450px;text-align:left;">' +
+            '<h3 style="margin-top:0;">👤 <?php _e('Selecionar Aluno', 'book-manager'); ?></h3>' +
+            '<input type="text" id="bm-student-search-input" placeholder="<?php _e('Digite o nome do aluno...', 'book-manager'); ?>" style="width:100%;padding:8px;margin-bottom:10px;border:1px solid #ccc;border-radius:4px;" />' +
+            '<div id="bm-student-search-results" style="max-height:200px;overflow-y:auto;"></div>' +
+            '<button onclick="bmCloseModal()" style="padding:8px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-top:10px;"><?php _e('Cancelar', 'book-manager'); ?></button>' +
+            '</div>';
+        modal.style.display = 'flex';
+        
+        document.getElementById('bm-student-search-input').addEventListener('keyup', function() {
+            var query = this.value.trim();
+            if (query.length < 2) return;
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                var r = JSON.parse(xhr.responseText);
+                var html = '';
+                if (r.found) {
+                    html += '<div style="padding:10px;background:#e8f5e9;border-radius:4px;cursor:pointer;margin:3px 0;border:1px solid #4caf50;" onclick="bmSelectStudentForReserve(' + r.student.id + ', \'' + r.student.name.replace(/'/g, "\\'") + '\', ' + bookId + ', \'' + nonce + '\')"><strong>' + r.student.name + '</strong><br><small>' + r.student.email + '</small></div>';
+                } else if (r.multiple) {
+                    r.students.forEach(function(s) {
+                        html += '<div style="padding:10px;background:#f5f5f5;border-radius:4px;cursor:pointer;margin:3px 0;border:1px solid #ddd;" onclick="bmSelectStudentForReserve(' + s.id + ', \'' + s.name.replace(/'/g, "\\'") + '\', ' + bookId + ', \'' + nonce + '\')"><strong>' + s.name + '</strong><br><small>' + s.email + '</small></div>';
+                    });
+                } else {
+                    html = '<p style="color:#999;"><?php _e('Nenhum aluno encontrado.', 'book-manager'); ?></p>';
+                }
+                document.getElementById('bm-student-search-results').innerHTML = html;
+            };
+            xhr.send('action=bm_service_search_student&query=' + encodeURIComponent(query) + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+        });
+    }
+    
+    function bmSelectStudentForReserve(studentId, studentName, bookId, nonce) {
+        var reserveBtn = document.getElementById('bm-modal')._reserveBtn;
+        bmCloseModal();
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function() {
+            var r = JSON.parse(xhr.responseText);
+            if (r.error) {
+                bmShowModal(r.error);
+            } else {
+                bmShowModal(r.message);
+                if (reserveBtn) {
+                    reserveBtn.textContent = '<?php _e('Cancelar reserva', 'book-manager'); ?>';
+                    reserveBtn.className = 'bm-btn-cancel';
+                    reserveBtn.style.background = '#c00';
+                    reserveBtn.onclick = function() { bmCancelReserve(bookId, nonce); };
+                }
+            }
+        };
+        xhr.send('action=bm_reserve_book&book_id=' + bookId + '&nonce=' + nonce + '&reserved_for=' + studentId);
+    }
+
     function bmDoReserve(bookId, nonce, canReserveForOthers) {
         var reservedFor = null;
+        var reserveBtn = event.target;
         if (canReserveForOthers) {
-            var choice = confirm('<?php _e('Reservar para você?\\n\\nOK = Reservar para mim\\nCancelar = Reservar para um aluno', 'book-manager'); ?>');
-            if (!choice) {
-                reservedFor = prompt('<?php _e('Digite o ID do aluno:', 'book-manager'); ?>');
-                if (!reservedFor) return;
-            }
+            bmShowReserveChoiceModal(bookId, nonce, reserveBtn);
+            return;
         }
         var btn = event.target;
         btn.disabled = true;
@@ -802,13 +954,45 @@ function bm_return_book($book_id, $user_id) {
     update_user_meta($user_id, '_bm_reservation_count', count($user_reservations));
     
     bm_log_audit($book_id, "Devolvido pelo usuário #$user_id");
+        
+    // Verificar atraso e aplicar penalidade
+    $days_late = 0;
+    foreach ($reservations as $r) {
+        if ($r['user_id'] == $user_id && $r['status'] === 'returned' && isset($r['due_date'])) {
+            $due_time = strtotime($r['due_date']);
+            $return_time = strtotime($r['returned_date']);
+            if ($return_time > $due_time) {
+                $days_late = ceil(($return_time - $due_time) / DAY_IN_SECONDS);
+            }
+            break;
+        }
+    }
     
+    if ($days_late > 0) {
+        $penalty = bm_calculate_penalty($user_id, $days_late);
+        if ($penalty) {
+            bm_apply_penalty($user_id, $penalty);
+        }
+    }
     $next_message = '';
+    $next_phone = '';
+    $next_user_id = 0;
     foreach ($reservations as $r) {
         if ($r['status'] === 'waiting') {
             $next_user = get_userdata($r['user_id']);
             $next_name = $next_user ? $next_user->display_name : '#' . $r['user_id'];
+            $next_phone = $next_user ? get_user_meta($next_user->ID, '_bm_user_' . sanitize_key('Telefone'), true) : '';
+            $next_user_id = $r['user_id'];
+            $book_title = get_the_title($book_id);
+            $wa_link = '';
+            if ($next_phone) {
+                $wa_msg = bm_get_loan_message($next_name, $book_title, '', 'available');
+                $wa_link = bm_whatsapp_link($next_phone, $wa_msg);
+            }
             $next_message = ' ' . sprintf(__('Próximo: %s.', 'book-manager'), $next_name);
+            if ($wa_link) {
+                $next_message .= ' <a href="' . esc_url($wa_link) . '" target="_blank" style="display:inline-block;padding:4px 10px;background:#25d366;color:#fff;border-radius:3px;text-decoration:none;font-size:12px;">📱 ' . __('Avisar', 'book-manager') . '</a>';
+            }
             break;
         }
     }
@@ -850,6 +1034,93 @@ function bm_undo_loan($book_id, $user_id) {
     bm_log_audit($book_id, "Empréstimo desfeito para usuário #$user_id");
     
     return array('success' => true, 'message' => __('Empréstimo desfeito.', 'book-manager'));
+}
+
+function bm_check_penalty_block($user_id) {
+    $active = get_user_meta($user_id, '_bm_penalty_active', true);
+    if ($active !== '1') return false;
+    
+    $until = get_user_meta($user_id, '_bm_penalty_until', true);
+    
+    // Se tem data fim e já passou, liberar automaticamente
+    if (!empty($until) && strtotime($until) < time()) {
+        update_user_meta($user_id, '_bm_penalty_active', '0');
+        delete_user_meta($user_id, '_bm_penalty_until');
+        return false;
+    }
+    
+    $penalties = get_user_meta($user_id, '_bm_penalties', true) ?: array();
+    $last = end($penalties);
+    
+    return array(
+        'blocked' => true,
+        'type' => $last['type'],
+        'value' => $last['value'],
+        'until' => $until,
+    );
+}
+
+function bm_apply_penalty($user_id, $penalty) {
+    $penalties = get_user_meta($user_id, '_bm_penalties', true) ?: array();
+    
+    $note = isset($penalty['note']) ? $penalty['note'] : '';
+    $entry = array(
+        'type' => $penalty['type'],
+        'value' => $penalty['value'],
+        'date' => current_time('mysql'),
+        'applied_by' => get_current_user_id(),
+        'note' => $note,
+    );
+    
+    $penalties[] = $entry;
+    update_user_meta($user_id, '_bm_penalties', $penalties);
+    
+    // Ativar bloqueio
+    update_user_meta($user_id, '_bm_penalty_active', '1');
+    
+    // Se for suspensão, definir data fim
+    if ($penalty['type'] === 'suspension') {
+        $days = intval($penalty['value']);
+        $until = date('Y-m-d', strtotime('+' . $days . ' days'));
+        update_user_meta($user_id, '_bm_penalty_until', $until);
+    }
+    
+    bm_log_admin_action('Penalidade aplicada: ' . $penalty['type'] . ' - ' . $penalty['value'], $user_id);
+    
+    return $entry;
+}
+
+function bm_calculate_penalty($user_id, $days_late) {
+    $rules = get_option('bm_penalty_rules', array());
+    if (!is_array($rules) || empty($rules)) return false;
+    
+    $penalties = get_user_meta($user_id, '_bm_penalties', true) ?: array();
+    $occurrence_count = count($penalties) + 1;
+    
+    $matched_rule = null;
+    
+    foreach ($rules as $rule) {
+        $min_days = intval($rule['min_days']);
+        $max_days = isset($rule['max_days']) && $rule['max_days'] !== '' ? intval($rule['max_days']) : null;
+        $occurrence = intval($rule['occurrence']);
+        $type = $rule['penalty_type'];
+        $value = floatval($rule['penalty_value']);
+        
+        if ($occurrence > 0 && $occurrence !== $occurrence_count) continue;
+        if ($days_late < $min_days) continue;
+        if ($max_days !== null && $days_late > $max_days) continue;
+        
+        if ($occurrence > 0 && $occurrence === $occurrence_count) {
+            $matched_rule = array('type' => $type, 'value' => $value, 'note' => sprintf(__('Atraso de %d dias — %dª ocorrência', 'book-manager'), $days_late, $occurrence_count), 'days_late' => $days_late);
+            break;
+        }
+        
+        if ($occurrence === 0 && !$matched_rule) {
+            $matched_rule = array('type' => $type, 'value' => $value, 'note' => sprintf(__('Atraso de %d dias', 'book-manager'), $days_late), 'days_late' => $days_late);
+        }
+    }
+    
+    return $matched_rule;
 }
 
 function bm_get_days_remaining($due_date) {
@@ -929,7 +1200,10 @@ function bm_render_loans_page_content() {
         <?php if (empty($active_reservations)): ?>
             <p><?php _e('Nenhum empréstimo ou reserva ativa.', 'book-manager'); ?></p>
         <?php else: ?>
-            <table class="wp-list-table widefat fixed striped">
+            <div style="margin-bottom:10px;">
+                <input type="text" id="bm-loan-filter" placeholder="<?php _e('🔍 Filtrar por livro ou aluno...', 'book-manager'); ?>" style="padding:6px 10px;width:300px;border:1px solid #ccc;border-radius:4px;" />
+            </div>
+            <table class="wp-list-table widefat fixed striped" id="bm-loans-table">
                 <thead>
                     <tr>
                         <th><?php _e('Livro', 'book-manager'); ?></th>
@@ -975,8 +1249,8 @@ function bm_render_loans_page_content() {
                         $wa_reminder_msg = bm_get_loan_message($user_name, $r['book_title'], $due_date, 'reminder');
                     ?>
                         <tr style="<?php echo $is_overdue && $is_active ? 'background:#fff3f3;' : ''; ?>">
-                            <td><strong><?php echo esc_html($r['book_title']); ?></strong></td>
-                            <td><?php echo esc_html($user_name); ?></td>
+                            <td><strong><a href="<?php echo get_permalink($r['book_id']); ?>" target="_blank"><?php echo esc_html($r['book_title']); ?></a></strong></td>
+                            <td><a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_student_detail&student_id=' . $r['user_id']); ?>"><?php echo esc_html($user_name); ?></a></td>
                             <td><span style="background:<?php echo $status_color; ?>;color:#fff;padding:2px 8px;border-radius:3px;font-size:12px;"><?php echo $status_label; ?></span></td>
                             <td><?php echo $position_display; ?></td>
                             <td><span style="color:<?php echo $stock_color; ?>;font-weight:bold;"><?php echo $stock_display; ?></span></td>
@@ -1001,11 +1275,11 @@ function bm_render_loans_page_content() {
                                     <?php if (!$is_active): ?>
                                         <input type="number" name="loan_days" value="<?php echo $settings['default_loan_days']; ?>" min="0" max="60" style="width:60px;padding:4px 8px;font-size:14px;text-align:center;" title="<?php _e('Dias de empréstimo', 'book-manager'); ?>" />
                                         <input type="hidden" name="bm_loan_action" value="confirm">
-                                        <button type="submit" class="button button-primary" style="background:#0073aa;color:#fff;border-color:#0073aa;" <?php echo $available <= 0 ? 'disabled' : ''; ?>><?php _e('Confirmar', 'book-manager'); ?></button>
+                                        <button type="button" class="button button-primary bm-confirm-btn" style="background:#0073aa;color:#fff;border-color:#0073aa;" data-book="<?php echo $r['book_id']; ?>" data-user="<?php echo $r['user_id']; ?>" <?php echo $available <= 0 ? 'disabled' : ''; ?>><?php _e('Confirmar', 'book-manager'); ?></button>
                                         <input type="hidden" name="bm_loan_action" value="reject" form="reject-<?php echo $r['book_id'] . '-' . $r['user_id']; ?>">
                                     <?php else: ?>
                                         <input type="hidden" name="bm_loan_action" value="return">
-                                        <button type="submit" class="button" style="background:#46b450;color:#fff;border-color:#46b450;"><?php _e('Devolver', 'book-manager'); ?></button>
+                                        <button type="button" class="button bm-return-btn" style="background:#46b450;color:#fff;border-color:#46b450;" data-book="<?php echo $r['book_id']; ?>" data-user="<?php echo $r['user_id']; ?>"><?php _e('Devolver', 'book-manager'); ?></button>
                                         <input type="hidden" name="bm_loan_action" value="undo" form="undo-<?php echo $r['book_id'] . '-' . $r['user_id']; ?>">
                                     <?php endif; ?>
                                 </form>
@@ -1015,7 +1289,7 @@ function bm_render_loans_page_content() {
                                         <input type="hidden" name="book_id" value="<?php echo $r['book_id']; ?>">
                                         <input type="hidden" name="user_id" value="<?php echo $r['user_id']; ?>">
                                         <input type="hidden" name="bm_loan_action" value="reject">
-                                        <button type="submit" class="button" style="background:#dc3545;color:#fff;border-color:#dc3545;" title="<?php _e('Rejeitar reserva', 'book-manager'); ?>"><?php _e('Rejeitar', 'book-manager'); ?></button>
+                                        <button type="button" class="button bm-reject-btn" style="background:#dc3545;color:#fff;border-color:#dc3545;" data-book="<?php echo $r['book_id']; ?>" data-user="<?php echo $r['user_id']; ?>" title="<?php _e('Rejeitar reserva', 'book-manager'); ?>"><?php _e('Rejeitar', 'book-manager'); ?></button>
                                     </form>
                                 <?php endif; ?>
                                 <?php if ($is_active): ?>
@@ -1024,7 +1298,7 @@ function bm_render_loans_page_content() {
                                         <input type="hidden" name="book_id" value="<?php echo $r['book_id']; ?>">
                                         <input type="hidden" name="user_id" value="<?php echo $r['user_id']; ?>">
                                         <input type="hidden" name="bm_loan_action" value="undo">
-                                        <button type="submit" class="button" style="background:#dc3545;color:#fff;border-color:#dc3545;" title="<?php _e('Desfazer empréstimo', 'book-manager'); ?>"><?php _e('Desfazer', 'book-manager'); ?></button>
+                                        <button type="button" class="button bm-undo-btn" style="background:#dc3545;color:#fff;border-color:#dc3545;" data-book="<?php echo $r['book_id']; ?>" data-user="<?php echo $r['user_id']; ?>" title="<?php _e('Desfazer empréstimo', 'book-manager'); ?>"><?php _e('Desfazer', 'book-manager'); ?></button>
                                     </form>
                                 <?php endif; ?>
                             </td>
@@ -1032,6 +1306,125 @@ function bm_render_loans_page_content() {
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            <script>
+            // Devolver via AJAX
+            document.querySelectorAll('.bm-return-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var bookId = this.getAttribute('data-book');
+                    var userId = this.getAttribute('data-user');
+                    if (!confirm('<?php _e('Confirmar devolução?', 'book-manager'); ?>')) return;
+                    this.disabled = true;
+                    this.textContent = '...';
+                    var row = this.closest('tr');
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    xhr.onload = function() {
+                        var r = JSON.parse(xhr.responseText);
+                        if (r.success) {
+                            row.style.opacity = '0.5';
+                            row.querySelector('.bm-return-btn').remove();
+                            row.querySelector('.bm-undo-btn').remove();
+                            var statusCell = row.querySelector('td:nth-child(3) span');
+                            if (statusCell) statusCell.textContent = 'Devolvido';
+                        } else {
+                            alert(r.message);
+                            btn.disabled = false;
+                            btn.textContent = '<?php _e('Devolver', 'book-manager'); ?>';
+                        }
+                    };
+                    xhr.send('action=bm_service_return&book_id=' + bookId + '&user_id=' + userId + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+                });
+            });
+            
+            // Confirmar via AJAX
+            document.querySelectorAll('.bm-confirm-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var bookId = this.getAttribute('data-book');
+                    var userId = this.getAttribute('data-user');
+                    var daysInput = this.closest('td').querySelector('input[name="loan_days"]');
+                    var days = daysInput ? daysInput.value : <?php echo $settings['default_loan_days']; ?>;
+                    this.disabled = true;
+                    this.textContent = '...';
+                    var row = this.closest('tr');
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    xhr.onload = function() {
+                        var r = JSON.parse(xhr.responseText);
+                        if (r.success) {
+                            row.style.opacity = '0.3';
+                            row.style.textDecoration = 'line-through';
+                            setTimeout(function() { location.reload(); }, 800);
+                        } else {
+                            alert(r.message);
+                            btn.disabled = false;
+                            btn.textContent = '<?php _e('Confirmar', 'book-manager'); ?>';
+                        }
+                    };
+                    xhr.send('action=bm_service_loan&book_id=' + bookId + '&user_id=' + userId + '&days=' + days + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+                });
+            });
+            
+                  
+            
+            // Desfazer via AJAX
+            document.querySelectorAll('.bm-undo-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var bookId = this.getAttribute('data-book');
+                    var userId = this.getAttribute('data-user');
+                    if (!confirm('<?php _e('Desfazer este empréstimo?', 'book-manager'); ?>')) return;
+                    this.disabled = true;
+                    this.textContent = '...';
+                    var row = this.closest('tr');
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    xhr.onload = function() {
+                        var r = JSON.parse(xhr.responseText);
+                        if (r.success) {
+                            location.reload();
+                        } else {
+                            alert(r.message);
+                            btn.disabled = false;
+                            btn.textContent = '<?php _e('Desfazer', 'book-manager'); ?>';
+                        }
+                    };
+                    xhr.send('action=bm_undo_loan&book_id=' + bookId + '&user_id=' + userId + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+                });
+            });
+            
+            // Rejeitar via AJAX
+            document.querySelectorAll('.bm-reject-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var bookId = this.getAttribute('data-book');
+                    var userId = this.getAttribute('data-user');
+                    if (!confirm('<?php _e('Rejeitar esta reserva?', 'book-manager'); ?>')) return;
+                    this.disabled = true;
+                    this.textContent = '...';
+                    var row = this.closest('tr');
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    xhr.onload = function() {
+                        row.style.opacity = '0.3';
+                        row.style.textDecoration = 'line-through';
+                        setTimeout(function() { row.remove(); }, 1000);
+                    };
+                    xhr.send('action=bm_reject_reservation&book_id=' + bookId + '&user_id=' + userId + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+                });
+            });
+            </script>
+            <script>
+            document.getElementById('bm-loan-filter').addEventListener('keyup', function() {
+                var filter = this.value.toLowerCase();
+                var rows = document.querySelectorAll('#bm-loans-table tbody tr');
+                rows.forEach(function(row) {
+                    var text = row.textContent.toLowerCase();
+                    row.style.display = text.indexOf(filter) > -1 ? '' : 'none';
+                });
+            });
+            </script>
         <?php endif; ?>
     </div>
     <?php
@@ -1352,7 +1745,7 @@ function bm_student_dashboard_content() {
             <h2><?php _e('Meus Empréstimos', 'book-manager'); ?></h2>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
-                    <tr><th><?php _e('Livro', 'book-manager'); ?></th><th><?php _e('Empréstimo', 'book-manager'); ?></th><th><?php _e('Devolução', 'book-manager'); ?></th><th><?php _e('Prazo', 'book-manager'); ?></th></tr>
+                    <tr><th><?php _e('Livro', 'book-manager'); ?></th><th><?php _e('Empréstimo', 'book-manager'); ?></th><th><?php _e('Devolução', 'book-manager'); ?></th><th><?php _e('Prazo', 'book-manager'); ?></th><th><?php _e('Ação', 'book-manager'); ?></th></tr>
                 </thead>
                 <tbody>
                     <?php foreach ($active_loans as $loan): 
@@ -1365,6 +1758,19 @@ function bm_student_dashboard_content() {
                             <td><?php echo date('d/m/Y', strtotime($loan['due_date'])); ?></td>
                             <td style="color:<?php echo $color; ?>;font-weight:bold;">
                                 <?php if ($days > 0) printf(__('%d dias restantes', 'book-manager'), $days); elseif ($days == 0) _e('Vence hoje!', 'book-manager'); else printf(__('%d dias atrasado', 'book-manager'), abs($days)); ?>
+                            </td>
+                            <td>
+                                <?php 
+                                $queue = 0;
+                                $reservations = get_post_meta($loan['book_id'], '_bm_reservations', true) ?: array();
+                                foreach ($reservations as $r) {
+                                    if ($r['status'] === 'waiting' && $r['user_id'] != $user_id) $queue++;
+                                }
+                                if ($queue === 0): ?>
+                                    <button type="button" class="bm-btn-filter" onclick="bmRenewLoan(<?php echo $loan['book_id']; ?>, <?php echo $user_id; ?>)" style="padding:4px 10px;font-size:12px;">🔄 <?php _e('Renovar', 'book-manager'); ?></button>
+                                <?php else: ?>
+                                    <span style="font-size:11px;color:#999;"><?php printf(__('%d na fila', 'book-manager'), $queue); ?></span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -1390,6 +1796,28 @@ function bm_student_dashboard_content() {
             </table>
         <?php endif; ?>
         
+        
+        <?php $my_penalties = get_user_meta($user_id, '_bm_penalties', true) ?: array(); ?>
+        <?php if (!empty($my_penalties)): ?>
+            <h2>🚫 <?php _e('Minhas Ocorrências', 'book-manager'); ?></h2>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr><th><?php _e('Tipo', 'book-manager'); ?></th><th><?php _e('Descrição', 'book-manager'); ?></th><th><?php _e('Data', 'book-manager'); ?></th></tr>
+                </thead>
+                <tbody>
+                    <?php foreach (array_reverse($my_penalties) as $p): 
+                        $type_label = $p['type'] === 'warning' ? __('Advertência', 'book-manager') : ($p['type'] === 'suspension' ? __('Suspensão', 'book-manager') : __('Multa', 'book-manager'));
+                    ?>
+                        <tr>
+                            <td><?php echo $type_label; ?></td>
+                            <td><?php echo esc_html(isset($p['note']) ? $p['note'] : '—'); ?></td>
+                            <td><?php echo date('d/m/Y', strtotime($p['date'])); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
         <?php if (empty($active_loans) && empty($user_reservations)): ?>
             <p><?php _e('Você não tem empréstimos ou reservas ativas.', 'book-manager'); ?></p>
         <?php endif; ?>
@@ -2353,6 +2781,28 @@ function bm_render_student_detail_page() {
     
     $msg = '';
     
+    // Devolver livro direto da página de detalhes do aluno
+    if (isset($_POST['bm_return_from_detail']) && wp_verify_nonce($_POST['bm_student_detail_nonce'], 'bm_student_detail_action')) {
+        $return_book_id = intval($_POST['bm_return_book_id']);
+        $return_user_id = intval($_POST['bm_return_user_id']);
+        $result = bm_return_book($return_book_id, $return_user_id);
+        if (isset($result['error'])) {
+            $msg = '<div class="notice notice-error"><p>' . esc_html($result['error']) . '</p></div>';
+        } else {
+            $msg = '<div class="notice notice-success"><p>' . esc_html($result['message']) . '</p></div>';
+        }
+    }
+
+    // Aplicar penalidade manual
+    if (isset($_POST['bm_apply_manual_penalty']) && wp_verify_nonce($_POST['bm_student_detail_nonce'], 'bm_student_detail_action')) {
+        $type = sanitize_text_field($_POST['bm_manual_penalty_type']);
+        $value = floatval($_POST['bm_manual_penalty_value']);
+        $note = sanitize_text_field($_POST['bm_manual_penalty_note']);
+        $penalty = array('type' => $type, 'value' => $value, 'note' => $note);
+        bm_apply_penalty($student_id, $penalty);
+        $msg = '<div class="notice notice-success"><p>' . __('Penalidade aplicada!', 'book-manager') . '</p></div>';
+    }
+
     // Salvar observações
     if (isset($_POST['bm_save_notes']) && wp_verify_nonce($_POST['bm_student_detail_nonce'], 'bm_student_detail_action')) {
         update_user_meta($student_id, '_bm_internal_notes', sanitize_textarea_field($_POST['bm_internal_notes']));
@@ -2437,8 +2887,104 @@ function bm_render_student_detail_page() {
                 <?php endif; ?>
             </div>
             
+        <!-- Histórico de Devoluções -->
+        <?php
+        $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
+        $return_logs = array();
+        foreach ($all_books as $book) {
+            $logs = get_post_meta($book->ID, '_bm_return_log', true) ?: array();
+            foreach ($logs as $log) {
+                if ($log['user_id'] == $student_id) {
+                    $log['book_title'] = $book->post_title;
+                    $return_logs[] = $log;
+                }
+            }
+        }
+        ?>
+        <?php if (!empty($return_logs)): ?>
+            <h2>📋 <?php _e('Histórico de Devoluções', 'book-manager'); ?></h2>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Livro', 'book-manager'); ?></th>
+                        <th><?php _e('Condição', 'book-manager'); ?></th>
+                        <th><?php _e('Observação', 'book-manager'); ?></th>
+                        <th><?php _e('Data', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach (array_reverse($return_logs) as $log): 
+                        $condition_label = $log['condition'] === 'good' ? '✅ ' . __('Bom', 'book-manager') : ($log['condition'] === 'acceptable' ? '⚠️ ' . __('Aceitável', 'book-manager') : '❌ ' . __('Danificado', 'book-manager'));
+                    ?>
+                        <tr>
+                            <td><?php echo esc_html($log['book_title']); ?></td>
+                            <td><?php echo $condition_label; ?></td>
+                            <td><?php echo esc_html(isset($log['note']) ? $log['note'] : '—'); ?></td>
+                            <td><?php echo date('d/m/Y', strtotime($log['date'])); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+        <?php $penalties = get_user_meta($student_id, '_bm_penalties', true) ?: array(); ?>
+        <?php if (!empty($penalties)): ?>
+            <h2>🚫 <?php _e('Penalidades', 'book-manager'); ?></h2>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Tipo', 'book-manager'); ?></th>
+                        <th><?php _e('Valor', 'book-manager'); ?></th>
+                        <th><?php _e('Data', 'book-manager'); ?></th>
+                        <th><?php _e('Status', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach (array_reverse($penalties) as $p): 
+                        $type_label = $p['type'] === 'warning' ? __('Advertência', 'book-manager') : ($p['type'] === 'suspension' ? __('Suspensão', 'book-manager') : __('Multa', 'book-manager'));
+                        $value_display = $p['type'] === 'fine' ? 'R$ ' . number_format($p['value'], 2, ',', '.') : ($p['type'] === 'suspension' ? $p['value'] . ' ' . __('dias', 'book-manager') : '—');
+                        $is_active = get_user_meta($student_id, '_bm_penalty_active', true) === '1';
+                    ?>
+                        <tr>
+                            <td><?php echo $type_label; ?></td>
+                            <td><?php echo esc_html(isset($p['note']) ? $p['note'] : '—'); ?></td>
+                            <td><?php echo $value_display; ?></td>
+                            <td><?php echo date('d/m/Y', strtotime($p['date'])); ?></td>
+                            <td><?php echo $is_active ? '🚫 ' . __('Ativa', 'book-manager') : '✅ ' . __('Cumprida', 'book-manager'); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>    
+
             <!-- Observações internas -->
             <div style="flex:1;min-width:300px;">
+
+        <h2>🚫 <?php _e('Aplicar Penalidade Manual', 'book-manager'); ?></h2>
+        <form method="post" style="background:#fff8e1;padding:15px;border-radius:8px;border:1px solid #ffc107;margin-bottom:15px;">
+            <?php wp_nonce_field('bm_student_detail_action', 'bm_student_detail_nonce'); ?>
+            <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+                <div>
+                    <label><strong><?php _e('Tipo:', 'book-manager'); ?></strong></label>
+                    <select name="bm_manual_penalty_type">
+                        <option value="warning"><?php _e('Advertência', 'book-manager'); ?></option>
+                        <option value="suspension"><?php _e('Suspensão (dias)', 'book-manager'); ?></option>
+                        <option value="fine"><?php _e('Multa (R$)', 'book-manager'); ?></option>
+                    </select>
+                </div>
+                <div>
+                    <label><strong><?php _e('Valor:', 'book-manager'); ?></strong></label>
+                    <input type="number" name="bm_manual_penalty_value" min="0" step="0.01" style="width:100px;" placeholder="0" />
+                </div>
+                <div>
+                    <label><strong><?php _e('Descrição:', 'book-manager'); ?></strong></label>
+                    <input type="text" name="bm_manual_penalty_note" style="width:250px;" placeholder="<?php _e('Ex: Livro danificado na página 32', 'book-manager'); ?>" />
+                </div>
+                <div>
+                    <button type="submit" name="bm_apply_manual_penalty" class="button" style="background:#ff9800;color:#fff;border-color:#ff9800;"><?php _e('Aplicar Penalidade', 'book-manager'); ?></button>
+                </div>
+            </div>
+        </form>
+
                 <h2>📝 <?php _e('Observações Internas', 'book-manager'); ?></h2>
                 <form method="post">
                     <?php wp_nonce_field('bm_student_detail_action', 'bm_student_detail_nonce'); ?>
@@ -2461,6 +3007,7 @@ function bm_render_student_detail_page() {
                         <th><?php _e('Empréstimo', 'book-manager'); ?></th>
                         <th><?php _e('Devolução', 'book-manager'); ?></th>
                         <th><?php _e('Situação', 'book-manager'); ?></th>
+                        <th><?php _e('Ação', 'book-manager'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -2471,6 +3018,14 @@ function bm_render_student_detail_page() {
                             <td><?php echo isset($loan['due_date']) ? date('d/m/Y', strtotime($loan['due_date'])) : '—'; ?></td>
                             <td style="color:<?php echo $loan['is_overdue'] ? '#dc3545' : '#46b450'; ?>;font-weight:bold;">
                                 <?php echo $loan['is_overdue'] ? '🔴 ' . __('Atrasado', 'book-manager') : '✅ ' . __('Em dia', 'book-manager'); ?>
+                            </td>
+                            <td>
+                                <form method="post" style="display:inline;">
+                                    <?php wp_nonce_field('bm_student_detail_action', 'bm_student_detail_nonce'); ?>
+                                    <input type="hidden" name="bm_return_book_id" value="<?php echo $loan['book_id']; ?>">
+                                    <input type="hidden" name="bm_return_user_id" value="<?php echo $student_id; ?>">
+                                    <button type="submit" name="bm_return_from_detail" class="button button-small" style="background:#46b450;color:#fff;border-color:#46b450;" onclick="return confirm('<?php _e('Confirmar devolução deste livro?', 'book-manager'); ?>')">📥 <?php _e('Devolver', 'book-manager'); ?></button>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>

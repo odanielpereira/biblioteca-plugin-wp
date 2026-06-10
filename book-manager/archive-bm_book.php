@@ -25,9 +25,13 @@ $wl = bm_get_white_label();
 .bm-btn-clear:hover { background:#ddd; }
 .bm-btn-reserve { padding:4px 10px; background:#111; color:#fff; border:none; border-radius:3px; cursor:pointer; font-size:12px; margin-top:5px; }
 .bm-btn-reserve:hover { background:#333; }
-@media (max-width:600px) {
-    .bm-book-grid { grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:12px; }
-    .bm-card-cover img, .bm-card-no-cover { height:180px; }
+@media (max-width:768px) {
+    .bm-book-grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:16px; }
+    .bm-card-cover img, .bm-card-no-cover { height:200px; }
+}
+@media (max-width:480px) {
+    .bm-book-grid { grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:10px; }
+    .bm-card-cover img, .bm-card-no-cover { height:170px; }
     .bm-filters { flex-direction:column; }
     .bm-filters input[type="text"] { min-width:100%; }
 }
@@ -70,7 +74,33 @@ $wl = bm_get_white_label();
             <a href="<?php echo get_post_type_archive_link('bm_book'); ?>" class="bm-btn-clear"><?php _e('Limpar', 'book-manager'); ?></a>
         </div>
     </form>
+<?php
+global $wp_query;
+$paged = get_query_var('paged') ? get_query_var('paged') : 1;
+$args = array(
+    'post_type' => 'bm_book',
+    'posts_per_page' => 10,
+    'paged' => $paged,
+);
 
+$tax_query = array();
+$bm_genre = isset($_GET['bm_genre']) ? $_GET['bm_genre'] : '';
+if ($bm_genre !== '' && $bm_genre !== '0') {
+    $tax_query[] = array('taxonomy' => 'bm_genre', 'field' => 'term_id', 'terms' => intval($bm_genre));
+}
+$bm_category = isset($_GET['bm_category']) ? $_GET['bm_category'] : '';
+if ($bm_category !== '' && $bm_category !== '0') {
+    $tax_query[] = array('taxonomy' => 'bm_category', 'field' => 'term_id', 'terms' => intval($bm_category));
+}
+if (count($tax_query) > 1) $tax_query['relation'] = 'AND';
+if (!empty($tax_query)) $args['tax_query'] = $tax_query;
+
+if (isset($_GET['bm_search']) && !empty($_GET['bm_search'])) {
+    $args['s'] = sanitize_text_field($_GET['bm_search']);
+}
+
+query_posts($args);
+?>
     <?php if (have_posts()): ?>
         <div class="bm-book-grid">
             <?php while (have_posts()): the_post(); ?>

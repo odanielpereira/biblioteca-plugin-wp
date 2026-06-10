@@ -32,23 +32,30 @@ add_filter('template_include', 'bm_force_templates', 99);
 function bm_filter_books_frontend($query) {
     if (is_admin() || !$query->is_main_query() || !$query->is_post_type_archive('bm_book')) return;
 
-    if (isset($_GET['bm_genre']) && !empty($_GET['bm_genre']) && $_GET['bm_genre'] !== '0') {
-        $tax_query = $query->get('tax_query') ?: array();
+    $tax_query = array();
+
+    $bm_genre = isset($_GET['bm_genre']) ? $_GET['bm_genre'] : '';
+    if ($bm_genre !== '' && $bm_genre !== '0') {
         $tax_query[] = array(
             'taxonomy' => 'bm_genre',
             'field' => 'term_id',
-            'terms' => intval($_GET['bm_genre']),
+            'terms' => intval($bm_genre),
         );
-        $query->set('tax_query', $tax_query);
     }
 
-    if (isset($_GET['bm_category']) && !empty($_GET['bm_category']) && $_GET['bm_category'] !== '0') {
-        $tax_query = $query->get('tax_query') ?: array();
+    $bm_category = isset($_GET['bm_category']) ? $_GET['bm_category'] : '';
+    if ($bm_category !== '' && $bm_category !== '0') {
         $tax_query[] = array(
             'taxonomy' => 'bm_category',
             'field' => 'term_id',
-            'terms' => intval($_GET['bm_category']),
+            'terms' => intval($bm_category),
         );
+    }
+
+    if (count($tax_query) > 1) {
+        $tax_query['relation'] = 'AND';
+    }
+    if (!empty($tax_query)) {
         $query->set('tax_query', $tax_query);
     }
 
@@ -451,7 +458,10 @@ function bm_classify_book_with_ai($post_id) {
     $discipline_list = implode(', ', $discipline_names);
     
     // Montar prompt
-    $prompt = "Analise o livro abaixo e responda SOMENTE com um JSON válido neste formato exato:\n\n";
+     $keys = bm_get_api_keys();
+    $persona = isset($keys['groq_persona']) && !empty($keys['groq_persona']) ? $keys['groq_persona'] : '';
+    $persona_instruction = $persona ? "Personalidade: " . $persona . "\n\n" : '';
+    $prompt = $persona_instruction . "Analise o livro abaixo e responda SOMENTE com um JSON válido neste formato exato:\n\n";
     $prompt .= "{\n";
     foreach ($discipline_names as $name) {
         $prompt .= '  "' . $name . '": {"relacionado": true ou false, "justificativa": "uma frase curta em português"},\n';
@@ -460,7 +470,7 @@ function bm_classify_book_with_ai($post_id) {
     $prompt .= "Livro: \"" . $title . "\"\n";
     if ($author) $prompt .= "Autor: " . $author . "\n";
     if ($sinopse) $prompt .= "Sinopse: " . wp_strip_all_tags($sinopse) . "\n";
-    $prompt .= "\nRegras:\n- Se o livro NÃO tem relação com a disciplina, use false e justificativa vazia \"\".\n- Se tem relação, use true e escreva uma justificativa de até 150 caracteres.\n- Responda APENAS o JSON, sem texto antes ou depois.";
+    $prompt .= "\nRegras:\n- Se o livro NÃO tem relação com a disciplina, use false e justificativa vazia \"\".\n- Se tem relação, use true e escreva uma justificativa pedagógica rica e contextualizada, entre 40 e 50 palavras, em português. Explique por que este livro se relaciona com a disciplina citando temas, personagens, contexto histórico, conceitos ou possíveis atividades. Use tom lúdico e apropriado ao universo escolar brasileiro.\n- Responda APENAS o JSON, sem texto antes ou depois.";
     
     $url = 'https://api.groq.com/openai/v1/chat/completions';
     $body = json_encode(array(
@@ -568,44 +578,6 @@ function bm_ajax_ai_classify() {
 }
 add_action('wp_ajax_bm_ai_classify', 'bm_ajax_ai_classify');
 
-// ==========================================
-// FASE 11A: GERADOR DE ATIVIDADES POR IA (GROQ)
-// ==========================================
-
-function bm_generate_activities_for_book($book_id) {
-    $cache = get_post_meta($book_id, '_bm_activities', true);
-    if (!empty($cache)) return $cache;
-    
-    $title = get_the_title($book_id);
-    $author = get_post_meta($book_id, '_bm_author', true);
-    $sinopse = get_post_meta($book_id, '_bm_dynamic_sinopse', true);
-    $genres = wp_get_post_terms($book_id, 'bm_genre', array('fields' => 'names'));
-    $disciplines = wp_get_post_terms($book_id, 'bm_discipline', array('fields' => 'names'));
-    
-    $system = "Você é um assistente pedagógico que sugere atividades escolares baseadas em livros. Responda em português, de forma estruturada.";
-    
-    $prompt = "Com base nas informações abaixo, sugira 3 atividades pedagógicas que um professor pode realizar com seus alunos usando este livro.\n\n";
-    $prompt .= "Título: " . $title . "\n";
-    if ($author) $prompt .= "Autor: " . $author . "\n";
-    if (!empty($genres)) $prompt .= "Gênero: " . implode(', ', $genres) . "\n";
-    if (!empty($disciplines)) $prompt .= "Disciplinas: " . implode(', ', $disciplines) . "\n";
-    if (!empty($sinopse)) $prompt .= "Sinopse: " . wp_strip_all_tags($sinopse) . "\n";
-    
-    $prompt .= "\nFormato da resposta:\n";
-    $prompt .= "ATIVIDADE 1: [título]\n[descrição]\n\n";
-    $prompt .= "ATIVIDADE 2: [título]\n[descrição]\n\n";
-    $prompt .= "ATIVIDADE 3: [título]\n[descrição]";
-    
-    $result = bm_deepseek_request($prompt, $system);
-    
-    if ($result) {
-        update_post_meta($book_id, '_bm_activities', $result);
-        return $result;
-    }
-    
-    return false;
-}
-
 // Botão "Gerar Atividades" na edição do livro
 function bm_add_activities_button() {
     global $post;
@@ -650,7 +622,9 @@ function bm_ajax_generate_activities() {
     $author = get_post_meta($post_id, '_bm_author', true);
     $sinopse = get_post_meta($post_id, '_bm_dynamic_sinopse', true);
     
-    $prompt = "Sugira 3 atividades pedagógicas para o livro \"" . $title . "\"";
+     $keys = bm_get_api_keys();
+    $persona_act = isset($keys['groq_persona']) && !empty($keys['groq_persona']) ? $keys['groq_persona'] . "\n\n" : '';
+    $prompt = $persona_act . "Sugira 3 atividades pedagógicas para o livro \"" . $title . "\"";
     if ($author) $prompt .= ", de " . $author;
     $prompt .= ". Responda em português, numerando as atividades de 1 a 3.";
     if ($sinopse) $prompt .= "\nSinopse: " . wp_strip_all_tags($sinopse);
@@ -734,6 +708,8 @@ function bm_render_activities_metabox($post) {
 // ==========================================
 function bm_chatbot_scripts() {
     if (is_admin()) return;
+        $keys = bm_get_api_keys();
+    if (isset($keys['chatbot_active']) && $keys['chatbot_active'] === '0') return;
     ?>
     <style>
     #bm-chatbot-toggle {
@@ -762,7 +738,7 @@ function bm_chatbot_scripts() {
 
     <button id="bm-chatbot-toggle" onclick="bmToggleChat()">💬</button>
     <div id="bm-chatbot-box">
-        <div id="bm-chatbot-header">📚 Bibliotecário Virtual <span style="float:right;cursor:pointer;" onclick="bmToggleChat()">✕</span></div>
+        <div id="bm-chatbot-header">📚 Diva - Bibliotecária Virtual <span style="float:right;cursor:pointer;" onclick="bmToggleChat()">✕</span></div>
         <div id="bm-chatbot-messages">
             <div class="bm-msg-bot">👋 Olá! Sou o bibliotecário virtual. Pergunte-me sobre livros, disponibilidade ou peça recomendações!</div>
         </div>
@@ -803,6 +779,58 @@ function bm_chatbot_scripts() {
 }
 add_action('wp_footer', 'bm_chatbot_scripts');
 
+function bm_get_student_context($user_id) {
+    $student = get_userdata($user_id);
+    if (!$student || !in_array('bm_student', (array) $student->roles)) return '';
+    
+    $context = "ALUNO LOGADO: " . $student->display_name . "\n";
+    
+    $loan_history = get_user_meta($user_id, '_bm_loan_history', true) ?: array();
+    $active_loans = array();
+    $overdue_loans = array();
+    $returned_books = array();
+    
+    foreach ($loan_history as $loan) {
+        $title = get_the_title($loan['book_id']);
+        if ($loan['status'] === 'active') {
+            $due = isset($loan['due_date']) ? strtotime($loan['due_date']) : 0;
+            $days = ceil(($due - time()) / DAY_IN_SECONDS);
+            if ($days < 0) {
+                $overdue_loans[] = array('title' => $title, 'days' => abs($days), 'due_date' => date('d/m/Y', $due));
+            } else {
+                $active_loans[] = array('title' => $title, 'days' => $days, 'due_date' => date('d/m/Y', $due));
+            }
+        } elseif ($loan['status'] === 'returned') {
+            $returned_books[] = $title;
+        }
+    }
+    
+    if (!empty($active_loans)) {
+        $context .= "Empréstimos ativos:\n";
+        foreach ($active_loans as $loan) {
+            $context .= "- \"" . $loan['title'] . "\" | Devolver até: " . $loan['due_date'] . " | Faltam " . $loan['days'] . " dias\n";
+        }
+    }
+    
+    if (!empty($overdue_loans)) {
+        $context .= "EM ATRASO:\n";
+        foreach ($overdue_loans as $loan) {
+            $context .= "- \"" . $loan['title'] . "\" | Deveria ter sido devolvido em: " . $loan['due_date'] . " | " . $loan['days'] . " dias de atraso\n";
+        }
+    }
+    
+    if (!empty($returned_books)) {
+        $ultimos = array_slice($returned_books, -5);
+        $context .= "Últimos livros lidos: " . implode(', ', array_map(function($t) { return '"' . $t . '"'; }, $ultimos)) . "\n";
+    }
+    
+    if (empty($active_loans) && empty($overdue_loans)) {
+        $context .= "Nenhum empréstimo ativo no momento.\n";
+    }
+    
+    return $context;
+}
+
 function bm_ajax_chatbot() {
     check_ajax_referer('bm_chatbot_nonce', 'nonce');
     $message = isset($_POST['message']) ? sanitize_text_field(wp_unslash($_POST['message'])) : '';
@@ -811,7 +839,7 @@ function bm_ajax_chatbot() {
     $groq_key = bm_get_api_key('groq');
     if (empty($groq_key)) wp_die(json_encode(array('reply' => 'Chatbot não configurado.')));
     
-    // Buscar acervo resumido
+    // Buscar acervo resumido com sinopses para recomendação inteligente
     $books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => 30, 'post_status' => 'publish'));
     $catalog = '';
     foreach ($books as $book) {
@@ -820,24 +848,62 @@ function bm_ajax_chatbot() {
         $copies = intval(get_post_meta($book->ID, '_bm_copies', true));
         $borrowed = intval(get_post_meta($book->ID, '_bm_borrowed_count', true));
         $available = $copies - $borrowed;
+        $genres = wp_get_post_terms($book->ID, 'bm_genre', array('fields' => 'names'));
         $disciplines = wp_get_post_terms($book->ID, 'bm_discipline', array('fields' => 'names'));
+        $sinopse = get_post_meta($book->ID, '_bm_dynamic_sinopse', true);
+        $sinopse_curta = $sinopse ? mb_substr(wp_strip_all_tags($sinopse), 0, 300) : '';
         
-        $catalog .= "- " . $book->post_title;
+        $catalog .= "- \"" . $book->post_title . "\"";
         if ($author) $catalog .= " | Autor: " . $author;
+        if (!empty($genres)) $catalog .= " | Gênero: " . implode(', ', $genres);
+        if ($sinopse_curta) $catalog .= " | Sinopse: " . $sinopse_curta;
         if ($location) $catalog .= " | Local: " . $location;
         $catalog .= " | Disponível: " . max(0, $available);
         if (!empty($disciplines)) $catalog .= " | Disciplinas: " . implode(', ', $disciplines);
         $catalog .= "\n";
     }
     
-    $prompt = "Você é um bibliotecário virtual amigável. Use APENAS as informações abaixo para responder. Se não souber, diga que não encontrou.\n\nACERVO:\n" . $catalog . "\n\nPERGUNTA: " . $message . "\n\nResponda em português, de forma útil e direta.";
+    // Persona personalizada da central de APIs
+    $keys = bm_get_api_keys();
+    $persona_chat = isset($keys['groq_persona']) && !empty($keys['groq_persona']) ? $keys['groq_persona'] : '';
+
+    // Contexto do usuário logado
+    $user_context = '';
+    if (is_user_logged_in()) {
+        $user_id = get_current_user_id();
+        $user = wp_get_current_user();
+        if (in_array('bm_student', (array) $user->roles)) {
+            $user_context = bm_get_student_context($user_id);
+        }
+    }
+
+    $prompt = "Você é Diva Barbalho, bibliotecária escolar brasileira, culta, empática e apaixonada por livros. Pode te chamar de Diva. Você trabalha em uma biblioteca escolar e adora ajudar alunos e professores a descobrirem novas leituras.\n";
+    if (!empty($persona_chat)) {
+        $prompt .= "DIRETRIZES DE PERSONALIDADE: " . $persona_chat . "\n";
+    }
+    $prompt .= "\n";
+    $prompt .= "- NUNCA repita saudações como 'Olá' ou 'É um prazer' se o usuário já iniciou a conversa. Vá direto ao ponto.\n";
+    if (!empty($user_context)) {
+        $prompt .= "- Você reconhece o aluno logado e pode comentar sobre os livros que ele está lendo, prazos de devolução ou atrasos, sempre com tom amigável e incentivador, nunca repreensivo.\n";
+        $prompt .= $user_context . "\n";
+    }
+    $prompt .= "- Se perguntarem sobre um livro específico, descreva o enredo, temas e por que ele é interessante, usando a sinopse disponível.\n";
+    $prompt .= "- Se pedirem recomendação, analise o acervo e sugira livros que combinem com o gosto da pessoa. Explique POR QUE cada livro combina.\n";
+    $prompt .= "- Se não encontrar nada no acervo que atenda ao pedido, seja honesta mas ofereça alternativas próximas.\n";
+    $prompt .= "- Limite-se ao acervo disponível. Não invente livros que não estão na lista.\n";
+    $prompt .= "- SEMPRE responda em 1 ou 2 frases curtas e diretas, no máximo 3 frases. Nunca escreva parágrafos longos.\n";
+    $prompt .= "- Só faça respostas mais elaboradas se a pessoa pedir explicitamente uma análise ou recomendação detalhada.\n";
+    $prompt .= "- Responda em português.\n\n";
+    $prompt .= "ACERVO:\n" . $catalog . "\n\n";
+    $prompt .= "PERGUNTA DO USUÁRIO: " . $message . "\n\n";
+    $prompt .= "Resposta da Diva:";
     
     $url = 'https://api.groq.com/openai/v1/chat/completions';
     $body = json_encode(array(
         'model' => 'llama-3.3-70b-versatile',
         'messages' => array(array('role' => 'user', 'content' => $prompt)),
         'temperature' => 0.7,
-        'max_tokens' => 300,
+        'max_tokens' => 500,
     ));
     
     // Contador de chamadas
@@ -845,7 +911,7 @@ function bm_ajax_chatbot() {
     update_option('bm_groq_call_count', $count + 1);
     
     $response = wp_remote_post($url, array(
-        'timeout' => 15,
+        'timeout' => 20,
         'headers' => array('Content-Type' => 'application/json', 'Authorization' => 'Bearer ' . $groq_key),
         'body' => $body,
     ));
@@ -853,7 +919,7 @@ function bm_ajax_chatbot() {
     if (is_wp_error($response)) wp_die(json_encode(array('reply' => 'Erro de conexão.')));
     
     $data = json_decode(wp_remote_retrieve_body($response), true);
-    $reply = isset($data['choices'][0]['message']['content']) ? $data['choices'][0]['message']['content'] : 'Não entendi. Pode reformular?';
+    $reply = isset($data['choices'][0]['message']['content']) ? $data['choices'][0]['message']['content'] : 'Hmm, não consegui entender. Pode perguntar de outro jeito?';
     
     if (isset($data['choices'][0]['message']['content'])) {
         $success = intval(get_option('bm_groq_success_count', 0));
@@ -1035,6 +1101,20 @@ function bm_ajax_service_loan() {
     
     if (!$book_id || !$user_id) wp_die(json_encode(array('success' => false, 'message' => 'Selecione livro e aluno.')));
     
+        // Verificar penalidade ativa
+    $penalty_block = bm_check_penalty_block($user_id);
+    if ($penalty_block) {
+        $msg = __('Empréstimo bloqueado.', 'book-manager');
+        if ($penalty_block['type'] === 'suspension') {
+            $msg .= ' ' . sprintf(__('Aluno suspenso até %s.', 'book-manager'), date('d/m/Y', strtotime($penalty_block['until'])));
+        } elseif ($penalty_block['type'] === 'fine') {
+            $msg .= ' ' . sprintf(__('Aluno possui multa de R$ %.2f em aberto.', 'book-manager'), $penalty_block['value']);
+        } else {
+            $msg .= ' ' . __('Aluno possui advertência ativa.', 'book-manager');
+        }
+        wp_die(json_encode(array('success' => false, 'message' => $msg)));
+    }
+    
     // Verificar consulta local
     if (get_post_meta($book_id, '_bm_consulta_local', true) == '1') {
         wp_die(json_encode(array('success' => false, 'message' => 'Este livro é de consulta local e não pode ser emprestado.')));
@@ -1100,7 +1180,7 @@ function bm_ajax_service_return() {
         wp_die(json_encode(array('success' => false, 'message' => $result['error'])));
     }
     
-    wp_die(json_encode(array('success' => true, 'message' => '✅ Devolvido com sucesso!')));
+    wp_die(json_encode(array('success' => true, 'message' => '✅ ' . $result['message'])));
 }
 add_action('wp_ajax_bm_service_return', 'bm_ajax_service_return');
 
@@ -1144,6 +1224,88 @@ function bm_ajax_service_renew() {
     wp_die(json_encode(array('success' => true, 'message' => '🔄 Renovado! Nova data de devolução: ' . $new_due)));
 }
 add_action('wp_ajax_bm_service_renew', 'bm_ajax_service_renew');
+
+
+function bm_ajax_reject_reservation() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $book_id = intval($_POST['book_id']);
+    $user_id = intval($_POST['user_id']);
+    
+    $result = bm_reject_reservation($book_id, $user_id);
+    if (isset($result['error'])) {
+        wp_die(json_encode(array('success' => false, 'message' => $result['error'])));
+    }
+    wp_die(json_encode(array('success' => true, 'message' => $result['message'])));
+}
+add_action('wp_ajax_bm_reject_reservation', 'bm_ajax_reject_reservation');
+
+
+function bm_ajax_undo_loan() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $book_id = intval($_POST['book_id']);
+    $user_id = intval($_POST['user_id']);
+    
+    $result = bm_undo_loan($book_id, $user_id);
+    if (isset($result['error'])) {
+        wp_die(json_encode(array('success' => false, 'message' => $result['error'])));
+    }
+    wp_die(json_encode(array('success' => true, 'message' => $result['message'])));
+}
+add_action('wp_ajax_bm_undo_loan', 'bm_ajax_undo_loan');
+
+// Renovação feita pelo próprio aluno no dashboard
+function bm_ajax_renew_loan() {
+    if (!is_user_logged_in()) wp_die(json_encode(array('success' => false, 'message' => 'Faça login.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $book_id = intval($_POST['book_id']);
+    $user_id = intval($_POST['user_id']);
+    
+    if (get_current_user_id() != $user_id) {
+        wp_die(json_encode(array('success' => false, 'message' => 'Você só pode renovar seus próprios livros.')));
+    }
+    
+    // Verificar fila de espera
+    $reservations = get_post_meta($book_id, '_bm_reservations', true) ?: array();
+    $has_queue = false;
+    foreach ($reservations as $r) {
+        if ($r['status'] === 'waiting' && $r['user_id'] != $user_id) {
+            $has_queue = true;
+            break;
+        }
+    }
+    
+    if ($has_queue) {
+        wp_die(json_encode(array('success' => false, 'message' => 'Há alunos na fila de espera. Não é possível renovar.')));
+    }
+    
+    $days = 7;
+    
+    // Atualizar due_date
+    foreach ($reservations as &$r) {
+        if ($r['user_id'] == $user_id && $r['status'] === 'active') {
+            $r['due_date'] = date('Y-m-d H:i:s', strtotime('+' . $days . ' days', strtotime($r['due_date'])));
+            break;
+        }
+    }
+    update_post_meta($book_id, '_bm_reservations', $reservations);
+    
+    $loan_history = get_user_meta($user_id, '_bm_loan_history', true) ?: array();
+    foreach ($loan_history as &$loan) {
+        if ($loan['book_id'] == $book_id && $loan['status'] === 'active') {
+            $loan['due_date'] = date('Y-m-d H:i:s', strtotime('+' . $days . ' days', strtotime($loan['due_date'])));
+            break;
+        }
+    }
+    update_user_meta($user_id, '_bm_loan_history', $loan_history);
+    
+    wp_die(json_encode(array('success' => true, 'message' => '🔄 Renovado por mais ' . $days . ' dias!')));
+}
+add_action('wp_ajax_bm_renew_loan', 'bm_ajax_renew_loan');
 
 // Cadastro rápido de aluno
 function bm_ajax_service_quick_register() {

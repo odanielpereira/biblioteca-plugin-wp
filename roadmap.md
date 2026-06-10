@@ -311,19 +311,19 @@
     8.  [x] Importação dedicada de Número de Chamada via CSV para bibliotecas em migração.
     9.  [ ] Barra de progresso na importação CSV com animação CSS. → MOVIDO PARA CICLO DE PÓS-POLIMENTO
 
-### Fase 20 (Polimento) — Capas, Filtros, IA e APIs
-*   **Descrição:** Refinar integração com Google Books, Groq e ChatGPT.
-*   **Tarefas:**
-    1.  [x] Avaliar opção de hotlink vs download local para economizar espaço.
-    2.  [ ] Ajustar responsividade das capas no archive.
-    3.  [ ] Corrigir cruzamento de filtros no archive nativo (/livros/).
-    4.  [x] Refatorar constantes do wp-config para usar central de APIs.
-    5.  [ ] Refinar prompt da classificação por IA: respostas mais detalhadas e lúdicas.
-    6.  [ ] Configurar persona/tom da IA na central de APIs.
-    7.  [ ] Configurações do Chatbot: ativar/desativar, restringir por perfil, definir persona.
-    8.  [ ] Preenchimento automático via ISBN: buscar dados completos via Google Books API. → MOVIDO PARA CICLO DE PÓS-POLIMENTO
-    9.  [ ] Buscar avaliação (rating) do Google Books e exibir na página do livro. → MOVIDO PARA CICLO DE PÓS-POLIMENTO
-    10. [ ] Buscar livros relacionados via Google Books API e exibir como "Leituras recomendadas". → MOVIDO PARA CICLO DE PÓS-POLIMENTOlivros relacionados via Google Books API e exibir como "Leituras recomendadas".
+### Fase 20 (Polimento) — Capas, Filtros, IA e APIs ← CONCLUÍDA
+- **Descrição:** Refinar integração com Google Books, Groq e ChatGPT.
+- **Tarefas:**
+    1. [x] Avaliar opção de hotlink vs download local para economizar espaço.
+    2. [x] Ajustar responsividade das capas no archive.
+    3. [x] Corrigir cruzamento de filtros no archive nativo (/livros/).
+    4. [x] Refatorar constantes do wp-config para usar central de APIs.
+    5. [x] Refinar prompt da classificação por IA: respostas mais detalhadas e lúdicas.
+    6. [x] Configurar persona/tom da IA na central de APIs.
+    7. [x] Configurações do Chatbot: ativar/desativar.
+    8. [ ] Preenchimento automático via ISBN → MOVIDO PARA PÓS-POLIMENTO
+    9. [ ] Buscar avaliação do Google Books → MOVIDO PARA PÓS-POLIMENTO
+    10. [ ] Livros relacionados via Google Books → MOVIDO PARA PÓS-POLIMENTO
 
 ### Fase 21 (Polimento) — Páginas Públicas (archive e single)
 *   **Descrição:** Refinar layout e exibição pública dos livros.
@@ -339,26 +339,35 @@
     2.  [ ] Exportar: checkboxes para módulos (livros, alunos, histórico, fichas, taxonomias, configurações) ou "Tudo". ZIP com CSVs ou CSV único. Opção XML.
     3.  [ ] Importar: upload de ZIP ou CSVs individuais com mapeamento dinâmico.
 
-### Fase 23 (Polimento) — Sistema de Multas
-*   **Descrição:** Sistema configurável de penalidades por atraso.
-*   **Tarefas:**
-    1.  [ ] Página "Regras de Multa" nas Configurações: tipo, duração/valor, progressão.
-    2.  [ ] Cálculo automático ao devolver com atraso.
-    3.  [ ] Histórico de multas na página individual do aluno.
-    4.  [ ] Bloqueio automático se multa ativa.
-    5.  [ ] Notificação de multa via WhatsApp.
+### Fase 23 (Polimento) — Sistema de Multas ← CONCLUÍDA
+- **Descrição:** Sistema configurável de penalidades por atraso.
+- **Tarefas:**
+    1. [x] Página "Regras de Multa" nas Configurações: tipo, duração/valor, progressão.
+    2. [x] Cálculo automático ao devolver com atraso (bm_calculate_penalty).
+    3. [x] Histórico de multas na página individual do aluno.
+    4. [x] Bloqueio automático se multa ativa (bm_check_penalty_block).
+    5. [x] Notificação de multa via WhatsApp.
+    6. [x] Penalidade manual individual pelo Gestor.
+    7. [x] Descrições nas penalidades e anotações de devolução.
+    8. [x] Dashboard do aluno exibe "Minhas Ocorrências".
 
-### Fase 24 (Polimento) — Empréstimos, Reservas e WhatsApp
-*   **Descrição:** Refinar fluxo de circulação e notificações.
-*   **Tarefas:**
-    1.  [ ] Melhorar interface de reserva para Professor/Gestor (dropdown de alunos).
-    2.  [ ] Melhorar clareza visual dos números de estoque.
-    3.  [ ] Refinar contador regressivo: notificações automáticas por e-mail.
-    4.  [ ] Contador de mensagens WhatsApp enviadas por empréstimo.
-    5.  [ ] Corrigir bug: aluno sem limites de reserva.
-    6.  [ ] Refinar monitoramento do Professor.
-    7.  [ ] Notificação por e-mail: lembrete de devolução, reserva disponível, multa.
-    8.  [ ] Renovação online pelo aluno sem intervenção do Gestor.
+### Fase 24 (Polimento) — Empréstimos, Reservas e WhatsApp ← CONCLUÍDA
+- **Descrição:** Refinar fluxo de circulação e notificações.
+- **Tarefas:**
+    1. [x] Melhorar interface de reserva para Professor/Gestor (dropdown de alunos).
+    2. [x] Melhorar clareza visual dos números de estoque (barra de progresso).
+    3. [ ] Refinar contador regressivo: notificações automáticas por e-mail. → MOVIDO PARA PÓS-POLIMENTO
+    4. [x] Contador de mensagens WhatsApp enviadas por empréstimo.
+    5. [x] Corrigir bug: aluno sem limites de reserva.
+    6. [ ] Refinar monitoramento do Professor. → MOVIDO PARA PÓS-POLIMENTO
+    7. [ ] Notificação por e-mail: lembrete de devolução, reserva disponível, multa. → MOVIDO PARA PÓS-POLIMENTO
+    8. [x] Renovação online pelo aluno sem intervenção do Gestor.
+    9. [x] Bloquear reserva para aluno com atraso (modal explicativo).
+    10. [x] Fila de espera notifica automaticamente próximo aluno via WhatsApp.
+    11. [x] Devolver livro na página de detalhes do aluno (sincronização bidirecional).
+    12. [x] Filtro de busca textual na página de empréstimos.
+    13. [x] Links na tabela de empréstimos (livro e aluno).
+    14. [x] Todos os botões de empréstimos convertidos para AJAX.
 
 ### Fase 25 (Polimento) — Funcionalidades para Biblioteca Escolar
 *   **Descrição:** Recursos específicos para o contexto escolar brasileiro.
