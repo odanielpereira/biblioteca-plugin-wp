@@ -26,6 +26,7 @@ function bm_render_book_details_metabox( $post ) {
         '_bm_isbn'      => array('label' => __('ISBN:','book-manager'), 'type' => 'text'),
         '_bm_location'  => array('label' => __('Localização:','book-manager'), 'type' => 'text'),
         '_bm_copies'    => array('label' => __('Exemplares:','book-manager'), 'type' => 'number'),
+        '_bm_library_unit' => array('label' => __('Unidade:','book-manager'), 'type' => 'text'),
     );
     $dynamic_fields = get_option('bm_dynamic_fields', array());
     $saved_order = get_option('bm_field_order', array());
@@ -113,7 +114,7 @@ function bm_save_book_details_metabox_data( $post_id ) {
     if (!isset($_POST['bm_book_details_nonce']) || !wp_verify_nonce($_POST['bm_book_details_nonce'],'bm_save_book_details')) return;
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
-    foreach (array('_bm_author','_bm_publisher','_bm_isbn','_bm_location') as $f) {
+    foreach (array('_bm_author','_bm_publisher','_bm_isbn','_bm_location','_bm_library_unit') as $f) {
         if (isset($_POST[$f])) update_post_meta($post_id, $f, sanitize_text_field($_POST[$f]));
     }
     if (isset($_POST['_bm_copies'])) update_post_meta($post_id, '_bm_copies', absint($_POST['_bm_copies']));
@@ -2083,6 +2084,50 @@ function bm_render_student_import_page() {
 // FASE 11C: GERAÇÃO DE ETIQUETAS
 // ==========================================
 
+function bm_add_acquisition_suggestions_page() {
+    add_submenu_page('edit.php?post_type=bm_book', __('Sugestões de Aquisição', 'book-manager'), __('Sugestões de Aquisição', 'book-manager'), 'edit_bm_books', 'bm_acquisition_suggestions', 'bm_render_acquisition_suggestions_page');
+}
+add_action('admin_menu', 'bm_add_acquisition_suggestions_page');
+
+function bm_render_acquisition_suggestions_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $suggestions = get_option('bm_acquisition_suggestions', array());
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Sugestões de Aquisição', 'book-manager'); ?></h1>
+        <?php if (empty($suggestions)): ?>
+            <p><?php _e('Nenhuma sugestão recebida.', 'book-manager'); ?></p>
+        <?php else: ?>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Usuário', 'book-manager'); ?></th>
+                        <th><?php _e('Título', 'book-manager'); ?></th>
+                        <th><?php _e('Autor', 'book-manager'); ?></th>
+                        <th><?php _e('Editora', 'book-manager'); ?></th>
+                        <th><?php _e('Motivo', 'book-manager'); ?></th>
+                        <th><?php _e('Data', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach (array_reverse($suggestions) as $s): ?>
+                        <tr>
+                            <td><?php echo esc_html($s['user_name']); ?></td>
+                            <td><strong><?php echo esc_html($s['title']); ?></strong></td>
+                            <td><?php echo esc_html($s['author'] ?: '—'); ?></td>
+                            <td><?php echo esc_html($s['publisher'] ?: '—'); ?></td>
+                            <td><?php echo esc_html($s['reason'] ?: '—'); ?></td>
+                            <td><?php echo date('d/m/Y', strtotime($s['date'])); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
 function bm_add_labels_page() {
     add_submenu_page('edit.php?post_type=bm_book', __('Etiquetas', 'book-manager'), __('Etiquetas', 'book-manager'), 'edit_bm_books', 'bm_labels', 'bm_render_labels_page');
 }
@@ -2330,10 +2375,10 @@ function bm_ajax_print_labels() {
         <meta charset="UTF-8">
         <title><?php _e('Etiquetas — Visualização', 'book-manager'); ?></title>
         <style>
-            @page { size: A4; margin: 1cm 0.5cm; }
+            @page { size: A4; margin: 1.2cm 0.3cm 0.2cm 0.3cm; }
             body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-            .labels-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.2cm; padding: 0; }
-            .label { border: 1px dashed #ccc; padding: 0.3cm 0.2cm; text-align: center; height: 2.7cm; display: flex; flex-direction: column; justify-content: center; page-break-inside: avoid; }
+            .labels-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.15cm; padding: 0; }
+            .label { border: 1px dashed #ccc; padding: 0.2cm 0.15cm; text-align: center; height: 2.4cm; display: flex; flex-direction: column; justify-content: center; page-break-inside: avoid; }
             .label .author { font-weight: bold; font-size: 12px; text-transform: uppercase; margin-bottom: 2px; }
             .label .title { font-size: 10px; margin-bottom: 3px; }
             .label .cdu { font-weight: bold; font-size: 16px; margin-bottom: 2px; }
@@ -2773,7 +2818,10 @@ function bm_render_settings_page() {
         $settings['default_loan_days'] = absint($_POST['default_loan_days']);
         $settings['reservation_hours'] = absint($_POST['reservation_hours']);
         $settings['classification_system'] = isset($_POST['classification_system']) && $_POST['classification_system'] === 'cdd' ? 'cdd' : 'cdu';
-                    if (isset($_POST['cover_mode'])) {
+                if (isset($_POST['call_number_order']) && is_array($_POST['call_number_order'])) {
+            $settings['call_number_order'] = array_map('sanitize_text_field', $_POST['call_number_order']);
+        }
+        if (isset($_POST['cover_mode'])) {
             $settings['cover_mode'] = $_POST['cover_mode'] === 'hotlink' ? 'hotlink' : 'download';
         }    
         if (isset($_POST['librarian_permissions']) && is_array($_POST['librarian_permissions'])) {
@@ -2967,6 +3015,34 @@ function bm_render_settings_page() {
                 </tr>
             </table>
             
+            <h2><?php _e('Ordem do Número de Chamada', 'book-manager'); ?></h2>
+            <p class="description"><?php _e('Arraste para definir a ordem de exibição.', 'book-manager'); ?></p>
+            <?php 
+            $call_number_order = isset($settings['call_number_order']) ? $settings['call_number_order'] : array('cdu', 'cutter', 'author', 'title', 'edition', 'volume', 'copies');
+            $order_labels = array(
+                'cdu' => __('Classificação', 'book-manager'),
+                'cutter' => __('Cutter', 'book-manager'),
+                'author' => __('Autor', 'book-manager'),
+                'title' => __('Título', 'book-manager'),
+                'edition' => __('Edição', 'book-manager'),
+                'volume' => __('Volume', 'book-manager'),
+                'copies' => __('Exemplares', 'book-manager'),
+            );
+            ?>
+            <ul id="bm-call-number-order" style="max-width:300px;list-style:none;padding:0;">
+                <?php foreach ($call_number_order as $field): ?>
+                    <li style="background:#f9f9f9;padding:8px 12px;margin:3px 0;border:1px solid #ddd;border-radius:4px;cursor:move;">
+                        <span class="dashicons dashicons-menu" style="color:#999;margin-right:8px;"></span>
+                        <?php echo esc_html($order_labels[$field]); ?>
+                        <input type="hidden" name="call_number_order[]" value="<?php echo esc_attr($field); ?>" />
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+            <script>
+            jQuery(document).ready(function($) {
+                $('#bm-call-number-order').sortable({handle: '.dashicons-menu'});
+            });
+            </script>
 
             <h2>Sistema de Classificação</h2>
             <table class="form-table">

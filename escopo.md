@@ -646,3 +646,27 @@ Todo dado exibido em HTML deve ser escapado no contexto correto.
 - ❌ Ação irreversível sem confirmação explícita
 - ❌ Arquivo PHP acessível diretamente sem `ABSPATH`
 - ❌ Usar `$_REQUEST` — sempre `$_POST` ou `$_GET` explícitos
+
+## 17. PREMISSAS DE PERFORMANCE (OBRIGATÓRIO)
+
+### 17.1 CSS e JavaScript
+- Estilos repetidos devem ser extraídos para arquivo `book-manager.css` externo
+- Scripts repetidos devem ser extraídos para arquivo `book-manager.js` externo
+- Usar `wp_enqueue_style()` e `wp_enqueue_script()` para carregamento
+- CSS/JS inline só para estilos verdadeiramente dinâmicos (ex: cores baseadas em opções)
+
+### 17.2 Banco de Dados
+- Listagens nunca usam `posts_per_page = -1` — sempre paginar (limite 20-50)
+- Consultas pesadas devem usar `bm_get_cached()` / `bm_set_cached()` com transients
+- Dashboards, rankings e relatórios obrigatoriamente usam cache (5 minutos padrão)
+
+### 17.3 AJAX
+- Usar AJAX apenas onde melhora a experiência do usuário
+- Ações administrativas com AJAX: Confirmar, Devolver, Rejeitar, Desfazer, Renovar
+- Não usar AJAX para carregamento inicial de páginas
+- Todo handler AJAX deve verificar nonce e capability
+
+### 17.4 Impacto Visual
+- Cada funcionalidade nova deve considerar: isso adiciona HTML/CSS/JS pesado?
+- Preferir soluções nativas do WordPress a bibliotecas externas
+- Gráficos (Fase 31/32): usar CSS puro para gráficos simples, Chart.js local para complexos

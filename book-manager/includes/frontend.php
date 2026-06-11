@@ -1226,6 +1226,75 @@ function bm_ajax_service_renew() {
 add_action('wp_ajax_bm_service_renew', 'bm_ajax_service_renew');
 
 
+function bm_ajax_advance_reserve() {
+    if (!is_user_logged_in()) wp_die(json_encode(array('success' => false, 'error' => 'Faça login.')));
+    check_ajax_referer('bm_reserve_nonce', 'nonce');
+    
+    $book_id = intval($_POST['book_id']);
+    $user_id = get_current_user_id();
+    $group = sanitize_text_field($_POST['group']);
+    $start_date = sanitize_text_field($_POST['start_date']);
+    $end_date = sanitize_text_field($_POST['end_date']);
+    
+    if (!$book_id || empty($group) || empty($start_date) || empty($end_date)) {
+        wp_die(json_encode(array('success' => false, 'error' => 'Preencha todos os campos.')));
+    }
+    
+    $reservations = get_post_meta($book_id, '_bm_bulk_reservation', true) ?: array();
+    $student_id = isset($_POST['student_id']) ? intval($_POST['student_id']) : 0;
+    
+    $reservations[] = array(
+        'teacher_id' => $user_id,
+        'group' => $group,
+        'start_date' => $start_date,
+        'end_date' => $end_date,
+        'status' => 'active',
+        'student_id' => $student_id,
+        'created_at' => current_time('mysql'),
+    );
+    update_post_meta($book_id, '_bm_bulk_reservation', $reservations);
+    
+    bm_log_audit($book_id, "Reserva antecipada por professor #$user_id para turma $group ($start_date até $end_date)");
+    
+    wp_die(json_encode(array('success' => true, 'message' => '📅 Reserva antecipada confirmada para ' . date('d/m/Y', strtotime($start_date)) . '!')));
+}
+add_action('wp_ajax_bm_advance_reserve', 'bm_ajax_advance_reserve');
+
+
+function bm_ajax_separate_advance() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $book_id = intval($_POST['book_id']);
+    $index = intval($_POST['index']);
+    
+    $bulk = get_post_meta($book_id, '_bm_bulk_reservation', true) ?: array();
+    if (isset($bulk[$index])) {
+        $bulk[$index]['status'] = 'separated';
+        update_post_meta($book_id, '_bm_bulk_reservation', $bulk);
+        wp_die(json_encode(array('success' => true)));
+    }
+    wp_die(json_encode(array('success' => false, 'message' => 'Registro não encontrado.')));
+}
+add_action('wp_ajax_bm_separate_advance', 'bm_ajax_separate_advance');
+
+function bm_ajax_cancel_advance() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
+    check_ajax_referer('bm_service_nonce', 'nonce');
+    
+    $book_id = intval($_POST['book_id']);
+    $index = intval($_POST['index']);
+    
+    $bulk = get_post_meta($book_id, '_bm_bulk_reservation', true) ?: array();
+    if (isset($bulk[$index])) {
+        $bulk[$index]['status'] = 'cancelled';
+        update_post_meta($book_id, '_bm_bulk_reservation', $bulk);
+        wp_die(json_encode(array('success' => true)));
+    }
+    wp_die(json_encode(array('success' => false, 'message' => 'Registro não encontrado.')));
+}
+add_action('wp_ajax_bm_cancel_advance', 'bm_ajax_cancel_advance');
+
 function bm_ajax_reject_reservation() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -1787,15 +1856,39 @@ function bm_display_call_number($book_id = null) {
         $author_formatted = count($parts) > 1 ? mb_strtoupper(array_pop($parts)) . ', ' . implode(' ', $parts) : mb_strtoupper($author);
     }
     
+    $settings = bm_get_settings();
+    $order = isset($settings['call_number_order']) ? $settings['call_number_order'] : array('cdu', 'cutter', 'author', 'title', 'edition', 'volume', 'copies');
+    
+    $lines = array();
+    foreach ($order as $field) {
+        switch ($field) {
+            case 'cdu':
+                if ($cdu) $lines[] = '<p style="font-size:18px;font-weight:bold;margin:5px 0;">' . esc_html($cdu) . '</p>';
+                break;
+            case 'cutter':
+                if ($cutter) $lines[] = '<p style="font-size:18px;font-weight:bold;margin:5px 0;">' . esc_html($cutter) . '</p>';
+                break;
+            case 'author':
+                if ($author_formatted) $lines[] = '<p style="font-size:10px;font-weight:bold;margin:2px 0;">' . esc_html($author_formatted) . '</p>';
+                break;
+            case 'title':
+                $lines[] = '<p style="font-size:10px;margin:2px 0;">' . esc_html($title) . '</p>';
+                break;
+            case 'edition':
+                if ($edition) $lines[] = '<p style="margin:3px 0;color:#666;">' . esc_html($edition) . '</p>';
+                break;
+            case 'volume':
+                if ($volume) $lines[] = '<p style="margin:3px 0;color:#666;">' . esc_html($volume) . '</p>';
+                break;
+            case 'copies':
+                if ($copies > 0) $lines[] = '<p style="margin:3px 0;color:#666;">' . sprintf(__('%d exemplares', 'book-manager'), $copies) . '</p>';
+                break;
+        }
+    }
+    
     $html = '<hr><h2>📋 ' . __('Número de Chamada', 'book-manager') . '</h2>';
     $html .= '<div style="background:#f9f9f9;padding:15px;border-radius:8px;border:1px solid #ddd;max-width:300px;margin:0 auto;text-align:center;">';
-    $html .= '<p style="font-size:10px;margin:2px 0;">' . esc_html($title) . '</p>';
-    if ($author_formatted) $html .= '<p style="font-size:10px;font-weight:bold;margin:2px 0;">' . esc_html($author_formatted) . '</p>';
-    $html .= '<p style="font-size:18px;font-weight:bold;margin:5px 0;">' . esc_html($cdu) . '</p>';
-    $html .= '<p style="font-size:18px;font-weight:bold;margin:5px 0;">' . esc_html($cutter) . '</p>';
-    if ($volume) $html .= '<p style="margin:3px 0;color:#666;">' . esc_html($volume) . '</p>';
-    if ($edition) $html .= '<p style="margin:3px 0;color:#666;">' . esc_html($edition) . '</p>';
-    if ($copies > 0) $html .= '<p style="margin:3px 0;color:#666;">' . sprintf(__('%d exemplares', 'book-manager'), $copies) . '</p>';
+    $html .= implode('', $lines);
     $html .= '</div>';
     
     return $html;

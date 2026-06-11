@@ -41,6 +41,12 @@ $wl = bm_get_white_label();
                 <?php if ($categories): ?><p><strong>Categoria:</strong> <?php echo esc_html(implode(', ', $categories)); ?></p><?php endif; ?>
 
                 <?php if (function_exists('bm_display_stock_info')) echo bm_display_stock_info(); ?>
+                                <div style="margin:15px 0;display:flex;gap:8px;flex-wrap:wrap;">
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode(get_permalink()); ?>" target="_blank" rel="noopener" style="display:inline-block;padding:6px 12px;background:#1877f2;color:#fff;border-radius:4px;text-decoration:none;font-size:12px;">📘 Facebook</a>
+                    <a href="https://www.instagram.com/" target="_blank" rel="noopener" style="display:inline-block;padding:6px 12px;background:#e4405f;color:#fff;border-radius:4px;text-decoration:none;font-size:12px;">📷 Instagram</a>
+                    <a href="https://www.tiktok.com/" target="_blank" rel="noopener" style="display:inline-block;padding:6px 12px;background:#000;color:#fff;border-radius:4px;text-decoration:none;font-size:12px;">🎵 TikTok</a>
+                    <a href="https://wa.me/?text=<?php echo urlencode(get_the_title() . ' — ' . get_permalink()); ?>" target="_blank" rel="noopener" style="display:inline-block;padding:6px 12px;background:#25d366;color:#fff;border-radius:4px;text-decoration:none;font-size:12px;">💬 WhatsApp</a>
+                </div>
                 <?php if (function_exists('bm_reserve_button')) bm_reserve_button(); ?>
                 <?php if (function_exists('bm_label_button')) bm_label_button(); ?>
 
@@ -208,7 +214,12 @@ $wl = bm_get_white_label();
             }
         }
         if (!empty($approved_reviews)):
-            $approved_reviews = array_reverse($approved_reviews);
+            usort($approved_reviews, function($a, $b) {
+                $a_featured = isset($a['featured']) && $a['featured'] ? 1 : 0;
+                $b_featured = isset($b['featured']) && $b['featured'] ? 1 : 0;
+                if ($a_featured !== $b_featured) return $b_featured - $a_featured;
+                return strtotime($b['date']) - strtotime($a['date']);
+            });
         ?>
             <hr>
             <h2><?php _e('Resenhas dos Leitores', 'book-manager'); ?></h2>
@@ -247,8 +258,15 @@ $wl = bm_get_white_label();
                 </div>
             <?php endif; ?>
             <h3>📝 <?php _e('Resenhas', 'book-manager'); ?></h3>
-            <?php foreach ($approved_reviews as $review): ?>
-                <div style="background:#f9f9f9;padding:15px;border-radius:8px;margin-bottom:10px;">
+            <?php foreach ($approved_reviews as $review): 
+                $is_featured = isset($review['featured']) && $review['featured'];
+                $bg = $is_featured ? '#fff8e1' : '#f9f9f9';
+                $border = $is_featured ? 'border-left:4px solid #ffc107;' : '';
+            ?>
+                <div style="background:<?php echo $bg; ?>;padding:15px;border-radius:8px;margin-bottom:10px;<?php echo $border; ?>">
+                    <?php if ($is_featured): ?>
+                        <div style="color:#ffc107;font-size:12px;margin-bottom:5px;">⭐ <?php _e('Curadoria da Biblioteca', 'book-manager'); ?></div>
+                    <?php endif; ?>
                     <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;">
                         <?php if ($review['user_avatar']): ?>
                             <img src="<?php echo esc_url($review['user_avatar']); ?>" style="width:30px;height:30px;border-radius:50%;" alt="" />

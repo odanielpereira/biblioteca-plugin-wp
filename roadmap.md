@@ -372,60 +372,60 @@
 ### Fase 25 (Polimento) — Funcionalidades para Biblioteca Escolar
 *   **Descrição:** Recursos específicos para o contexto escolar brasileiro.
 *   **Tarefas:**
-    1.  [ ] Reserva antecipada para professor.
-    2.  [ ] Lista de leitura obrigatória.
-    3.  [ ] Relatório de turma.
-    4.  [ ] Painel de aniversariantes.
-    5.  [ ] Empréstimo entre bibliotecas.
+    1.  [x] Reserva antecipada para professor.
+    2.  [ ] Lista de leitura obrigatória. → MOVIDO PARA PÓS-POLIMENTO
+    3.  [ ] Relatório de turma. → MOVIDO PARA FASES 31/32
+    4.  [x] Painel de aniversariantes.
+    5.  [ ] Empréstimo entre bibliotecas.  → MOVIDO PARA PÓS-POLIMENTO
 
 ### Fase 26 (Polimento) — Funcionalidades para Qualquer Biblioteca
 *   **Descrição:** Recursos universais para qualquer tipo de biblioteca.
 *   **Tarefas:**
-    1.  [ ] Sugestão de aquisição.
-    2.  [ ] Catálogo público com busca avançada expandida.
-    3.  [ ] Integração com redes sociais.
-    4.  [ ] Modo acessibilidade.
-    5.  [ ] API pública do acervo.
-    6.  [ ] Estatísticas de uso.
-    7.  [ ] Checklist de inventário.
+    1.  [x] Sugestão de aquisição.
+    2.  [ ] Catálogo público com busca avançada expandida. → MOVIDO PARA PÓS-POLIMENTO
+    3.  [x] Integração com redes sociais.
+    4.  [ ] Modo acessibilidade. → MOVIDO PARA PÓS-POLIMENTO
+    5.  [ ] API pública do acervo. → MOVIDO PARA PÓS-POLIMENTO
+    6.  [ ] Estatísticas de uso. → MOVIDO PARA FASE 31
+    7.  [ ] Checklist de inventário. → MOVIDO PARA PÓS-POLIMENTO
 
 ### Fase 27 (Polimento) — Dashboards, Perfis e Gamificação
 *   **Descrição:** Refinar painéis de controle e sistema de engajamento.
 *   **Tarefas:**
-    1.  [ ] Substituir todos os alert() restantes por modal.
-    2.  [ ] Dashboard de leitura com seletor de período.
-    3.  [ ] Ranking no dashboard do aluno: exibir posição e comparação.
-    4.  [ ] Filtros configuráveis no ranking.
-    5.  [ ] Perfil público do leitor.
-    6.  [ ] Vitrine de resenhas no perfil público do aluno.
-    7.  [ ] Curadoria de resenhas na página do livro.
-    8.  [ ] Ranking de livros: shortcode [bm_top_books].
-    9.  [ ] Dashboard enriquecido com relatórios e gráficos.
-    10. [ ] Design system para dashboards: cards interativos, gráficos, ícones.
-    11. [ ] Exibir XP ganho por ficha na seção "Minhas Fichas".
-    12. [ ] Gestor/Admin definir XP manualmente ao aprovar ficha.
-    13. [ ] Exibir XP na seção Minhas Fichas.
-    14. [ ] Link "Minhas Fichas" no dashboard do aluno.
-    15. [ ] Duplicação de Nome e E-mail na edição nativa de usuário.
+    1.  [x] Substituir todos os alert() restantes por modal.
+    2.  [x] Dashboard de leitura com seletor de período.
+    3.  [x] Ranking no dashboard do aluno: exibir posição e comparação.
+    4.  [x] Filtros configuráveis no ranking.
+    5.  [x] Perfil público do leitor.
+    6.  [x] Vitrine de resenhas no perfil público do aluno.
+    7.  [x] Curadoria de resenhas na página do livro.
+    8.  [x] Ranking de livros: shortcode [bm_top_books].
+    9.  [ ] Dashboard enriquecido com relatórios e gráficos. → MOVIDO PARA PÓS-POLIMENTO (Stitch)
+    10. [ ] Design system para dashboards: cards interativos, gráficos, ícones. → MOVIDO PARA PÓS-POLIMENTO (Stitch)
+    11. [x] Exibir XP ganho por ficha na seção "Minhas Fichas".
+    12. [x] Gestor/Admin definir XP manualmente ao aprovar ficha.
+    13. [x] Exibir XP na seção Minhas Fichas.
+    14. [x] Link "Minhas Fichas" no dashboard do aluno.
+    15. [x] Duplicação de Nome e E-mail na edição nativa de usuário..
 
 ### Fase 28 (Polimento) — Vídeo e Embed
 *   **Descrição:** Suporte a vídeos e correções de embed.
 *   **Tarefas:**
-    1.  [ ] Vídeo-resenhas na página do livro via importação CSV.
-    2.  [ ] Suporte a Instagram Reels no embed.
-    3.  [ ] Corrigir embed de TikTok e Instagram: altura, largura, scrollbar.
+    1.  [x] Vídeo-resenhas na página do livro via importação CSV.
+    2.  [ ] Suporte a Instagram Reels no embed. → REMOVIDO DO ESCOPO
+    3.  [ ] Corrigir embed de TikTok e Instagram: altura, largura, scrollbar. → REMOVIDO DO ESCOPO
 
 ### Fase 29 (Polimento) — Etiquetas e Número de Chamada
 *   **Descrição:** Refinar impressão e catalogação.
 *   **Tarefas:**
-    1.  [ ] Reordenação configurável das linhas do Número de Chamada.
-    2.  [ ] Otimizar layout da folha A4: reduzir margem para 27 etiquetas.
+    1.  [x] Reordenação configurável das linhas do Número de Chamada.
+    2.  [x] Otimizar layout da folha A4: reduzir margem para 27 etiquetas.
 
 ### Fase 30 (Polimento) — Página de Instalação e Identidade Visual
 *   **Descrição:** Primeiro acesso e personalização inicial.
 *   **Tarefas:**
-    1.  [ ] Página de instalação (primeiro acesso): obriga criação do Super Admin + nome da escola.
-    2.  [x] Página de configurações para API Keys. (✅ concluído)
+    1.  [ ] Página de instalação (primeiro acesso): obriga criação do Super Admin + nome da escola. → REMOVIDO DO ESCOPO
+    2.  [x] Página de configurações para API Keys.
 
 ### Fase 31 (Polimento) — Sistema de Relatórios
 *   **Descrição:** Motor completo de relatórios configuráveis.

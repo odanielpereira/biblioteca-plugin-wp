@@ -99,11 +99,11 @@ if (isset($_GET['bm_search']) && !empty($_GET['bm_search'])) {
     $args['s'] = sanitize_text_field($_GET['bm_search']);
 }
 
-query_posts($args);
+$bm_query = new WP_Query($args);
 ?>
-    <?php if (have_posts()): ?>
+    <?php if ($bm_query->have_posts()): ?>
         <div class="bm-book-grid">
-            <?php while (have_posts()): the_post(); ?>
+            <?php while ($bm_query->have_posts()): $bm_query->the_post(); ?>
                 <div class="bm-book-card">
                     <a href="<?php the_permalink(); ?>">
                         <?php 
@@ -136,11 +136,16 @@ query_posts($args);
 
         <div class="bm-pagination">
             <?php
-            the_posts_pagination(array(
-                'mid_size' => 2,
+            $big = 999999999;
+            echo paginate_links(array(
+                'base' => str_replace($big, '%#%', esc_url(get_pagenum_link($big))),
+                'format' => '?paged=%#%',
+                'current' => max(1, $paged),
+                'total' => $bm_query->max_num_pages,
                 'prev_text' => '←',
                 'next_text' => '→',
             ));
+
             ?>
         </div>
     <?php else: ?>
