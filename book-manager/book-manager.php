@@ -20,6 +20,7 @@ defined('ABSPATH') || exit;
 require_once plugin_dir_path(__FILE__) . 'includes/admin.php';
 require_once plugin_dir_path(__FILE__) . 'includes/frontend.php';
 require_once plugin_dir_path(__FILE__) . 'includes/users.php';
+require_once plugin_dir_path(__FILE__) . 'includes/reports.php';
 
 // ==========================================
 // FASE 1: CUSTOM POST TYPE

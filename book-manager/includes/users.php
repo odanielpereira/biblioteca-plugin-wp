@@ -1323,6 +1323,30 @@ function bm_render_loans_page_content() {
             $result = bm_undo_loan($book_id, $user_id);
         } elseif ($action === 'reject') {
             $result = bm_reject_reservation($book_id, $user_id);
+        } elseif ($action === 'renew') {
+            $reservations = get_post_meta($book_id, '_bm_reservations', true) ?: array();
+            $found = false;
+            foreach ($reservations as &$r) {
+                if ($r['user_id'] == $user_id && $r['status'] === 'active') {
+                    $r['due_date'] = date('Y-m-d H:i:s', strtotime('+7 days', strtotime($r['due_date'])));
+                    $found = true;
+                    break;
+                }
+            }
+            if ($found) {
+                update_post_meta($book_id, '_bm_reservations', $reservations);
+                $loan_history = get_user_meta($user_id, '_bm_loan_history', true) ?: array();
+                foreach ($loan_history as &$loan) {
+                    if ($loan['book_id'] == $book_id && $loan['status'] === 'active') {
+                        $loan['due_date'] = date('Y-m-d H:i:s', strtotime('+7 days', strtotime($loan['due_date'])));
+                        break;
+                    }
+                }
+                update_user_meta($user_id, '_bm_loan_history', $loan_history);
+                $result = array('success' => true, 'message' => __('Renovado por mais 7 dias!', 'book-manager'));
+            } else {
+                $result = array('error' => __('Empréstimo não encontrado.', 'book-manager'));
+            }
         }
         
         if (isset($result['error'])) {
@@ -1339,7 +1363,7 @@ function bm_render_loans_page_content() {
         $reservations = get_post_meta($book->ID, '_bm_reservations', true);
         if (!is_array($reservations)) continue;
         foreach ($reservations as $r) {
-            if (in_array($r['status'], array('waiting', 'active'))) {
+            if (in_array($r['status'], array('waiting', 'active', 'returned', 'rejected', 'cancelled'))) {
                 $r['book_id'] = $book->ID;
                 $r['book_title'] = $book->post_title;
                 $r['copies'] = intval(get_post_meta($book->ID, '_bm_copies', true));
@@ -1356,7 +1380,7 @@ function bm_render_loans_page_content() {
         $bulk = get_post_meta($book->ID, '_bm_bulk_reservation', true);
         if (!is_array($bulk)) continue;
         foreach ($bulk as $br) {
-            if ($br['status'] === 'active') {
+            if ($br['status'] === 'active' || $br['status'] === 'separated') {
                 $br['book_id'] = $book->ID;
                 $br['book_title'] = $book->post_title;
                 $br['type'] = 'advance';
@@ -1379,16 +1403,36 @@ function bm_render_loans_page_content() {
     });
     
     ?>
-    <div class="wrap">
-        <h1><?php _e('Gestão de Empréstimos', 'book-manager'); ?></h1>
-        <?php echo $notice; ?>
+
         
         <?php if (empty($active_reservations) && empty($advance_reservations)): ?>
             <p><?php _e('Nenhum empréstimo ou reserva ativa.', 'book-manager'); ?></p>
         <?php else: ?>
-            <div style="margin-bottom:10px;">
-                <input type="text" id="bm-loan-filter" placeholder="<?php _e('🔍 Filtrar por livro ou aluno...', 'book-manager'); ?>" style="padding:6px 10px;width:300px;border:1px solid #ccc;border-radius:4px;" />
+            <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="bm-loan-filter" placeholder="<?php _e('🔍 Filtrar por livro ou aluno...', 'book-manager'); ?>" style="padding:6px 10px;width:250px;border:1px solid #ccc;border-radius:4px;" />
+                <label><strong><?php _e('De:', 'book-manager'); ?></strong></label>
+                <input type="date" id="bm-date-from" name="bm_date_from" value="<?php echo isset($_GET['bm_date_from']) ? esc_attr($_GET['bm_date_from']) : ''; ?>" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;" />
+                <label><strong><?php _e('Até:', 'book-manager'); ?></strong></label>
+                <input type="date" id="bm-date-to" name="bm_date_to" value="<?php echo isset($_GET['bm_date_to']) ? esc_attr($_GET['bm_date_to']) : ''; ?>" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;" />
+                <button type="button" id="bm-filter-btn" class="button" style="padding:6px 12px;">🔍 <?php _e('Pesquisar', 'book-manager'); ?></button>
             </div>
+
+            <div style="margin-bottom:10px;">
+                <label><strong><?php _e('Status:', 'book-manager'); ?></strong></label>
+
+                <select id="bm-status-filter" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;margin-left:5px;">
+                    <option value="all"><?php _e('Todos', 'book-manager'); ?></option>
+                    <option value="scheduled"><?php _e('📅 Agendado', 'book-manager'); ?></option>
+                    <option value="waiting"><?php _e('Reservado', 'book-manager'); ?></option>
+                    <option value="active"><?php _e('Emprestado', 'book-manager'); ?></option>
+                    <option value="overdue"><?php _e('Atrasado', 'book-manager'); ?></option>
+                    <option value="returned"><?php _e('Devolvido', 'book-manager'); ?></option>
+                    <option value="cancelled"><?php _e('Cancelado', 'book-manager'); ?></option>
+                    <option value="rejected"><?php _e('Rejeitado', 'book-manager'); ?></option>
+                    <option value="separated"><?php _e('📚 Separado', 'book-manager'); ?></option>
+                </select>
+            </div>
+
             <table class="wp-list-table widefat fixed striped" id="bm-loans-table">
                 <thead>
                     <tr>
@@ -1408,8 +1452,16 @@ function bm_render_loans_page_content() {
                         $user_name = $user ? $user->display_name : '#' . $r['user_id'];
                         $user_phone = $user ? get_user_meta($user->ID, '_bm_user_' . sanitize_key('Telefone'), true) : '';
                         $is_active = $r['status'] === 'active';
-                        $status_label = $is_active ? __('Emprestado', 'book-manager') : __('Reservado', 'book-manager');
-                        $status_color = $is_active ? '#0073aa' : '#f0ad4e';
+                        $status_labels = array(
+                            'waiting' => array('label' => __('Reservado', 'book-manager'), 'color' => '#f0ad4e'),
+                            'active' => array('label' => __('Emprestado', 'book-manager'), 'color' => '#0073aa'),
+                            'returned' => array('label' => __('Devolvido', 'book-manager'), 'color' => '#46b450'),
+                            'rejected' => array('label' => __('Rejeitado', 'book-manager'), 'color' => '#dc3545'),
+                            'cancelled' => array('label' => __('Cancelado', 'book-manager'), 'color' => '#6c757d'),
+                        );
+                        $current_status = isset($status_labels[$r['status']]) ? $status_labels[$r['status']] : $status_labels['waiting'];
+                        $status_label = $current_status['label'];
+                        $status_color = $current_status['color'];
                         
                         $position_display = isset($r['position']) ? $r['position'] . 'º' : '—';
                         
@@ -1435,7 +1487,7 @@ function bm_render_loans_page_content() {
                         $wa_reminder_msg = bm_get_loan_message($user_name, $r['book_title'], $due_date, 'reminder');
                     ?>
                         <tr style="<?php echo $is_overdue && $is_active ? 'background:#fff3f3;' : ''; ?>">
-                            <td><strong><a href="<?php echo get_permalink($r['book_id']); ?>" target="_blank"><?php echo esc_html($r['book_title']); ?></a></strong></td>
+                            <td><strong><a href="<?php echo admin_url('post.php?post=' . $r['book_id'] . '&action=edit'); ?>"><?php echo esc_html($r['book_title']); ?></a></strong></td>
                             <td><a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_student_detail&student_id=' . $r['user_id']); ?>"><?php echo esc_html($user_name); ?></a></td>
                             <td><span style="background:<?php echo $status_color; ?>;color:#fff;padding:2px 8px;border-radius:3px;font-size:12px;"><?php echo $status_label; ?></span></td>
                             <td><?php echo $position_display; ?></td>
@@ -1454,6 +1506,8 @@ function bm_render_loans_page_content() {
                                 <?php endif; ?>
                             </td>
                             <td>
+                                <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_loan_detail&book_id=' . $r['book_id'] . '&user_id=' . $r['user_id'] . '&loan_id=' . $loan_id); ?>" class="button button-small" style="margin-bottom:5px;">🔍 <?php _e('Ver detalhes', 'book-manager'); ?></a>
+                                <?php if ($r['status'] === 'waiting' || $r['status'] === 'active'): ?>
                                 <form method="post" style="display:inline;">
                                     <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
                                     <input type="hidden" name="book_id" value="<?php echo $r['book_id']; ?>">
@@ -1487,6 +1541,9 @@ function bm_render_loans_page_content() {
                                         <button type="button" class="button bm-undo-btn" style="background:#dc3545;color:#fff;border-color:#dc3545;" data-book="<?php echo $r['book_id']; ?>" data-user="<?php echo $r['user_id']; ?>" title="<?php _e('Desfazer empréstimo', 'book-manager'); ?>"><?php _e('Desfazer', 'book-manager'); ?></button>
                                     </form>
                                 <?php endif; ?>
+                                <?php else: ?>
+                                    <span style="color:#999;">—</span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -1508,14 +1565,30 @@ function bm_render_loans_page_content() {
                                     <?php echo esc_html($br['group']); ?>
                                 <?php endif; ?>
                             </td>
-                            <td><span style="background:#ff9800;color:#fff;padding:2px 8px;border-radius:3px;font-size:12px;">📅 <?php _e('Agendado', 'book-manager'); ?></span></td>
+                            <td>
+                                <?php if ($br['status'] === 'separated'): ?>
+                                    <span style="background:#4caf50;color:#fff;padding:2px 8px;border-radius:3px;font-size:12px;">📚 <?php _e('Separado', 'book-manager'); ?></span>
+                                <?php elseif ($br['status'] === 'cancelled'): ?>
+                                    <span style="background:#dc3545;color:#fff;padding:2px 8px;border-radius:3px;font-size:12px;">❌ <?php _e('Cancelado', 'book-manager'); ?></span>
+                                <?php else: ?>
+                                    <span style="background:#ff9800;color:#fff;padding:2px 8px;border-radius:3px;font-size:12px;">📅 <?php _e('Agendado', 'book-manager'); ?></span>
+                                <?php endif; ?>
+                            </td>
                             <td>—</td>
                             <td>—</td>
                             <td><?php echo date('d/m/Y', strtotime($br['start_date'])); ?> → <?php echo date('d/m/Y', strtotime($br['end_date'])); ?></td>
                             <td><small><?php _e('Por:', 'book-manager'); ?> <?php echo esc_html($teacher_name); ?></small></td>
                             <td>
-                                <button type="button" class="button button-small bm-separate-btn" data-book="<?php echo $br['book_id']; ?>" data-index="<?php echo $index; ?>" style="background:#4caf50;color:#fff;border-color:#4caf50;">✅ <?php _e('Separar', 'book-manager'); ?></button>
-                                <button type="button" class="button button-small bm-cancel-advance-btn" data-book="<?php echo $br['book_id']; ?>" data-index="<?php echo $index; ?>" style="background:#dc3545;color:#fff;border-color:#dc3545;">❌ <?php _e('Cancelar', 'book-manager'); ?></button>
+                                <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_loan_detail&book_id=' . $br['book_id'] . '&user_id=' . ($br['student_id'] ?: $br['teacher_id']) . '&loan_id='); ?>" class="button button-small" style="margin-bottom:5px;">🔍 <?php _e('Ver detalhes', 'book-manager'); ?></a>
+                                <?php if ($br['status'] === 'active'): ?>
+                                    <button type="button" class="button button-small bm-separate-btn" data-book="<?php echo $br['book_id']; ?>" data-created="<?php echo esc_attr($br['created_at']); ?>" style="background:#4caf50;color:#fff;border-color:#4caf50;">✅ <?php _e('Separar', 'book-manager'); ?></button>
+                                <?php endif; ?>
+                                <?php if ($br['status'] === 'active' || $br['status'] === 'separated'): ?>
+                                    <button type="button" class="button button-small bm-cancel-advance-btn" data-book="<?php echo $br['book_id']; ?>" data-created="<?php echo esc_attr($br['created_at']); ?>" style="background:#dc3545;color:#fff;border-color:#dc3545;">❌ <?php _e('Cancelar', 'book-manager'); ?></button>
+                                <?php endif; ?>
+                                <?php if ($br['status'] === 'cancelled'): ?>
+                                    <span style="color:#999;">—</span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -1568,27 +1641,6 @@ function bm_render_loans_page_content() {
                         };
                         xhr.send('action=bm_service_return&book_id=' + bookId + '&user_id=' + userId + '&nonce=' + bmNonce);
                     });
-                    this.disabled = true;
-                    this.textContent = '...';
-                    var row = this.closest('tr');
-                    var xhr = new XMLHttpRequest();
-                    xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
-                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                    xhr.onload = function() {
-                        var r = JSON.parse(xhr.responseText);
-                        if (r.success) {
-                            row.style.opacity = '0.5';
-                            row.querySelector('.bm-return-btn').remove();
-                            row.querySelector('.bm-undo-btn').remove();
-                            var statusCell = row.querySelector('td:nth-child(3) span');
-                            if (statusCell) statusCell.textContent = 'Devolvido';
-                        } else {
-                            alert(r.message);
-                            btn.disabled = false;
-                            btn.textContent = '<?php _e('Devolver', 'book-manager'); ?>';
-                        }
-                    };
-                    xhr.send('action=bm_service_return&book_id=' + bookId + '&user_id=' + userId + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
                 });
             });
             
@@ -1617,7 +1669,7 @@ function bm_render_loans_page_content() {
                             btn.textContent = '<?php _e('Confirmar', 'book-manager'); ?>';
                         }
                     };
-                    xhr.send('action=bm_service_loan&book_id=' + bookId + '&user_id=' + userId + '&days=' + days + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+                    xhr.send('action=bm_service_loan&book_id=' + bookId + '&user_id=' + userId + '&days=' + days + '&nonce=' + bmNonce);
                 });
             });
             
@@ -1658,7 +1710,7 @@ function bm_render_loans_page_content() {
             document.querySelectorAll('.bm-separate-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var bookId = this.getAttribute('data-book');
-                    var index = this.getAttribute('data-index');
+                    var createdAt = this.getAttribute('data-created');
                     this.disabled = true;
                     this.textContent = '...';
                     var row = this.closest('tr');
@@ -1681,7 +1733,7 @@ function bm_render_loans_page_content() {
                             btn.textContent = '✅ Separar';
                         }
                     };
-                    xhr.send('action=bm_separate_advance&book_id=' + bookId + '&index=' + index + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+                    xhr.send('action=bm_separate_advance&book_id=' + bookId + '&created_at=' + encodeURIComponent(createdAt) + '&nonce=' + bmNonce);
                 });
             });
             
@@ -1689,7 +1741,7 @@ function bm_render_loans_page_content() {
             document.querySelectorAll('.bm-cancel-advance-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var bookId = this.getAttribute('data-book');
-                    var index = this.getAttribute('data-index');
+                    var createdAt = this.getAttribute('data-created');
                     if (!confirm('<?php _e('Cancelar este agendamento?', 'book-manager'); ?>')) return;
                     this.disabled = true;
                     this.textContent = '...';
@@ -1701,7 +1753,7 @@ function bm_render_loans_page_content() {
                         row.style.opacity = '0.3';
                         setTimeout(function() { row.remove(); }, 800);
                     };
-                    xhr.send('action=bm_cancel_advance&book_id=' + bookId + '&index=' + index + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+                    xhr.send('action=bm_cancel_advance&book_id=' + bookId + '&created_at=' + encodeURIComponent(createdAt) + '&nonce=' + bmNonce);
                 });
             });
             
@@ -1739,9 +1791,62 @@ function bm_render_loans_page_content() {
                     row.style.display = text.indexOf(filter) > -1 ? '' : 'none';
                 });
             });
+
+            function bmApplyFilters() {
+                var url = new URL(window.location.href);
+                var dateFrom = document.getElementById('bm-date-from').value;
+                var dateTo = document.getElementById('bm-date-to').value;
+                if (dateFrom) url.searchParams.set('bm_date_from', dateFrom);
+                else url.searchParams.delete('bm_date_from');
+                if (dateTo) url.searchParams.set('bm_date_to', dateTo);
+                else url.searchParams.delete('bm_date_to');
+                window.location.href = url.toString();
+            }
+
+            document.getElementById('bm-filter-btn').addEventListener('click', bmApplyFilters);
+
+            document.getElementById('bm-loan-filter').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') bmApplyFilters();
+            });
+
+            
+            document.getElementById('bm-status-filter').addEventListener('change', function() {
+                var status = this.value;
+                var rows = document.querySelectorAll('#bm-loans-table tbody tr');
+                rows.forEach(function(row) {
+                    if (status === 'all') {
+                        row.style.display = '';
+                    } else if (status === 'scheduled') {
+                        row.style.display = row.textContent.indexOf('📅') > -1 ? '' : 'none';
+                    } else if (status === 'separated') {
+                        row.style.display = row.textContent.indexOf('📚') > -1 ? '' : 'none';
+                    } else if (status === 'overdue') {
+                        var isOverdue = row.style.background.indexOf('fff3f3') > -1 || row.querySelector('td:nth-child(3) span') && row.querySelector('td:nth-child(3) span').textContent.indexOf('Emprestado') > -1 && row.querySelector('td:nth-child(6)').textContent.indexOf('atrasado') > -1;
+                        row.style.display = isOverdue ? '' : 'none';
+                    } else if (status === 'cancelled') {
+                        row.style.display = row.textContent.indexOf('Cancelado') > -1 ? '' : 'none';
+                    } else if (status === 'rejected') {
+                        row.style.display = row.textContent.indexOf('Rejeitado') > -1 ? '' : 'none';
+                    } else {
+                        var cell = row.querySelector('td:nth-child(3) span');
+                        if (cell) {
+                            var cellText = cell.textContent.toLowerCase();
+                            if (status === 'waiting') {
+                                row.style.display = cellText === 'reservado' ? '' : 'none';
+                            } else if (status === 'active') {
+                                row.style.display = cellText === 'emprestado' ? '' : 'none';
+                            } else if (status === 'returned') {
+                                row.style.display = cellText === 'devolvido' ? '' : 'none';
+                            }
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    }
+                });
+            });
+
             </script>
         <?php endif; ?>
-    </div>
     <?php
 }
 
@@ -2374,12 +2479,14 @@ function bm_teacher_dashboard_content() {
             return $a['days_remaining'] - $b['days_remaining'];
         });
         
-        bm_set_cached($cache_key, array(
+        $cache_data = array(
             'students_count' => $students_count,
             'active_loans' => $active_loans,
             'overdue_loans' => $overdue_loans,
             'total_books' => $total_books,
-        ));
+        );
+        bm_set_cached($cache_key, $cache_data);
+        $cached = $cache_data;
     }
     
     ob_start();
@@ -2523,13 +2630,15 @@ function bm_librarian_dashboard_content() {
             return $a['days_remaining'] - $b['days_remaining'];
         });
         
-        bm_set_cached($cache_key, array(
+        $cache_data = array(
             'total' => $total,
             'active_loans' => $active_loans,
             'overdue_loans' => $overdue_loans,
             'pending_reservations' => $pending_reservations,
             'pending_approvals_count' => $pending_approvals_count,
-        ));
+        );
+        bm_set_cached($cache_key, $cache_data);
+        $cached = $cache_data;
     }
     
     ob_start();
@@ -2609,7 +2718,8 @@ function bm_librarian_dashboard_content() {
         url.searchParams.set('bm_period', period);
         window.location.href = url.toString();
     }
-    </script> style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">📚 <?php _e('Gerenciar Livros', 'book-manager'); ?></a>
+    </script>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book'); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">📚 <?php _e('Gerenciar Livros', 'book-manager'); ?></a>
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_loans'); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">📋 <?php _e('Empréstimos', 'book-manager'); ?></a>
             <a href="<?php echo admin_url('users.php?page=bm_approve_users'); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">✅ <?php _e('Aprovar Cadastros', 'book-manager'); ?></a>
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_csv_import'); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">📥 <?php _e('Importar CSV', 'book-manager'); ?></a>

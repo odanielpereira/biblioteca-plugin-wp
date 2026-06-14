@@ -1266,13 +1266,15 @@ function bm_ajax_separate_advance() {
     check_ajax_referer('bm_service_nonce', 'nonce');
     
     $book_id = intval($_POST['book_id']);
-    $index = intval($_POST['index']);
+    $created_at = isset($_POST['created_at']) ? sanitize_text_field($_POST['created_at']) : '';
     
     $bulk = get_post_meta($book_id, '_bm_bulk_reservation', true) ?: array();
-    if (isset($bulk[$index])) {
-        $bulk[$index]['status'] = 'separated';
-        update_post_meta($book_id, '_bm_bulk_reservation', $bulk);
-        wp_die(json_encode(array('success' => true)));
+    foreach ($bulk as $key => $item) {
+        if (isset($item['created_at']) && $item['created_at'] === $created_at) {
+            $bulk[$key]['status'] = 'separated';
+            update_post_meta($book_id, '_bm_bulk_reservation', $bulk);
+            wp_die(json_encode(array('success' => true)));
+        }
     }
     wp_die(json_encode(array('success' => false, 'message' => 'Registro não encontrado.')));
 }
@@ -1283,13 +1285,15 @@ function bm_ajax_cancel_advance() {
     check_ajax_referer('bm_service_nonce', 'nonce');
     
     $book_id = intval($_POST['book_id']);
-    $index = intval($_POST['index']);
+    $created_at = isset($_POST['created_at']) ? sanitize_text_field($_POST['created_at']) : '';
     
     $bulk = get_post_meta($book_id, '_bm_bulk_reservation', true) ?: array();
-    if (isset($bulk[$index])) {
-        $bulk[$index]['status'] = 'cancelled';
-        update_post_meta($book_id, '_bm_bulk_reservation', $bulk);
-        wp_die(json_encode(array('success' => true)));
+    foreach ($bulk as $key => $item) {
+        if (isset($item['created_at']) && $item['created_at'] === $created_at) {
+            $bulk[$key]['status'] = 'cancelled';
+            update_post_meta($book_id, '_bm_bulk_reservation', $bulk);
+            wp_die(json_encode(array('success' => true)));
+        }
     }
     wp_die(json_encode(array('success' => false, 'message' => 'Registro não encontrado.')));
 }

@@ -846,3 +846,26 @@ Histórico completo e detalhado de todas as atividades, modificações e decisõ
 - **Ação:** Fases 28, 29 e 30 concluídas.
 - **Detalhes:** Fase 28 (Vídeo e Embed): tarefa 28.1 já existia desde a Fase 19 (YouTube Data API na importação CSV). Tarefas 28.2 (Instagram Reels) removida do escopo. Tarefa 28.3 (corrigir embed TikTok/Instagram) removida por inutilidade. Fase 29 (Etiquetas e Número de Chamada): Tarefa 29.1 (reordenação configurável) implementada com drag and drop nas Configurações e aplicada em `bm_display_call_number()`. Pendência do widget admin movida para Pós-Polimento (item 55). Tarefa 29.2 (27 etiquetas) implementada com grid 3×9 e margens ajustadas (superior 0.8cm, inferior 0.2cm). Fase 30 (Página de Instalação e Identidade Visual): Tarefa 30.1 removida (não se aplica a plugin WordPress). Tarefa 30.2 já existia (Central de APIs). Item 56 adicionado ao Pós-Polimento (controle global de XP: ativar/desativar, arquivar/desarquivar histórico).
 - **Ferramenta:** write_file (manual pelo usuário)
+
+**149 - Data:** 2026-06-11
+- **Ação:** Roadmap reorganizado — Fases 31, 32 e 33 definidas.
+- **Detalhes:** Fase 31 (Sistema de Relatórios): 9 tarefas incluindo motor de relatórios, interface, 8 tipos pré-definidos, gráficos CSS, relatório configurável, relatório de turma (movido da Fase 25), estatísticas de uso (movido da Fase 26), exportação PDF com TCPDF e exportação CSV. Fase 32 (Detalhamento do Empréstimo): 8 tarefas incluindo filtros por status, cards de resumo, tabela com todos os registros, página de detalhes com linha do tempo, sistema de arquivamento, filtro de arquivados e desarquivamento. Fase 33 (Central de Exportar/Importar Tudo): 3 tarefas movidas da Fase 22 — subpágina unificada, exportação com checkboxes por módulo e ZIP, importação com mapeamento dinâmico. Fase 30 Tarefa 1 removida do escopo. Itens 55 e 56 adicionados ao Pós-Polimento.
+- **Ferramenta:** write_file (manual pelo usuário)
+
+Ação: Fase 31 concluída — Sistema de Relatórios.
+
+Detalhes: Implementadas 8 tarefas. Motor bm_generate_report() com switch de 8 tipos. Interface com seletores (tipo, período, sujeito, datas personalizadas). Busca de aluno por nome com autopreenchimento. 8 funções de relatório: Visão Geral, Desempenho do Aluno (individual e todos), Leitura por Turma, Multas Ativas, Ranking por Gênero, Livros Mais Emprestados, Tendência de Leitura, Relatório Configurável. Visualização com cards, tabelas e gráficos de barras CSS puro. Shortcode [bm_class_report] para Professor. Shortcode [bm_library_stats] com filtros checkboxes interativos e cache. Exportação PDF via window.print() em nova aba. Tarefa 9 (Exportação CSV) removida — já existe em outros módulos. Arquivo includes/reports.php criado e registrado em book-manager.php.
+
+Ferramenta: write_file (manual pelo usuário)
+
+
+**150 - Data:** 2026-06-12
+- **Ação:** Fase 31 concluída — Sistema de Relatórios.
+- **Detalhes:** Implementadas 8 tarefas. Motor `bm_generate_report()` com switch de 8 tipos. Interface com seletores (tipo, período, sujeito, datas personalizadas). Busca de aluno por nome com autopreenchimento. 8 funções de relatório: Visão Geral, Desempenho do Aluno (individual e todos), Leitura por Turma, Multas Ativas, Ranking por Gênero, Livros Mais Emprestados, Tendência de Leitura, Relatório Configurável. Visualização com cards, tabelas e gráficos de barras CSS puro. Shortcode `[bm_class_report]` para Professor. Shortcode `[bm_library_stats]` com filtros checkboxes interativos e cache. Exportação PDF via `window.print()` em nova aba. Tarefa 9 (Exportação CSV) removida — já existe em outros módulos. Arquivo `includes/reports.php` criado e registrado em `book-manager.php`.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+
+**151 - Data:** 2026-06-13
+- **Ação:** Fase 32 parcial — Tarefas 1, 3, 4 concluídas. Tarefa 5 em andamento.
+- **Detalhes:** Tarefa 1: Dropdown de filtro por status na tabela de Empréstimos com 9 opções (Agendado, Reservado, Emprestado, Atrasado, Devolvido, Cancelado, Rejeitado, Separado, Arquivado). Tarefa 3: Tabela mostra todos os registros (todos os status), status coloridos, botões de ação apenas para waiting/active, agendamentos com status dinâmico (Agendado/Separado/Cancelado), correção de índice dos agendamentos (uso de created_at como identificador único), botões Separar/Cancelar funcionais com nonce correto via bmNonce. Tarefa 4: Página de detalhes do empréstimo (bm_loan_detail) com capa, título, autor do livro (link admin), nome do aluno (link detalhes), turma, WhatsApp, linha do tempo, atraso, multa, condição da devolução, resenha, vídeo-resenha, mensagens WhatsApp, gestores, fila de espera, outros livros em atraso, botões de ação no topo e rodapé (Emprestar/Rejeitar/Devolver/Renovar/Desfazer/Arquivar). Botão "Ver detalhes" em todas as linhas da tabela. Tarefa 5 iniciada: opção loan_archive_days nas Configurações (padrão 1461 dias), datepickers na tabela de Empréstimos, botão "Pesquisar", filtro PHP por data. Pendente: corrigir datepicker, função bm_archive_loan(), bm_unarchive_loan(), checkboxes de arquivamento em lote, filtro "Arquivado", botão "Desarquivar". Bugs conhecidos: datepicker não filtra, controle de estoque por exemplar individual movido para Pós-Polimento (item 66).
+- **Ferramenta:** `write_file` (manual pelo usuário)

@@ -428,14 +428,38 @@
     2.  [x] Página de configurações para API Keys.
 
 ### Fase 31 (Polimento) — Sistema de Relatórios
-*   **Descrição:** Motor completo de relatórios configuráveis.
+*   **Descrição:** Motor completo de relatórios configuráveis com visualização e exportação.
 *   **Tarefas:**
-    1.  [ ] Motor de relatórios: função central com parâmetros configuráveis.
-    2.  [ ] Interface de relatórios: subpágina "Relatórios" com seletores.
-    3.  [ ] Relatórios pré-definidos: Histórico do aluno, Leitura por turma, Visão geral, Multas ativas, Ranking por gênero.
-    4.  [ ] Visualização em tela: tabelas + gráficos.
-    5.  [ ] Exportação para PDF.
-    6.  [ ] Relatório totalmente configurável pelo usuário.
+    1.  [x] Motor de relatórios: função central `bm_generate_report()` com parâmetros configuráveis.
+    2.  [x] Interface de relatórios: subpágina "Relatórios" com seletores (tipo, período, sujeito, filtros).
+    3.  [x] Relatórios pré-definidos: Desempenho do Aluno, Leitura por Turma, Visão Geral, Multas Ativas, Ranking por Gênero, Livro Mais Emprestado, Tendência de Leitura, Relatório Configurável.
+    4.  [x] Visualização em tela: tabelas + gráficos CSS puro (barras, pizza, linhas).
+    5.  [x] Relatório configurável pelo usuário: montagem de campos e filtros.
+    6.  [x] Relatório de turma: `bm_get_class_report($group, $period)`. → MOVIDO DA FASE 25
+    7.  [x] Estatísticas de uso: `bm_get_library_stats($period)` com cache em `bm_stats_cache`. → MOVIDO DA FASE 26
+    8.  [x] Exportação para PDF via window.print() (nova aba formatada).
+    9.  [x] Exportação CSV removida do escopo — já existe em outros módulos.
+
+### Fase 32 (Polimento) — Detalhamento do Empréstimo e Aluno
+*   **Descrição:** Ciclo de vida completo do empréstimo com filtros, histórico e arquivamento.
+*   **Tarefas:**
+    1.  [x] Filtros por status na tabela de Empréstimos (Agendado, Reservado, Emprestado, Atrasado, Devolvido, Cancelado, Separado, Arquivado).
+    2.  [ ] Cards de resumo no topo da página (ativos, atrasados, devolvidos no mês, agendamentos futuros). → MOVIDO PARA PÓS-POLIMENTO
+    3.  [x] Tabela mostra todos os registros, não apenas ativos. Padrão: Emprestado + Atrasado.
+    4.  [x] Página de detalhes do empréstimo: capa do livro, nome do aluno, linha do tempo completa, condição, penalidade, mensagens WhatsApp.
+    5.  [ ] Sistema de arquivamento: `_bm_archived` (post_meta), botão Arquivar individual, ação em lote, dias configuráveis. (EM ANDAMENTO)
+    6.  [ ] Filtro "Arquivado" para consulta de registros ocultos.
+    7.  [ ] Botão Desarquivar para retornar registro à listagem normal.
+    8.  [ ] Devolução não remove registro — muda status para "Devolvido" e mantém visível.
+    9.  [ ] Permitir edição de dados do aluno na página de detalhes (Nome, E-mail, Telefone, campos dinâmicos).
+    10. [ ] Botão "Adicionar Novo Aluno" na página de listagem de alunos.
+
+### Fase 33 (Polimento) — Central de Exportar/Importar Tudo
+*   **Descrição:** Interface unificada para exportação e importação completa de dados. → MOVIDO DA FASE 22
+*   **Tarefas:**
+    1.  [ ] Subpágina "Exportar/Importar Dados" com abas Exportar e Importar.
+    2.  [ ] Exportar: checkboxes para módulos (livros, alunos, histórico, fichas, taxonomias, configurações) ou "Tudo". ZIP com CSVs ou CSV único. Opção XML.
+    3.  [ ] Importar: upload de ZIP ou CSVs individuais com mapeamento dinâmico.
 
 ---
 
