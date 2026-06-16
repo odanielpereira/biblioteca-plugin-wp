@@ -447,20 +447,35 @@
     2.  [ ] Cards de resumo no topo da página (ativos, atrasados, devolvidos no mês, agendamentos futuros). → MOVIDO PARA PÓS-POLIMENTO
     3.  [x] Tabela mostra todos os registros, não apenas ativos. Padrão: Emprestado + Atrasado.
     4.  [x] Página de detalhes do empréstimo: capa do livro, nome do aluno, linha do tempo completa, condição, penalidade, mensagens WhatsApp.
-    5.  [ ] Sistema de arquivamento: `_bm_archived` (post_meta), botão Arquivar individual, ação em lote, dias configuráveis. (EM ANDAMENTO)
-    6.  [ ] Filtro "Arquivado" para consulta de registros ocultos.
-    7.  [ ] Botão Desarquivar para retornar registro à listagem normal.
-    8.  [ ] Devolução não remove registro — muda status para "Devolvido" e mantém visível.
-    9.  [ ] Permitir edição de dados do aluno na página de detalhes (Nome, E-mail, Telefone, campos dinâmicos).
-    10. [ ] Botão "Adicionar Novo Aluno" na página de listagem de alunos.
+    5.  [x] Sistema de arquivamento: `_bm_archived` (post_meta), botão Arquivar individual, ação em lote, dias configuráveis.
+    6.  [x] Filtro "Arquivado" para consulta de registros ocultos.
+    7.  [x] Botão Desarquivar para retornar registro à listagem normal.
+    8.  [x] Devolução não remove registro — muda status para "Devolvido" e mantém visível.
+    9.  [x] Permitir edição de dados do aluno na página de detalhes (Nome, E-mail, Telefone, campos dinâmicos).
+    10. [x] Botão "Adicionar Novo Aluno" na página de listagem de alunos.
+    11. [x] Botão "Emprestar" em agendamentos Separados (tarefa extra — urgente).
 
-### Fase 33 (Polimento) — Central de Exportar/Importar Tudo
-*   **Descrição:** Interface unificada para exportação e importação completa de dados. → MOVIDO DA FASE 22
+Aqui está o bloco atualizado para substituir a Fase 33 no roadmap.md:
+
+```markdown
+### Fase 33 (Polimento) — Central de Exportar/Importar Tudo ← CONCLUÍDA
+*   **Descrição:** Interface unificada para exportação e importação completa de dados. Consolida todos os módulos existentes (livros, alunos, histórico, fichas, taxonomias, configurações) em uma única tela com formatos ZIP e CSV. → MOVIDO DA FASE 22
 *   **Tarefas:**
-    1.  [ ] Subpágina "Exportar/Importar Dados" com abas Exportar e Importar.
-    2.  [ ] Exportar: checkboxes para módulos (livros, alunos, histórico, fichas, taxonomias, configurações) ou "Tudo". ZIP com CSVs ou CSV único. Opção XML.
-    3.  [ ] Importar: upload de ZIP ou CSVs individuais com mapeamento dinâmico.
-
+    1.  [x] Nova aba "Exportar/Importar Tudo" dentro da página bm_data_io existente, com sub-abas Exportar e Importar.
+    2.  [x] Exportar — módulo Livros: CSV com todos os metadados (fixos, dinâmicos, taxonomias, Número de Chamada).
+    3.  [x] Exportar — módulo Alunos: CSV com campos dinâmicos _bm_user_*, sem senhas.
+    4.  [x] Exportar — módulo Histórico de Empréstimos: CSV com _bm_loan_history de cada aluno.
+    5.  [x] Exportar — módulo Fichas de Leitura: CSV com _bm_reading_log de cada aluno.
+    6.  [x] Exportar — módulo Taxonomias: CSV com termos e estrutura hierárquica de todas as taxonomias (bm_genre, bm_category, bm_discipline + dinâmicas).
+    7.  [x] Exportar — módulo Configurações: JSON com todas as options do plugin.
+    8.  [x] Exportar — checkbox "Tudo" que seleciona todos os módulos de uma vez.
+    9.  [x] Exportar — seletor de formato: ZIP (múltiplos arquivos) ou CSV único.
+    10. [x] Exportar — função bm_export_all_data() que gera cada módulo, compacta via ZipArchive e força download.
+    11. [x] Importar — upload de arquivo ZIP (extrai automaticamente e identifica módulos pelo nome do arquivo).
+    12. [x] Importar — upload de CSV individual com preview (primeiras 5 linhas) e mapeamento dinâmico de colunas.
+    13. [x] Importar — opção "Sobrescrever dados existentes" vs "Apenas adicionar novos registros".
+    14. [x] Importar — detecção de duplicados (Título+Autor+Editora para livros, E-mail para alunos) e relatório final com status colorido. ESTÁ FALAHANDO - TEM QUE REVISAR.
+```
 ---
 
 ## Pós — Ciclos Futuros
