@@ -3873,6 +3873,10 @@ add_action('wp_ajax_bm_print_labels', 'bm_ajax_print_labels');
 function bm_register_dynamic_taxonomies() {
     $taxonomies = get_option('bm_dynamic_taxonomies', array());
     if (!is_array($taxonomies)) $taxonomies = array();
+        // Garantir que as taxonomias padrão estejam sempre presentes (Fase 34.2)
+    bm_install_default_taxonomies();
+    $taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!is_array($taxonomies)) $taxonomies = array();
     
     // Pular as taxonomias padrão — elas são registradas fixamente (Fase 34.2)
     $skip = array('bm_genre', 'bm_category', 'bm_discipline');
@@ -3884,7 +3888,7 @@ function bm_register_dynamic_taxonomies() {
             'rewrite'      => false,
             'hierarchical' => !empty($info['hierarchical']),
             'show_ui'      => true,
-            'show_in_menu' => true,
+            'show_in_menu' => false,
             'capabilities' => array(
                 'manage_terms' => 'manage_options',
                 'edit_terms'   => 'manage_options',
@@ -3926,14 +3930,36 @@ function bm_render_taxonomies_page() {
         }
     }
     
-    // Excluir taxonomia
+    // Renomear taxonomias (Fase 37.4)
+    if (isset($_POST['bm_rename_taxonomies']) && wp_verify_nonce($_POST['bm_taxonomy_nonce'], 'bm_taxonomy_action')) {
+        $taxonomies = get_option('bm_dynamic_taxonomies', array());
+        if (isset($_POST['rename_taxonomy']) && is_array($_POST['rename_taxonomy'])) {
+            foreach ($_POST['rename_taxonomy'] as $slug => $new_label) {
+                $slug = sanitize_key($slug);
+                $new_label = sanitize_text_field($new_label);
+                if (isset($taxonomies[$slug]) && !empty($new_label)) {
+                    if (empty($taxonomies[$slug]['protected'])) {
+                        $taxonomies[$slug]['label'] = $new_label;
+                    }
+                }
+            }
+            update_option('bm_dynamic_taxonomies', $taxonomies);
+            $msg = '<div class="notice notice-success"><p>' . __('Taxonomias renomeadas.', 'book-manager') . '</p></div>';
+        }
+    }
+    
+    // Excluir taxonomia (Fase 37.4: impedir exclusão de protegidas)
     if (isset($_POST['bm_delete_taxonomy']) && wp_verify_nonce($_POST['bm_taxonomy_nonce'], 'bm_taxonomy_action')) {
         $delete_slug = sanitize_key($_POST['bm_delete_slug']);
         if (isset($taxonomies[$delete_slug])) {
-            unset($taxonomies[$delete_slug]);
-            update_option('bm_dynamic_taxonomies', $taxonomies);
-            flush_rewrite_rules();
-            $msg = '<div class="notice notice-success"><p>' . __('Taxonomia removida.', 'book-manager') . '</p></div>';
+            if (!empty($taxonomies[$delete_slug]['protected'])) {
+                $msg = '<div class="notice notice-error"><p>' . __('Taxonomias protegidas não podem ser removidas.', 'book-manager') . '</p></div>';
+            } else {
+                unset($taxonomies[$delete_slug]);
+                update_option('bm_dynamic_taxonomies', $taxonomies);
+                flush_rewrite_rules();
+                $msg = '<div class="notice notice-success"><p>' . __('Taxonomia removida.', 'book-manager') . '</p></div>';
+            }
         }
     }
     
@@ -3966,32 +3992,46 @@ function bm_render_taxonomies_page() {
         <?php if (empty($taxonomies)): ?>
             <p><?php _e('Nenhuma taxonomia criada.', 'book-manager'); ?></p>
         <?php else: ?>
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
-                    <tr>
-                        <th><?php _e('Nome', 'book-manager'); ?></th>
-                        <th><?php _e('Slug', 'book-manager'); ?></th>
-                        <th><?php _e('Hierárquica', 'book-manager'); ?></th>
-                        <th><?php _e('Ações', 'book-manager'); ?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($taxonomies as $slug => $info): ?>
+            <form method="post">
+                <?php wp_nonce_field('bm_taxonomy_action', 'bm_taxonomy_nonce'); ?>
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
                         <tr>
-                            <td><strong><?php echo esc_html($info['label']); ?></strong></td>
-                            <td><code><?php echo esc_html($slug); ?></code></td>
-                            <td><?php echo $info['hierarchical'] ? '✅' : '❌'; ?></td>
-                            <td>
-                                <form method="post" style="display:inline;" onsubmit="return confirm('<?php _e('Remover esta taxonomia? Os termos criados serão perdidos.', 'book-manager'); ?>');">
-                                    <?php wp_nonce_field('bm_taxonomy_action', 'bm_taxonomy_nonce'); ?>
-                                    <input type="hidden" name="bm_delete_slug" value="<?php echo esc_attr($slug); ?>">
-                                    <button type="submit" name="bm_delete_taxonomy" class="button button-small"><?php _e('Remover', 'book-manager'); ?></button>
-                                </form>
-                            </td>
+                            <th><?php _e('Nome', 'book-manager'); ?></th>
+                            <th><?php _e('Slug', 'book-manager'); ?></th>
+                            <th><?php _e('Hierárquica', 'book-manager'); ?></th>
+                            <th><?php _e('Termos', 'book-manager'); ?></th>
+                            <th><?php _e('Ações', 'book-manager'); ?></th>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($taxonomies as $slug => $info): ?>
+                            <tr>
+                                <td>
+                                <?php if (isset($info['protected']) && $info['protected']): ?>
+                                    <strong><?php echo esc_html($info['label']); ?></strong> 🔒
+                                <?php else: ?>
+                                    <input type="text" name="rename_taxonomy[<?php echo esc_attr($slug); ?>]" value="<?php echo esc_attr($info['label']); ?>" style="width:100%;" />
+                                <?php endif; ?>
+                            </td>
+                                <td><code><?php echo esc_html($slug); ?></code></td>
+                                <td><?php echo $info['hierarchical'] ? '✅' : '❌'; ?></td>
+                                <td>
+                                    <a href="<?php echo admin_url('edit-tags.php?taxonomy=' . $slug . '&post_type=bm_book'); ?>" class="button button-small"><?php _e('Gerenciar Termos', 'book-manager'); ?></a>
+                                </td>
+                                <td>
+                                    <form method="post" style="display:inline;" onsubmit="return confirm('<?php _e('Remover esta taxonomia? Os termos criados serão perdidos.', 'book-manager'); ?>');">
+                                        <?php wp_nonce_field('bm_taxonomy_action', 'bm_taxonomy_nonce'); ?>
+                                        <input type="hidden" name="bm_delete_slug" value="<?php echo esc_attr($slug); ?>">
+                                        <button type="submit" name="bm_delete_taxonomy" class="button button-small"><?php _e('Remover', 'book-manager'); ?></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <p><input type="submit" name="bm_rename_taxonomies" class="button button-primary" value="<?php _e('Salvar Alterações', 'book-manager'); ?>" /></p>
+            </form>
         <?php endif; ?>
     </div>
     <?php
