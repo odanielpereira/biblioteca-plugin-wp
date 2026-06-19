@@ -962,3 +962,5 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 - **Arquivos modificados:** `includes/admin.php`
 - **Ferramenta:** `write_file`
 - **Decisão:** A detecção de duplicados está estável e funcional. Retomada a Fase 37 a partir da Tarefa 37.3 (impedir submenus automáticos de taxonomias).
+
+Uma pequena mudança
