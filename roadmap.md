@@ -254,7 +254,7 @@
     12. [x] Fila de espera visível.
 
 
-## Ciclo 9 — Versão 9.0.0 ← CICLO DE POLIMENTO EM ANDAMENTO
+## Ciclo 9 — Versão 10.0.0 ← CONCLUIDO
 
 ### Fase 14 (Polimento) — Limpeza de Código Morto
 *   **Descrição:** Remover código obsoleto e funções não utilizadas.
@@ -475,35 +475,74 @@ Aqui está o bloco atualizado para substituir a Fase 33 no roadmap.md:
     12. [x] Importar — upload de CSV individual com preview (primeiras 5 linhas) e mapeamento dinâmico de colunas.
     13. [x] Importar — opção "Sobrescrever dados existentes" vs "Apenas adicionar novos registros".
     14. [x] Importar — detecção de duplicados (Título+Autor+Editora para livros, E-mail para alunos) e relatório final com status colorido. ESTÁ FALAHANDO - TEM QUE REVISAR.
-```
+```markdown
+
+## Ciclo 10 — Versão 10.0.0 ← PÓS-POLIMENTO
+
+### Fase 34: Reestruturação Interna
+*   **Objetivo:** Corrigir a base estrutural do plugin: controle de estoque por exemplar, migração de taxonomias fixas para dinâmicas e correção de conflitos no Gerenciar Campos.
+*   **Critério de saída:** Livros com múltiplos exemplares permitem empréstimos paralelos. Taxonomias do sistema podem ser gerenciadas pelo Gestor sem quebrar a IA. Campos reservados não causam conflitos.
+
+*   **Tarefas:**
+    1.  [ ] **34.1 — Controle de estoque por exemplar individual:** Reestruturar `_bm_reservations` e `_bm_borrowed_count` para rastrear cada exemplar individualmente, permitindo empréstimos paralelos de múltiplas cópias do mesmo título. Impacta reservas, empréstimos, devoluções, balcão e fila de espera.
+    2.  [x] **34.2 — Migrar taxonomias fixas para Taxonomias Dinâmicas:** Migrar `bm_genre`, `bm_category` e `bm_discipline` para o sistema de Taxonomias Dinâmicas, atualizando a IA para consultar `get_option('bm_dynamic_taxonomies')`. **(Urgente)**
+    3.  [x] **34.3 — Resolver conflito de campo CDU no Gerenciar Campos:** Tratar conflitos ao desativar/excluir/bloquear campos com nomes reservados (CDU, CDD, Classificação, Cutter) já existentes.
+
 ---
 
-## Pós — Ciclos Futuros
+### Fase 35: Conteúdo e IA ← CONCLUÍDA
+*   **Objetivo:** Expandir a integração com Google Books, completar a persona Diva com contexto ampliado e melhorar a exibição pública de resenhas.
+*   **Critério de saída:** Dados extras da Google Books preenchem automaticamente campos dinâmicos. Diva conhece Professores, Gestores e Administradores, faz recomendações personalizadas e mantém memória de conversa. Resenhas dos leitores exibidas de forma refinada na página do livro.
 
-### MARC21
-93. Suporte a MARC21: importação e exportação de registros no formato .mrc (binário) e .mrk (texto). Mapeamento de campos MARC para metadados do plugin.
+*   **Tarefas:**
+    1.  [x] **35.2 — Preenchimento automático via ISBN:** Expandir o preenchimento via ISBN (já existente no balcão de atendimento) para a tela de edição de livros existentes (botão "Preencher via ISBN") e adicionar botão "Buscar ISBN" para encontrar o ISBN pelo título e autor.
+    2.  [x] **35.3 — Diva com contexto de Professor/Gestor/Admin:** Expandir `bm_get_student_context()` para fornecer à Diva informações contextuais de todos os perfis logados, não apenas alunos.
+    3.  [x] **35.4 — Recomendação personalizada da Diva por histórico:** Permitir que a Diva recomende livros com base no histórico de leitura e gêneros favoritos do aluno.
+    4.  [x] **35.5 — Memória de conversa do chatbot:** Implementar retenção de contexto durante a sessão para que a Diva lembre perguntas anteriores e responda de forma mais natural.
+    5.  [x] **35.6 — Persona do chatbot obedecer campo "Persona da IA" da Central de APIs:** Fazer a Diva utilizar o campo de persona customizada já existente na Central de APIs, permitindo que o Gestor personalize o tom.
+    6.  [x] **35.7 — Justificativas de disciplinas com 100-120 palavras:** Aumentar o limite de palavras nas justificativas de classificação por IA para 100-120, adicionar ícones temáticos por disciplina e exibir o nome da disciplina em negrito.
+    7.  [x] **35.8 — Exibir resenhas aprovadas na página do livro:** Refinar visual e estruturalmente a exibição das resenhas dos leitores na página pública do livro, com capa do livro, selo de curadoria e responsividade mobile.
 
-### Leitor de Livros Digitais
-94. Leitor integrado com PDF.js e EPUB.js: upload de PDF/EPUB, leitor com virar página, ajuste de fonte, modo noturno, progresso de leitura. Botão "Ler Agora" na página do livro. Integração com APIs de domínio público.
+---
 
-### Google Drive
-95. Integração Google Drive: importar planilhas direto do Google Sheets via URL.
+### Fase 36: Circulação, Gamificação e Escola ← CONCLUÍDA (parcial)
+*   **Objetivo:** Tornar a gamificação totalmente configurável, enriquecer o histórico do aluno, adicionar ferramentas escolares (lista de leitura) e refinar a gestão de fichas de leitura.
+*   **Critério de saída:** Gestor define valores e regras de XP. Histórico completo visível na página do aluno. Professor cria listas de leitura. Fichas aprovadas podem ser gerenciadas. Microfone para ditado disponível no campo de resenha.
 
-### Extras
-90. Pesquisa por filtros no dashboard do aluno (expandir busca rápida).
-91. Impressão de comprovante de empréstimo no balcão.
-92. Máscara de telefone com formatação automática.
-132. Backup automático periódico (não só na virada de ano).
+*   **Tarefas:**
+    1.  [x] **36.1 — Sistema de XP totalmente configurável pelo Gestor:** Permitir que o Gestor customize os valores de XP por ação (ficha, resenha, vídeo), com notas individuais por aluno e por item avaliado.
+    2.  [x] **36.2 — Controle global de XP: ativar/desativar:** Adicionar toggle "Ativar sistema de pontuação" nas Configurações e condicionar exibição de cards de XP, ranking, medalhas e campos de nota.
+    3.  [x] **36.3 — Histórico completo de empréstimos na página do aluno:** Exibir todos os empréstimos (devolvidos, cancelados, rejeitados) na página de detalhes do aluno (`bm_student_detail`), não apenas os ativos.
+    4.  [x] **36.5 — Impressão de comprovante de empréstimo no balcão:** Permitir que o Gestor imprima um comprovante com dados do livro, aluno e datas ao realizar um empréstimo no balcão.
+    5.  [x] **36.4 — Notificação "suspensão encerrada" no dashboard do aluno + gestão manual de penalidades:** Exibir notificação no dashboard quando o prazo de uma suspensão expirar e permitir que o Gestor revogue, altere ou quite penalidades manualmente na página do aluno.
+    6.  [x] **36.6 — Lista de leitura obrigatória:** Permitir que o Professor crie listas de livros por turma, visíveis no dashboard dos alunos.
+    7.  [x] **36.7 — Tela de fichas aprovadas com opção de desaprovar ou excluir:** Criar interface para o Gestor visualizar fichas já aprovadas e permitir reverter aprovação ou excluir.
+    8.  [x] **36.8 — Capa do livro nas fichas de leitura:** Adicionar miniatura da capa do livro na tela de aprovação de fichas e na seção "Minhas Fichas" do aluno.
+    9.  [x] **36.9 — Microfone para ditado no campo de resenha:** Implementar ditado por voz usando a Web Speech API com botão de microfone ao lado do textarea em `[bm_reading_log]`.
+    10. [ ] **36.10 — Aba Exportar Alunos CSV em Importação/Exportação:** Criar interface para exportar alunos via CSV (função `bm_export_students_full()` já pronta) na página de Importação/Exportação. **(Pendente por decisão do usuário)**
 
-### Internacionalização (i18n/l10n)
-133. Gerar arquivo .pot e traduzir formalmente o plugin para português do Brasil.
+```markdown
+### Fase 37: Tarefas Extras — Interface, Taxonomias e Usabilidade
+*   **Objetivo:** Corrigir bugs visuais, aprimorar a gestão de taxonomias e adicionar funcionalidades de perfil (foto, carteirinha).
+*   **Critério de saída:** Checkbox de etiquetas funcional. Paginação da vitrine ampliada. Taxonomias sem submenus automáticos, renomeáveis e sem conflitos. Alunos com foto no dashboard. Carteirinha imprimível disponível.
 
-### Segurança e Testes Rigorosos
-125. Executar Plugin Check (WordPress.org) e corrigir todos os warnings/errors.
-126. Passar PHP_CodeSniffer com WordPress Coding Standards.
-127. Testar com OWASP ZAP: XSS, CSRF, injeção.
-128. Revisão manual de nonces, sanitização e capabilities.
-129. Varredura completa de código órfão e lixo gerado durante o desenvolvimento.
+*   **Tarefas:**
+    1.  [ ] **37.1 — Corrigir checkbox "Selecionar todos" nas Etiquetas:** Corrigir bug no JavaScript da página de Etiquetas onde o checkbox do cabeçalho não seleciona todos os livros da tabela.
+    2.  [ ] **37.2 — Aumentar paginação pública de 10 para 60:** Alterar `posts_per_page` de 10 para 60 no `WP_Query` do `archive-bm_book.php`.
+    3.  [ ] **37.3 — Impedir que taxonomias criem submenus automáticos:** Adicionar `'show_in_menu' => false` no registro de taxonomias dinâmicas e criar interface em acordeon na página Taxonomias para gerenciar os termos.
+    4.  [ ] **37.4 — Permitir renomear taxonomias criadas:** Adicionar campo de renomeação na página Taxonomias, similar ao existente em Gerenciar Campos.
+    5.  [ ] **37.5 — Resolver conflito da taxonomia Gênero duplicada:** Garantir que as taxonomias fixas não gerem widgets duplicados na edição do livro.
+    6.  [ ] **37.6 — Adicionar foto do aluno no dashboard:** Permitir upload de foto de perfil pelo dashboard do aluno, sem acesso ao wp-admin.
+    7.  [ ] **37.7 — Criar carteirinha da biblioteca:** Gerar documento imprimível em formato de cartão de crédito para Aluno, Professor e Gestor, com nome, foto, tipo de usuário editável e QR code.
+    8.  [ ] **37.8 — Alunos, Professores e Gestores não acessam o wp-admin:** Migrar todas as ações administrativas desses perfis para o dashboard público via shortcodes.
 
-### Testes Automatizados de Interface (E2E)
-130. Criar suíte de testes E2E com Selenium IDE cobrindo todos os fluxos principais: cadastro de aluno, importação CSV, empréstimo/devolução no balcão, virada de ano letivo, gerenciar campos, exportação de dados.
+---
+
+### Fase 38: Finalização e Organização
+*   **Objetivo:** Reorganizar a interface administrativa e modularizar o código para facilitar manutenção futura.
+*   **Critério de saída:** Menu Biblioteca reorganizado por frequência de uso. Arquivos grandes divididos em módulos menores sem quebra de funcionalidade.
+
+*   **Tarefas:**
+    1.  [ ] **38.1 — Mudar ordem dos submenus do WordPress:** Reorganizar os submenus do menu Biblioteca priorizando Balcão de Atendimento, Alunos, Livros, Importação/Exportação, Relatórios e Configurações.
+    2.  [ ] **38.2 — Modularização — dividir arquivos grandes:** Separar `admin.php` e `users.php` em módulos menores por responsabilidade (ex: `admin-csv.php`, `admin-fields.php`, `admin-service.php`).
+```
