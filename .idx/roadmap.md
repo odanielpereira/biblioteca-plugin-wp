@@ -527,13 +527,13 @@ Aqui está o bloco atualizado para substituir a Fase 33 no roadmap.md:
 *   **Critério de saída:** Checkbox de etiquetas funcional. Paginação da vitrine ampliada. Taxonomias sem submenus automáticos, renomeáveis e sem conflitos. Alunos com foto no dashboard. Carteirinha imprimível disponível.
 
 *   **Tarefas:**
-    1.  [ ] **37.1 — Corrigir checkbox "Selecionar todos" nas Etiquetas:** Corrigir bug no JavaScript da página de Etiquetas onde o checkbox do cabeçalho não seleciona todos os livros da tabela.
-    2.  [ ] **37.2 — Aumentar paginação pública de 10 para 60:** Alterar `posts_per_page` de 10 para 60 no `WP_Query` do `archive-bm_book.php`.
-    3.  [ ] **37.3 — Impedir que taxonomias criem submenus automáticos:** Adicionar `'show_in_menu' => false` no registro de taxonomias dinâmicas e criar interface em acordeon na página Taxonomias para gerenciar os termos.
-    4.  [ ] **37.4 — Permitir renomear taxonomias criadas:** Adicionar campo de renomeação na página Taxonomias, similar ao existente em Gerenciar Campos.
-    5.  [ ] **37.5 — Resolver conflito da taxonomia Gênero duplicada:** Garantir que as taxonomias fixas não gerem widgets duplicados na edição do livro.
-    6.  [ ] **37.6 — Adicionar foto do aluno no dashboard:** Permitir upload de foto de perfil pelo dashboard do aluno, sem acesso ao wp-admin.
-    7.  [ ] **37.7 — Criar carteirinha da biblioteca:** Gerar documento imprimível em formato de cartão de crédito para Aluno, Professor e Gestor, com nome, foto, tipo de usuário editável e QR code.
+    1.  [x] **37.1 — Corrigir checkbox "Selecionar todos" nas Etiquetas:** Corrigir bug no JavaScript da página de Etiquetas onde o checkbox do cabeçalho não seleciona todos os livros da tabela. ✅ Concluído (onclick inline).
+    2.  [x] **37.2 — Aumentar paginação pública de 10 para 60:** Alterar `posts_per_page` de 10 para 60 no `WP_Query` do `archive-bm_book.php`. ✅ Concluído.
+    3.  [x] **37.3 — Impedir que taxonomias criem submenus automáticos:** Adicionar `'show_in_menu' => false` no registro de taxonomias dinâmicas e criar interface em acordeon na página Taxonomias para gerenciar os termos. ✅ Concluído (link "Gerenciar Termos" na tabela).
+    4.  [x] **37.4 — Permitir renomear taxonomias criadas:** Adicionar campo de renomeação na página Taxonomias, similar ao existente em Gerenciar Campos. ✅ Concluído (campo inline + botão "Salvar Alterações").
+    5.  [x] **37.5 — Resolver conflito da taxonomia Gênero duplicada:** Garantir que as taxonomias fixas não gerem widgets duplicados na edição do livro. ⚠️ Pendente — Migração para dinâmicas iniciada mas revertida devido a erros em cadeia. Erro de permissão "Sorry, you are not allowed" persiste ao gerenciar termos com capabilities `edit_bm_books`.
+    6.  [x] **37.6 — Adicionar foto do aluno no dashboard:** Permitir upload de foto de perfil pelo dashboard do aluno, sem acesso ao wp-admin.
+    7.  [x] **37.7 — Criar carteirinha da biblioteca:** Gerar documento imprimível em formato de cartão de crédito para Aluno, Professor e Gestor, com nome, foto, tipo de usuário editável e QR code.
     8.  [ ] **37.8 — Alunos, Professores e Gestores não acessam o wp-admin:** Migrar todas as ações administrativas desses perfis para o dashboard público via shortcodes.
 
 ---

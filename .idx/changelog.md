@@ -963,6 +963,24 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 - **Ferramenta:** `write_file`
 - **Decisão:** A detecção de duplicados está estável e funcional. Retomada a Fase 37 a partir da Tarefa 37.3 (impedir submenus automáticos de taxonomias).
 
+**161 - Data:** 2026-06-19
+- **Ação:** Tentativa de migração completa das taxonomias Gênero e Categoria para dinâmicas — suspensa.
+- **Detalhes:** A migração visava eliminar o registro fixo de `bm_genre` e `bm_category`, passando-as integralmente para o sistema de taxonomias dinâmicas. Foram realizadas as seguintes alterações:
+  - Remoção do registro fixo de `bm_genre` e `bm_category` em `book-manager.php`.
+  - Ajuste em `bm_register_dynamic_taxonomies()` para registrá-las com labels completos, `show_ui = true` e capabilities ampliadas (`edit_bm_books`).
+  - Adição das taxonomias ao mapeamento da importação CSV.
+  - Tentativas de ocultar metaboxes nativas via `remove_meta_box` e `show_ui = false`.
+  - Ajustes de permissões (`capabilities`) para permitir que o Gestor gerencie os termos.
+  **Problemas encontrados:**
+  - Erro fatal na ativação do plugin (chamada a função inexistente).
+  - Warnings de "continue" em switch (linhas ~5289, ~5319, ~5326 de `admin.php`).
+  - Warnings "Attempt to read property" nos filtros da listagem e vitrine.
+  - Erro "Sorry, you are not allowed to edit terms in this taxonomy." ao gerenciar termos.
+  - "Invalid taxonomy." ao acessar `edit-tags.php`.
+  - Fatal error na página pública do livro (`implode` com `WP_Error`).
+  - Metaboxes nativas e dinâmicas conflitando, salvamento quebrado.
+  **Estado atual:** O usuário reverteu as alterações (Ctrl+Z) até um ponto estável, mantendo a mudança de capabilities (`edit_bm_books` para todas as ações). O erro "Sorry, you are not allowed" persiste ao tentar gerenciar termos. As taxonomias Gênero e Categoria permanecem como dinâmicas, mas a funcionalidade de gerenciamento de termos não está operacional.
+- **Arquivos modificados:** `book-manager.php`, `includes/admin.php`, `single-bm_book.php` (proteções adicionais contra `WP_Error`).
+- **Ferramenta:** `write_file` (múltiplas tentativas), `Ctrl+Z` (reversão).
+- **Decisão:** A migração para taxonomias 100% dinâmicas exigirá um planejamento detalhado e execução em ambiente controlado. A Fase 37.5 permanece pendente. O chat atual assume função consultiva a partir deste ponto.
 
-
-modificado no vscode
