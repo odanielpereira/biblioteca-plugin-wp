@@ -2302,6 +2302,52 @@ function bm_student_dashboard_content() {
     <div class="bm-dashboard" style="max-width:800px;margin:0 auto;padding:20px;">
         <h1><?php _e('Painel do Aluno', 'book-manager'); ?></h1>
         <p><?php printf(__('Bem-vindo, %s!', 'book-manager'), esc_html($user->display_name)); ?></p>
+                <?php
+        $profile_photo = get_user_meta($user_id, '_bm_profile_photo', true);
+        ?>
+        <div style="text-align:center;margin-bottom:15px;">
+            <?php if ($profile_photo): ?>
+                <img src="<?php echo esc_url($profile_photo); ?>" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid #111;" alt="<?php echo esc_attr($user->display_name); ?>" />
+            <?php else: ?>
+                <div style="width:100px;height:100px;border-radius:50%;background:#eee;display:inline-flex;align-items:center;justify-content:center;font-size:40px;color:#999;">👤</div>
+            <?php endif; ?>
+            <form id="bm-photo-form" enctype="multipart/form-data" style="margin-top:8px;">
+                <?php wp_nonce_field('bm_photo_upload', 'bm_photo_nonce'); ?>
+                <input type="file" id="bm-photo-input" name="bm_photo" accept="image/jpeg,image/png,image/webp" style="display:none;" />
+                <button type="button" id="bm-photo-btn" class="bm-btn-filter" style="padding:4px 12px;font-size:12px;">📷 <?php echo $profile_photo ? __('Trocar foto', 'book-manager') : __('Adicionar foto', 'book-manager'); ?></button>
+                <span id="bm-photo-status" style="display:none;margin-left:8px;font-size:12px;"></span>
+            </form>
+                    <script>
+        document.getElementById('bm-photo-btn').addEventListener('click', function() {
+            document.getElementById('bm-photo-input').click();
+        });
+        document.getElementById('bm-photo-input').addEventListener('change', function() {
+            var file = this.files[0];
+            if (!file) return;
+            var formData = new FormData();
+            formData.append('bm_photo', file);
+            formData.append('action', 'bm_upload_photo');
+            formData.append('nonce', document.querySelector('#bm-photo-form [name="bm_photo_nonce"]').value);
+            
+            var status = document.getElementById('bm-photo-status');
+            status.style.display = 'inline';
+            status.textContent = 'Enviando...';
+            
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.onload = function() {
+                var r = JSON.parse(xhr.responseText);
+                if (r.success) {
+                    status.textContent = '✅ ' + r.message;
+                    setTimeout(function() { location.reload(); }, 1000);
+                } else {
+                    status.textContent = '❌ ' + r.message;
+                }
+            };
+            xhr.send(formData);
+        });
+        </script>
+        </div>
 
         <?php
         // FASE 36.4: Notificação de suspensão encerrada
@@ -2551,6 +2597,7 @@ function bm_student_dashboard_content() {
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
+        <?php
         if (isset($_POST['bm_toggle_profile']) && wp_verify_nonce($_POST['bm_profile_nonce'], 'bm_profile_action')) {
             $new_status = $profile_public === '1' ? '0' : '1';
             update_user_meta($user_id, '_bm_profile_public', $new_status);
@@ -3992,7 +4039,10 @@ function bm_reader_profile_shortcode($atts) {
     ?>
     <div style="max-width:700px;margin:20px auto;">
         <div style="text-align:center;margin-bottom:20px;">
-            <?php if ($avatar): ?>
+            <?php $profile_photo = get_user_meta($user_id, '_bm_profile_photo', true); ?>
+            <?php if ($profile_photo): ?>
+                <img src="<?php echo esc_url($profile_photo); ?>" style="width:100px;height:100px;border-radius:50%;object-fit:cover;" alt="" />
+            <?php elseif ($avatar): ?>
                 <img src="<?php echo esc_url($avatar); ?>" style="width:100px;height:100px;border-radius:50%;object-fit:cover;" alt="" />
             <?php else: ?>
                 <div style="width:100px;height:100px;border-radius:50%;background:#eee;display:inline-flex;align-items:center;justify-content:center;font-size:40px;">👤</div>
@@ -4268,6 +4318,12 @@ function bm_render_student_detail_page() {
         <div style="display:flex;gap:20px;flex-wrap:wrap;">
             <div style="flex:1;min-width:300px;">
                 <h2>👤 <?php echo esc_html($student->display_name); ?></h2>
+                        <?php $profile_photo = get_user_meta($student_id, '_bm_profile_photo', true); ?>
+        <?php if ($profile_photo): ?>
+            <div style="text-align:center;margin-bottom:10px;">
+                <img src="<?php echo esc_url($profile_photo); ?>" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:2px solid #ddd;" alt="" />
+            </div>
+        <?php endif; ?>
                 <p><strong>E-mail:</strong> <?php echo esc_html($student->user_email); ?></p>
                 <p><strong>Status:</strong> <?php echo esc_html($status); ?></p>
                 

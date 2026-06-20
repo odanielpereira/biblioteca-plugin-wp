@@ -2039,6 +2039,38 @@ function bm_ajax_service_edit_student() {
     wp_die(json_encode(array('success' => true, 'message' => '✅ Aluno atualizado!')));
 }
 add_action('wp_ajax_bm_service_edit_student', 'bm_ajax_service_edit_student');
+function bm_ajax_upload_photo() {
+    if (!is_user_logged_in()) wp_die(json_encode(array('success' => false, 'message' => __('Faça login.', 'book-manager'))));
+    check_ajax_referer('bm_photo_upload', 'nonce');
+    
+    if (empty($_FILES['bm_photo'])) {
+        wp_die(json_encode(array('success' => false, 'message' => __('Nenhum arquivo enviado.', 'book-manager'))));
+    }
+    
+    $file = $_FILES['bm_photo'];
+    $allowed_types = array('jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp');
+    $filetype = wp_check_filetype($file['name'], $allowed_types);
+    
+    if (!in_array($filetype['type'], $allowed_types)) {
+        wp_die(json_encode(array('success' => false, 'message' => __('Formato inválido. Envie JPG, PNG ou WebP.', 'book-manager'))));
+    }
+    
+    if ($file['size'] > 2 * 1024 * 1024) {
+        wp_die(json_encode(array('success' => false, 'message' => __('A imagem deve ter no máximo 2MB.', 'book-manager'))));
+    }
+    
+    $upload = wp_handle_upload($file, array('test_form' => false, 'mimes' => $allowed_types));
+    
+    if (isset($upload['error'])) {
+        wp_die(json_encode(array('success' => false, 'message' => $upload['error'])));
+    }
+    
+    $user_id = get_current_user_id();
+    update_user_meta($user_id, '_bm_profile_photo', $upload['url']);
+    
+    wp_die(json_encode(array('success' => true, 'url' => $upload['url'], 'message' => __('Foto atualizada!', 'book-manager'))));
+}
+add_action('wp_ajax_bm_upload_photo', 'bm_ajax_upload_photo');
 
 add_action('wp_ajax_bm_service_search_student', 'bm_ajax_service_search_student');
 

@@ -1452,7 +1452,30 @@ function bm_render_csv_import_page() {
                     if ($publisher) update_post_meta($post_id,'_bm_publisher',$publisher);
                     foreach ($mapping as $field => $index) {
                         if (in_array($field,array('title','_bm_author','_bm_publisher'))) continue;
-                        if (isset($row[$index])&&!empty($row[$index])) update_post_meta($post_id,$field,sanitize_text_field($row[$index]));
+                        if (isset($row[$index])&&!empty($row[$index])) {
+                            $raw_value = trim($row[$index]);
+                            if (taxonomy_exists($field)) {
+                                $term_names = array_map('trim', explode(',', $raw_value));
+                                $term_ids = array();
+                                foreach ($term_names as $term_name) {
+                                    if (empty($term_name)) continue;
+                                    $term = term_exists($term_name, $field);
+                                    if (!$term) {
+                                        $new_term = wp_insert_term($term_name, $field);
+                                        if (!is_wp_error($new_term)) {
+                                            $term_ids[] = intval($new_term['term_id']);
+                                        }
+                                    } else {
+                                        $term_ids[] = intval(is_array($term) ? $term['term_id'] : $term);
+                                    }
+                                }
+                                if (!empty($term_ids)) {
+                                    wp_set_post_terms($post_id, $term_ids, $field, false);
+                                }
+                            } else {
+                                update_post_meta($post_id, $field, sanitize_text_field($raw_value));
+                            }
+                        }
                     }
                     $imported++;
                     
