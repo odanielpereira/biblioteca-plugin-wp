@@ -60,47 +60,6 @@ function bm_register_book_cpt() {
 }
 add_action( 'init', 'bm_register_book_cpt' );
 
-// ==========================================
-// FASE 7C: TAXONOMIAS
-// ==========================================
-function bm_register_taxonomies() {
-    register_taxonomy('bm_genre', 'bm_book', array(
-        'label'        => __('Gêneros', 'book-manager'),
-        'labels'       => array(
-            'name'              => __('Gêneros', 'book-manager'),
-            'singular_name'     => __('Gênero', 'book-manager'),
-            'search_items'      => __('Buscar Gêneros', 'book-manager'),
-            'all_items'         => __('Todos os Gêneros', 'book-manager'),
-            'parent_item'       => __('Gênero Pai', 'book-manager'),
-            'parent_item_colon' => __('Gênero Pai:', 'book-manager'),
-            'edit_item'         => __('Editar Gênero', 'book-manager'),
-            'update_item'       => __('Atualizar Gênero', 'book-manager'),
-            'add_new_item'      => __('Adicionar Novo Gênero', 'book-manager'),
-            'new_item_name'     => __('Nome do Novo Gênero', 'book-manager'),
-            'menu_name'         => __('Gêneros', 'book-manager'),
-        ),
-        'rewrite'      => false,
-        'hierarchical' => true,
-        'show_ui'      => true,
-        'show_in_menu' => true,
-        'capabilities' => array(
-            'manage_terms' => 'manage_options', 'edit_terms' => 'manage_options',
-            'delete_terms' => 'manage_options', 'assign_terms' => 'manage_options',
-        ),
-    ));
-    register_taxonomy('bm_category', 'bm_book', array(
-        'label'        => __('Categorias', 'book-manager'),
-        'rewrite'      => false,
-        'hierarchical' => true,
-        'show_ui'      => true,
-        'show_in_menu' => true,
-        'capabilities' => array(
-            'manage_terms' => 'manage_options', 'edit_terms' => 'manage_options',
-            'delete_terms' => 'manage_options', 'assign_terms' => 'manage_options',
-        ),
-    ));
-}
-add_action('init', 'bm_register_taxonomies');
 
 // ==========================================
 // FASE 8G: TAXONOMIA DE DISCIPLINAS ESCOLARES
@@ -267,7 +226,6 @@ function bm_clean_dirty_roles() {
 
 function bm_plugin_activation() {
     bm_register_book_cpt();
-    bm_register_taxonomies();
     bm_add_admin_caps();
     bm_register_roles();
     bm_clean_dirty_roles();

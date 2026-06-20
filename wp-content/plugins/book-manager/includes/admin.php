@@ -145,7 +145,7 @@ function bm_add_dynamic_taxonomy_metaboxes() {
     bm_install_default_taxonomies();
     $taxonomies = get_option('bm_dynamic_taxonomies', array());
     if (!is_array($taxonomies)) return;
-    $skip = array('bm_genre', 'bm_category', 'bm_discipline');
+    $skip = array('bm_discipline');
     foreach ($taxonomies as $slug => $info) {
         if (in_array($slug, $skip)) continue;
         add_meta_box(
@@ -160,6 +160,11 @@ function bm_add_dynamic_taxonomy_metaboxes() {
     }
 }
 add_action('add_meta_boxes', 'bm_add_dynamic_taxonomy_metaboxes');
+function bm_remove_native_taxonomy_metaboxes() {
+    remove_meta_box('bm_genrediv', 'bm_book', 'side');
+    remove_meta_box('bm_categorydiv', 'bm_book', 'side');
+}
+add_action('add_meta_boxes', 'bm_remove_native_taxonomy_metaboxes', 20);
 
 function bm_render_dynamic_taxonomy_metabox($post, $box) {
     $slug = $box['args']['slug'];
@@ -184,7 +189,10 @@ function bm_save_dynamic_taxonomy_terms($post_id) {
     $taxonomies = get_option('bm_dynamic_taxonomies', array());
     if (!is_array($taxonomies)) return;
     
+    $skip = array('bm_discipline');
+    
     foreach ($taxonomies as $slug => $info) {
+        if (in_array($slug, $skip)) continue;
         $field = 'bm_tax_' . $slug;
         $terms = isset($_POST[$field]) ? array_map('intval', $_POST[$field]) : array();
         wp_set_post_terms($post_id, $terms, $slug);
@@ -1609,6 +1617,10 @@ function bm_render_csv_import_page() {
     );
     $dynamic_fields = get_option('bm_dynamic_fields', array());
     foreach ($dynamic_fields as $df => $info) $system_fields['_bm_dynamic_'.sanitize_key($df)] = $df.' ('.__('dinâmico','book-manager').')';
+        $dynamic_taxonomies = get_option('bm_dynamic_taxonomies', array());
+    foreach ($dynamic_taxonomies as $slug => $info) {
+        $system_fields[$slug] = $info['label'] . ' (' . __('taxonomia','book-manager') . ')';
+    }
     ?>
     <div class="wrap">
         <h1><?php _e('Importar Livros via CSV','book-manager'); ?></h1>
@@ -3873,29 +3885,64 @@ add_action('wp_ajax_bm_print_labels', 'bm_ajax_print_labels');
 function bm_register_dynamic_taxonomies() {
     $taxonomies = get_option('bm_dynamic_taxonomies', array());
     if (!is_array($taxonomies)) $taxonomies = array();
-        // Garantir que as taxonomias padrão estejam sempre presentes (Fase 34.2)
     bm_install_default_taxonomies();
     $taxonomies = get_option('bm_dynamic_taxonomies', array());
     if (!is_array($taxonomies)) $taxonomies = array();
     
-    // Pular as taxonomias padrão — elas são registradas fixamente (Fase 34.2)
-    $skip = array('bm_genre', 'bm_category', 'bm_discipline');
+    // Pular apenas disciplinas (ainda fixa)
+    $skip = array('bm_discipline');
+    
+    // Labels completos para as taxonomias padrão (Fase 37)
+    $default_labels = array(
+        'bm_genre' => array(
+            'name'              => __('Gêneros', 'book-manager'),
+            'singular_name'     => __('Gênero', 'book-manager'),
+            'search_items'      => __('Buscar Gêneros', 'book-manager'),
+            'all_items'         => __('Todos os Gêneros', 'book-manager'),
+            'parent_item'       => __('Gênero Pai', 'book-manager'),
+            'parent_item_colon' => __('Gênero Pai:', 'book-manager'),
+            'edit_item'         => __('Editar Gênero', 'book-manager'),
+            'update_item'       => __('Atualizar Gênero', 'book-manager'),
+            'add_new_item'      => __('Adicionar Novo Gênero', 'book-manager'),
+            'new_item_name'     => __('Nome do Novo Gênero', 'book-manager'),
+            'menu_name'         => __('Gêneros', 'book-manager'),
+        ),
+        'bm_category' => array(
+            'name'              => __('Categorias', 'book-manager'),
+            'singular_name'     => __('Categoria', 'book-manager'),
+            'search_items'      => __('Buscar Categorias', 'book-manager'),
+            'all_items'         => __('Todas as Categorias', 'book-manager'),
+            'parent_item'       => __('Categoria Pai', 'book-manager'),
+            'edit_item'         => __('Editar Categoria', 'book-manager'),
+            'update_item'       => __('Atualizar Categoria', 'book-manager'),
+            'add_new_item'      => __('Adicionar Nova Categoria', 'book-manager'),
+            'new_item_name'     => __('Nome da Nova Categoria', 'book-manager'),
+            'menu_name'         => __('Categorias', 'book-manager'),
+        ),
+    );
     
     foreach ($taxonomies as $slug => $info) {
         if (in_array($slug, $skip)) continue;
-        register_taxonomy($slug, 'bm_book', array(
+        
+        $is_default = in_array($slug, array('bm_genre', 'bm_category'));
+        
+        $args = array(
             'label'        => $info['label'],
+            'labels'       => isset($default_labels[$slug]) ? $default_labels[$slug] : array(),
             'rewrite'      => false,
             'hierarchical' => !empty($info['hierarchical']),
             'show_ui'      => true,
             'show_in_menu' => false,
+            'map_meta_cap' => true,
+            'show_admin_column' => true,
             'capabilities' => array(
-                'manage_terms' => 'manage_options',
-                'edit_terms'   => 'manage_options',
-                'delete_terms' => 'manage_options',
-                'assign_terms' => 'manage_options',
+                'manage_terms' => 'edit_bm_books',
+                'edit_terms'   => 'edit_bm_books',
+                'delete_terms' => 'edit_bm_books',
+                'assign_terms' => 'edit_bm_books',
             ),
-        ));
+        );
+        register_taxonomy($slug, 'bm_book', $args);
     }
 }
 add_action('init', 'bm_register_dynamic_taxonomies', 11);

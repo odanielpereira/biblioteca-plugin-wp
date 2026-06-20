@@ -2415,11 +2415,6 @@ function bm_ajax_restore_call_number() {
 }
 add_action('wp_ajax_bm_restore_call_number', 'bm_ajax_restore_call_number');
 
-function bm_display_call_number($book_id = null) {
-    
-// ==========================================
-// FASE 35.7: ÍCONE POR DISCIPLINA
-// ==========================================
 function bm_get_discipline_icon($discipline_name) {
     $name_lower = mb_strtolower(trim($discipline_name));
     
@@ -2458,6 +2453,9 @@ function bm_get_discipline_icon($discipline_name) {
     
     return isset($icons[$name_lower]) ? $icons[$name_lower] : '📚';
 }
+
+function bm_display_call_number($book_id = null) {
+    
     if (!$book_id) $book_id = get_the_ID();
     $cdu = get_post_meta($book_id, '_bm_cdu', true);
     $cutter = get_post_meta($book_id, '_bm_cutter', true);
