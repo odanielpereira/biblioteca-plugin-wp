@@ -1093,3 +1093,35 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 - **Ação:** Atualização do `roadmap.md` — Tarefa 37.8.
 - **Detalhes:** Substituída a descrição original ("Alunos, Professores e Gestores não acessam o wp-admin") pelo que foi realmente implementado: "Página Minha Conta com abas de Login e Cadastro". A tarefa foi marcada como concluída `[x]`.
 - **Ferramenta:** `write_file` 
+
+**178 - Data:** 2026-06-21
+- **Ação:** Correção de loop infinito no status "Arquivado" da página de Empréstimos.
+- **Detalhes:** Ao selecionar o status "Arquivado", a página entrava em loop de recarregamento. Causa: o script `DOMContentLoaded` disparava o evento `change` no dropdown mesmo quando o status já era "archived", fazendo o navegador recarregar a página em ciclo. Solução: o script agora ignora o status "archived", já que a filtragem de arquivados é feita pelo PHP antes da página carregar.
+- **Arquivos modificados:** `includes/users.php`
+- **Ferramenta:** `write_file`
+
+**179 - Data:** 2026-06-21
+- **Ação:** Correção do limite de empréstimos por aluno — validação implementada.
+- **Detalhes:** A configuração "Máximo de empréstimos por aluno" (Limites e Prazos) nunca era verificada ao confirmar um empréstimo ou fazer uma reserva. Criada função `bm_get_active_loan_count()` que conta quantos livros o aluno tem emprestados. Adicionada verificação em `bm_confirm_loan()` e `bm_reserve_book()`: se atingiu o limite configurado, o sistema barra com a mensagem "Limite de X empréstimo(s) atingido. Devolva um livro antes de pegar outro." Aplica-se a todos os caminhos: página de Empréstimos, Balcão de Atendimento, empréstimo via agendamento e reservas. Nenhuma lógica existente foi alterada.
+- **Arquivos modificados:** `includes/users.php`
+- **Ferramenta:** `write_file`
+
+**180 - Data:** 2026-06-21
+- **Ação:** Permissões do Gestor agora são efetivamente aplicadas.
+- **Detalhes:** A interface de checkboxes "Permissões do Gestor" (criada na Fase 17) salvava os valores mas nunca os consultava — o Gestor sempre via todos os itens. Criada função `bm_librarian_can()` que verifica as permissões salvas. Adicionado bloqueio nas páginas administrativas (`admin_init`) que exibe "Acesso negado" se o Gestor não tiver a permissão. Adicionada função que remove submenus não permitidos do menu Biblioteca. Resultado: Admin desmarca "Etiquetas" → Gestor não vê mais esse item no menu e não acessa a página.
+- **Arquivos modificados:** `includes/users.php`, `includes/admin.php`, `book-manager.php`
+- **Ferramenta:** `write_file`
+
+**181 - Data:** 2026-06-21
+- **Ação:** Reorganização completa do menu Biblioteca e das abas de Configurações.
+- **Detalhes:** 
+  - **Menu principal reordenado:** Livros → Balcão de Atendimento → Alunos → Relatórios → Etiquetas → Taxonomias → Importação/Exportação → Configurações.
+  - **Carteirinhas e Sugestões de Aquisição** deixaram de ser itens soltos e passaram a ser abas dentro de Alunos.
+  - **Gerenciar Campos** deixou de ser item solto e passou a ser aba dentro de Configurações.
+  - **Novas abas em Configurações:** "Acessos e Visibilidade" (agrupa Permissões do Gestor e Visibilidade de Campos) e "Nº Chamada e Classificação" (agrupa Ordem do Número de Chamada e seletor CDU/CDD), ambas com formulário e botão Salvar funcionais.
+  - Removidas da aba "Limites e Prazos" as seções que foram transferidas para as novas abas.
+  - Impedido que a taxonomia "Disciplinas" criasse item de menu automático.
+  - Corrigido: abas "Carteirinhas" e "Sugestões" dentro de Alunos não carregavam o conteúdo (caíam na listagem de alunos). Adicionada lógica condicional para renderizar corretamente cada aba.
+  - Corrigido: erro de sintaxe (botão Salvar e `</form>` fora da função `bm_render_call_number_settings_page`).
+- **Arquivos modificados:** `includes/admin.php`, `book-manager.php`
+- **Ferramenta:** `write_file`

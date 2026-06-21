@@ -1941,9 +1941,7 @@ function bm_render_csv_export_page() {
 // FASE 7B/7H: GERENCIAMENTO DE CAMPOS DINÂMICOS
 // ==========================================
 
-function bm_add_dynamic_fields_page() { add_submenu_page('edit.php?post_type=bm_book','Gerenciar Campos','Gerenciar Campos','manage_options','bm_dynamic_fields','bm_render_dynamic_fields_page'); }
-
-add_action('admin_menu','bm_add_dynamic_fields_page');
+// Gerenciar Campos agora é aba dentro de Configurações
 function bm_render_dynamic_fields_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     $message = '';
@@ -2205,6 +2203,166 @@ function bm_get_api_key($provider) {
         return BM_GOOGLE_BOOKS_API_KEY;
     }
     return isset($keys[$provider . '_key']) ? $keys[$provider . '_key'] : '';
+}
+
+function bm_render_access_settings_page() {
+    if (!current_user_can('manage_options')) return;
+    $settings = bm_get_settings();
+    $msg = '';
+    
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_access_settings'])) {
+        if (isset($_POST['librarian_permissions']) && is_array($_POST['librarian_permissions'])) {
+            $settings['librarian_permissions'] = array();
+            foreach (array('import_csv', 'export_csv', 'dynamic_fields', 'taxonomies', 'loans', 'approve_users', 'approve_readings', 'labels', 'service', 'students', 'student_import') as $perm) {
+                $settings['librarian_permissions'][$perm] = isset($_POST['librarian_permissions'][$perm]) ? '1' : '0';
+            }
+        }
+        if (isset($_POST['field_visibility']) && is_array($_POST['field_visibility'])) {
+            $settings['field_visibility'] = array();
+            foreach (array('isbn', 'location', 'copies', 'audit_log') as $field) {
+                $settings['field_visibility'][$field] = array(
+                    'student'   => isset($_POST['field_visibility'][$field]['student']) ? 1 : 0,
+                    'teacher'   => isset($_POST['field_visibility'][$field]['teacher']) ? 1 : 0,
+                    'librarian' => isset($_POST['field_visibility'][$field]['librarian']) ? 1 : 0,
+                );
+            }
+        }
+        update_option('bm_settings', $settings);
+        $msg = '<div class="notice notice-success"><p>' . __('Configurações de acesso salvas!', 'book-manager') . '</p></div>';
+    }
+    ?>
+    <h2><?php _e('Acessos e Visibilidade', 'book-manager'); ?></h2>
+    <?php echo $msg; ?>
+    
+    <form method="post" style="max-width:600px;">
+        <h3><?php _e('Permissões do Gestor', 'book-manager'); ?></h3>
+    <p class="description"><?php _e('Marque quais funcionalidades o Gestor da Biblioteca pode acessar.', 'book-manager'); ?></p>
+    <?php 
+    $librarian_perms = isset($settings['librarian_permissions']) ? $settings['librarian_permissions'] : array(
+        'import_csv' => '1', 'export_csv' => '1', 'dynamic_fields' => '1',
+        'taxonomies' => '1', 'loans' => '1', 'approve_users' => '1',
+        'approve_readings' => '1', 'labels' => '1', 'service' => '1',
+        'students' => '1', 'student_import' => '1',
+    );
+    $perm_options = array(
+        'import_csv' => 'Importar CSV',
+        'export_csv' => 'Exportar CSV',
+        'dynamic_fields' => 'Gerenciar Campos',
+        'taxonomies' => 'Taxonomias',
+        'loans' => 'Empréstimos',
+        'approve_users' => 'Aprovar Cadastros',
+        'approve_readings' => 'Aprovar Fichas',
+        'labels' => 'Etiquetas',
+        'service' => 'Atendimento',
+        'students' => 'Alunos',
+        'student_import' => 'Importar Alunos',
+    );
+    ?>
+    <table class="form-table">
+        <?php foreach ($perm_options as $key => $label): ?>
+        <tr>
+            <th><label><?php echo $label; ?></label></th>
+            <td><label><input type="checkbox" name="librarian_permissions[<?php echo $key; ?>]" value="1" <?php checked(isset($librarian_perms[$key]) && $librarian_perms[$key] === '1'); ?> /> <?php _e('Permitir', 'book-manager'); ?></label></td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+    
+    <h3><?php _e('Visibilidade de Campos por Perfil', 'book-manager'); ?></h3>
+    <p class="description"><?php _e('Defina quais informações administrativas cada perfil vê na página pública do livro.', 'book-manager'); ?></p>
+    <table class="form-table">
+        <tr>
+            <th></th>
+            <th style="text-align:center;"><?php _e('Aluno', 'book-manager'); ?></th>
+            <th style="text-align:center;"><?php _e('Professor', 'book-manager'); ?></th>
+            <th style="text-align:center;"><?php _e('Gestor', 'book-manager'); ?></th>
+        </tr>
+        <?php
+        $fields = array(
+            'isbn'      => 'ISBN',
+            'location'  => 'Localização',
+            'copies'    => 'Exemplares',
+            'audit_log' => 'Histórico de Ações',
+        );
+        $visibility = isset($settings['field_visibility']) ? $settings['field_visibility'] : array();
+        foreach ($fields as $key => $label):
+        ?>
+        <tr>
+            <th><label><?php echo $label; ?></label></th>
+            <td style="text-align:center;"><input type="checkbox" name="field_visibility[<?php echo $key; ?>][student]" value="1" <?php checked(isset($visibility[$key]['student']) && $visibility[$key]['student']); ?> /></td>
+            <td style="text-align:center;"><input type="checkbox" name="field_visibility[<?php echo $key; ?>][teacher]" value="1" <?php checked(isset($visibility[$key]['teacher']) && $visibility[$key]['teacher']); ?> /></td>
+            <td style="text-align:center;"><input type="checkbox" name="field_visibility[<?php echo $key; ?>][librarian]" value="1" <?php checked(isset($visibility[$key]['librarian']) && $visibility[$key]['librarian']); ?> /></td>
+        </tr>
+        <?php endforeach; ?>
+    </table>
+
+    <p><input type="submit" name="save_access_settings" class="button button-primary" value="<?php _e('Salvar', 'book-manager'); ?>" /></p>
+    </form>
+
+    <?php
+}
+
+function bm_render_call_number_settings_page() {
+    if (!current_user_can('manage_options')) return;
+    $settings = bm_get_settings();
+    $msg = '';
+    
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_call_number_settings'])) {
+        $settings['classification_system'] = isset($_POST['classification_system']) && $_POST['classification_system'] === 'cdd' ? 'cdd' : 'cdu';
+        if (isset($_POST['call_number_order']) && is_array($_POST['call_number_order'])) {
+            $settings['call_number_order'] = array_map('sanitize_text_field', $_POST['call_number_order']);
+        }
+        update_option('bm_settings', $settings);
+        $msg = '<div class="notice notice-success"><p>' . __('Configurações do Número de Chamada salvas!', 'book-manager') . '</p></div>';
+    }
+    ?>
+    <h2><?php _e('Número de Chamada e Classificação', 'book-manager'); ?></h2>
+    <?php echo $msg; ?>
+    
+    <form method="post" style="max-width:600px;">
+    
+    <h3><?php _e('Ordem do Número de Chamada', 'book-manager'); ?></h3>
+    <p class="description"><?php _e('Arraste para definir a ordem de exibição.', 'book-manager'); ?></p>
+    <?php 
+    $call_number_order = isset($settings['call_number_order']) ? $settings['call_number_order'] : array('cdu', 'cutter', 'author', 'title', 'edition', 'volume', 'copies');
+    $order_labels = array(
+        'cdu' => __('Classificação', 'book-manager'),
+        'cutter' => __('Cutter', 'book-manager'),
+        'author' => __('Autor', 'book-manager'),
+        'title' => __('Título', 'book-manager'),
+        'edition' => __('Edição', 'book-manager'),
+        'volume' => __('Volume', 'book-manager'),
+        'copies' => __('Exemplares', 'book-manager'),
+    );
+    ?>
+    <ul id="bm-call-number-order" style="max-width:300px;list-style:none;padding:0;">
+        <?php foreach ($call_number_order as $field): ?>
+            <li style="background:#f9f9f9;padding:8px 12px;margin:3px 0;border:1px solid #ddd;border-radius:4px;cursor:move;">
+                <span class="dashicons dashicons-menu" style="color:#999;margin-right:8px;"></span>
+                <?php echo esc_html($order_labels[$field]); ?>
+                <input type="hidden" name="call_number_order[]" value="<?php echo esc_attr($field); ?>" />
+            </li>
+        <?php endforeach; ?>
+    </ul>
+    <script>
+    jQuery(document).ready(function($) {
+        $('#bm-call-number-order').sortable({handle: '.dashicons-menu'});
+    });
+    </script>
+    
+    <h3><?php _e('Sistema de Classificação', 'book-manager'); ?></h3>
+    <table class="form-table">
+        <tr>
+            <th><label><?php _e('CDU ou CDD', 'book-manager'); ?></label></th>
+            <td>
+                <label><input type="radio" name="classification_system" value="cdu" <?php checked($settings['classification_system'], 'cdu'); ?> /> <?php _e('Classificação CDU', 'book-manager'); ?></label><br>
+                <label><input type="radio" name="classification_system" value="cdd" <?php checked($settings['classification_system'], 'cdd'); ?> /> <?php _e('Classificação CDD', 'book-manager'); ?></label>
+                <p class="description"><?php _e('Define qual sistema de classificação a IA usará ao gerar o Número de Chamada.', 'book-manager'); ?></p>
+            </td>
+        </tr>
+    </table>
+    <p><input type="submit" name="save_call_number_settings" class="button button-primary" value="<?php _e('Salvar', 'book-manager'); ?>" /></p>
+    </form>
+    <?php
 }
 
 function bm_render_api_settings_page() {
@@ -3015,13 +3173,27 @@ function bm_render_reading_lists_page_content() {
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=list'); ?>" class="nav-tab <?php echo $tab === 'list' ? 'nav-tab-active' : ''; ?>">👥 <?php _e('Lista de Alunos', 'book-manager'); ?></a>
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=approve_users'); ?>" class="nav-tab <?php echo $tab === 'approve_users' ? 'nav-tab-active' : ''; ?>">✅ <?php _e('Aprovar Cadastros', 'book-manager'); ?></a>
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=approve_readings'); ?>" class="nav-tab <?php echo $tab === 'approve_readings' ? 'nav-tab-active' : ''; ?>">📝 <?php _e('Aprovar Fichas', 'book-manager'); ?></a>
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=reading_lists'); ?>" class="nav-tab <?php echo $tab === 'reading_lists' ? 'nav-tab-active' : ''; ?>">📚 <?php _e('Listas de Leitura', 'book-manager'); ?></a>        
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=reading_lists'); ?>" class="nav-tab <?php echo $tab === 'reading_lists' ? 'nav-tab-active' : ''; ?>">📚 <?php _e('Listas de Leitura', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=library_cards'); ?>" class="nav-tab <?php echo $tab === 'library_cards' ? 'nav-tab-active' : ''; ?>">🪪 <?php _e('Carteirinhas', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=acquisition_suggestions'); ?>" class="nav-tab <?php echo $tab === 'acquisition_suggestions' ? 'nav-tab-active' : ''; ?>">🛒 <?php _e('Sugestões de Aquisição', 'book-manager'); ?></a>
         </nav>
         
         <?php
         if ($tab === 'reading_lists') {
             if (function_exists('bm_render_reading_lists_page_content')) {
                 bm_render_reading_lists_page_content();
+            } else {
+                echo '<p>' . __('Função não encontrada.', 'book-manager') . '</p>';
+            }
+        } elseif ($tab === 'library_cards') {
+            if (function_exists('bm_render_library_cards_page')) {
+                bm_render_library_cards_page();
+            } else {
+                echo '<p>' . __('Função não encontrada.', 'book-manager') . '</p>';
+            }
+        } elseif ($tab === 'acquisition_suggestions') {
+            if (function_exists('bm_render_acquisition_suggestions_page')) {
+                bm_render_acquisition_suggestions_page();
             } else {
                 echo '<p>' . __('Função não encontrada.', 'book-manager') . '</p>';
             }
@@ -3654,10 +3826,7 @@ function bm_add_labels_page() {
 
 add_action('admin_menu', 'bm_add_labels_page');
 
-function bm_add_library_cards_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Carteirinhas', 'book-manager'), __('Carteirinhas', 'book-manager'), 'edit_bm_books', 'bm_library_cards', 'bm_render_library_cards_page');
-}
-add_action('admin_menu', 'bm_add_library_cards_page');
+// Carteirinhas agora é aba dentro de Alunos
 
 function bm_render_library_cards_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
@@ -4567,6 +4736,8 @@ function bm_render_settings_unified_page() {
         
         <nav class="nav-tab-wrapper" style="margin-bottom:15px;">
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=general'); ?>" class="nav-tab <?php echo $tab === 'general' ? 'nav-tab-active' : ''; ?>">⚙️ <?php _e('Limites e Prazos', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=access'); ?>" class="nav-tab <?php echo $tab === 'access' ? 'nav-tab-active' : ''; ?>">🔒 <?php _e('Acessos e Visibilidade', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=call_number'); ?>" class="nav-tab <?php echo $tab === 'call_number' ? 'nav-tab-active' : ''; ?>">📋 <?php _e('Nº Chamada e Classificação', 'book-manager'); ?></a>
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=apis'); ?>" class="nav-tab <?php echo $tab === 'apis' ? 'nav-tab-active' : ''; ?>">🔌 <?php _e('APIs', 'book-manager'); ?></a>
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=white_label'); ?>" class="nav-tab <?php echo $tab === 'white_label' ? 'nav-tab-active' : ''; ?>">🎨 <?php _e('Identidade Visual', 'book-manager'); ?></a>
             <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_settings&tab=year_transition'); ?>" class="nav-tab <?php echo $tab === 'year_transition' ? 'nav-tab-active' : ''; ?>">🔄 <?php _e('Virada de Ano', 'book-manager'); ?></a>
@@ -4577,6 +4748,10 @@ function bm_render_settings_unified_page() {
         <?php
         if ($tab === 'apis') {
             bm_render_api_settings_page();
+        } elseif ($tab === 'access') {
+            bm_render_access_settings_page();
+        } elseif ($tab === 'call_number') {
+            bm_render_call_number_settings_page();
         } elseif ($tab === 'white_label') {
             bm_render_white_label_page();
         } elseif ($tab === 'year_transition') {
@@ -4610,7 +4785,7 @@ function bm_render_settings_page() {
         $settings['xp_max_video'] = absint($_POST['xp_max_video']);
         $settings['xp_enabled'] = isset($_POST['xp_enabled']) ? '1' : '0';
         $settings['classification_system'] = isset($_POST['classification_system']) && $_POST['classification_system'] === 'cdd' ? 'cdd' : 'cdu';
-                if (isset($_POST['call_number_order']) && is_array($_POST['call_number_order'])) {
+        if (isset($_POST['call_number_order']) && is_array($_POST['call_number_order'])) {
             $settings['call_number_order'] = array_map('sanitize_text_field', $_POST['call_number_order']);
         }
         if (isset($_POST['cover_mode'])) {
@@ -4622,7 +4797,7 @@ function bm_render_settings_page() {
                 $settings['librarian_permissions'][$perm] = isset($_POST['librarian_permissions'][$perm]) ? '1' : '0';
             }
         }
-                if (isset($_POST['per_profile_limits']) && is_array($_POST['per_profile_limits'])) {
+        if (isset($_POST['per_profile_limits']) && is_array($_POST['per_profile_limits'])) {
             $settings['per_profile_limits'] = array();
             foreach ($_POST['per_profile_limits'] as $limit) {
                 if (!empty($limit['group'])) {
@@ -4649,43 +4824,40 @@ function bm_render_settings_page() {
     }
     ?>
     <div class="wrap">
-        <h1>Configurações</h1>
+        <h1><?php _e('Limites e Prazos', 'book-manager'); ?></h1>
         <?php echo $msg; ?>
         
         <form method="post" style="max-width:600px;">
-            <h2>Limites e Prazos</h2>
-            
-            <h3>Limites Globais</h3>
+            <h3><?php _e('Limites Globais', 'book-manager'); ?></h3>
             <table class="form-table">
                 <tr>
-                    <th><label>Máximo de reservas por aluno</label></th>
+                    <th><label><?php _e('Máximo de reservas por aluno', 'book-manager'); ?></label></th>
                     <td>
                         <input type="number" name="max_reservations_student" value="<?php echo esc_attr($settings['max_reservations_student']); ?>" min="1" max="10" style="width:80px;" />
-                        <p class="description">Quantos livros um aluno pode reservar simultaneamente.</p>
+                        <p class="description"><?php _e('Quantos livros um aluno pode reservar simultaneamente.', 'book-manager'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th><label>Máximo de empréstimos por aluno</label></th>
+                    <th><label><?php _e('Máximo de empréstimos por aluno', 'book-manager'); ?></label></th>
                     <td>
                         <input type="number" name="max_loans_student" value="<?php echo esc_attr($settings['max_loans_student']); ?>" min="1" max="10" style="width:80px;" />
-                        <p class="description">Quantos livros um aluno pode pegar emprestado simultaneamente.</p>
+                        <p class="description"><?php _e('Quantos livros um aluno pode pegar emprestado simultaneamente.', 'book-manager'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th><label>Prazo padrão de empréstimo (dias)</label></th>
+                    <th><label><?php _e('Prazo padrão de empréstimo (dias)', 'book-manager'); ?></label></th>
                     <td>
                         <input type="number" name="default_loan_days" value="<?php echo esc_attr($settings['default_loan_days']); ?>" min="1" max="60" style="width:80px;" />
-                        <p class="description">Prazo padrão ao confirmar um empréstimo.</p>
+                        <p class="description"><?php _e('Prazo padrão ao confirmar um empréstimo.', 'book-manager'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th><label>Prazo de reserva (horas)</label></th>
+                    <th><label><?php _e('Prazo de reserva (horas)', 'book-manager'); ?></label></th>
                     <td>
                         <input type="number" name="reservation_hours" value="<?php echo esc_attr($settings['reservation_hours']); ?>" min="1" max="72" style="width:80px;" />
-                        <p class="description">Tempo máximo que uma reserva aguarda retirada.</p>
+                        <p class="description"><?php _e('Tempo máximo que uma reserva aguarda retirada.', 'book-manager'); ?></p>
                     </td>
                 </tr>
-                
                 <tr>
                     <th><label><?php _e('Máx. pontos por leitura', 'book-manager'); ?></label></th>
                     <td>
@@ -4707,60 +4879,29 @@ function bm_render_settings_page() {
                         <p class="description"><?php _e('Nota máxima que o Gestor pode dar pelo vídeo.', 'book-manager'); ?></p>
                     </td>
                 </tr>
-
                 <tr>
                     <th><label><?php _e('Ativar sistema de pontuação', 'book-manager'); ?></label></th>
                     <td>
                         <label><input type="checkbox" name="xp_enabled" <?php checked($settings['xp_enabled'], '1'); ?> /> <?php _e('Habilitar gamificação (XP, ranking, medalhas)', 'book-manager'); ?></label>
                         <p class="description"><?php _e('Se desativado, alunos continuam lendo e resenhando, mas sem ganhar pontos.', 'book-manager'); ?></p>
                     </td>
-                </tr>                
-
-                                <tr>
-                    <th><label>Dias para arquivamento</label></th>
+                </tr>
+                <tr>
+                    <th><label><?php _e('Dias para arquivamento', 'book-manager'); ?></label></th>
                     <td>
                         <input type="number" name="loan_archive_days" value="<?php echo esc_attr($settings['loan_archive_days']); ?>" min="30" max="3650" style="width:80px;" />
-                        <p class="description">Empréstimos devolvidos há mais de X dias podem ser arquivados. Padrão: 1461 (4 anos).</p>
+                        <p class="description"><?php _e('Empréstimos devolvidos há mais de X dias podem ser arquivados. Padrão: 1461 (4 anos).', 'book-manager'); ?></p>
                     </td>
                 </tr>
             </table>
-
-            <h2>Visibilidade de Campos por Perfil</h2>
-            <p class="description">Defina quais informações administrativas cada perfil vê na página pública do livro.</p>
-            <table class="form-table">
-                <tr>
-                    <th></th>
-                    <th style="text-align:center;">Aluno</th>
-                    <th style="text-align:center;">Professor</th>
-                    <th style="text-align:center;">Gestor</th>
-                </tr>
-                <?php
-                $fields = array(
-                    'isbn'      => 'ISBN',
-                    'location'  => 'Localização',
-                    'copies'    => 'Exemplares',
-                    'audit_log' => 'Histórico de Ações',
-                );
-                $visibility = isset($settings['field_visibility']) ? $settings['field_visibility'] : array();
-                foreach ($fields as $key => $label):
-                ?>
-                <tr>
-                    <th><label><?php echo $label; ?></label></th>
-                    <td style="text-align:center;"><input type="checkbox" name="field_visibility[<?php echo $key; ?>][student]" value="1" <?php checked(isset($visibility[$key]['student']) && $visibility[$key]['student']); ?> /></td>
-                    <td style="text-align:center;"><input type="checkbox" name="field_visibility[<?php echo $key; ?>][teacher]" value="1" <?php checked(isset($visibility[$key]['teacher']) && $visibility[$key]['teacher']); ?> /></td>
-                    <td style="text-align:center;"><input type="checkbox" name="field_visibility[<?php echo $key; ?>][librarian]" value="1" <?php checked(isset($visibility[$key]['librarian']) && $visibility[$key]['librarian']); ?> /></td>
-                </tr>
-                <?php endforeach; ?>
-            </table>
             
-                        
-            <h3>Limites por Grupo (opcional)</h3>
-            <p class="description">Defina limites diferentes para grupos específicos de alunos. Se vazio, usa o limite global acima.</p>
+            <h3><?php _e('Limites por Grupo (opcional)', 'book-manager'); ?></h3>
+            <p class="description"><?php _e('Defina limites diferentes para grupos específicos de alunos. Se vazio, usa o limite global acima.', 'book-manager'); ?></p>
             <table class="form-table">
                 <tr>
-                    <th><label>Grupo</label></th>
-                    <th><label>Máx. Reservas</label></th>
-                    <th><label>Máx. Empréstimos</label></th>
+                    <th><label><?php _e('Grupo', 'book-manager'); ?></label></th>
+                    <th><label><?php _e('Máx. Reservas', 'book-manager'); ?></label></th>
+                    <th><label><?php _e('Máx. Empréstimos', 'book-manager'); ?></label></th>
                     <th></th>
                 </tr>
                 <?php 
@@ -4780,7 +4921,7 @@ function bm_render_settings_page() {
                 ?>
                 <tr id="bm-new-limit-row">
                     <td colspan="4">
-                        <button type="button" class="button" id="bm-add-limit">+ Adicionar limite por grupo</button>
+                        <button type="button" class="button" id="bm-add-limit">+ <?php _e('Adicionar limite por grupo', 'book-manager'); ?></button>
                     </td>
                 </tr>
             </table>
@@ -4799,95 +4940,20 @@ function bm_render_settings_page() {
             });
             </script>
             
-                        
-            <h2>Permissões do Gestor</h2>
-            <p class="description">Marque quais funcionalidades o Gestor da Biblioteca pode acessar.</p>
-            <?php 
-            $librarian_perms = isset($settings['librarian_permissions']) ? $settings['librarian_permissions'] : array(
-                'import_csv' => '1', 'export_csv' => '1', 'dynamic_fields' => '1',
-                'taxonomies' => '1', 'loans' => '1', 'approve_users' => '1',
-                'approve_readings' => '1', 'labels' => '1', 'service' => '1',
-                'students' => '1', 'student_import' => '1',
-            );
-            $perm_options = array(
-                'import_csv' => 'Importar CSV',
-                'export_csv' => 'Exportar CSV',
-                'dynamic_fields' => 'Gerenciar Campos',
-                'taxonomies' => 'Taxonomias',
-                'loans' => 'Empréstimos',
-                'approve_users' => 'Aprovar Cadastros',
-                'approve_readings' => 'Aprovar Fichas',
-                'labels' => 'Etiquetas',
-                'service' => 'Atendimento',
-                'students' => 'Alunos',
-                'student_import' => 'Importar Alunos',
-            );
-            ?>
-            <table class="form-table">
-                <?php foreach ($perm_options as $key => $label): ?>
-                <tr>
-                    <th><label><?php echo $label; ?></label></th>
-                    <td><label><input type="checkbox" name="librarian_permissions[<?php echo $key; ?>]" value="1" <?php checked(isset($librarian_perms[$key]) && $librarian_perms[$key] === '1'); ?> /> Permitir</label></td>
-                </tr>
-                <?php endforeach; ?>
-            </table>
-            
-                        <h2>Armazenamento de Capas</h2>
+            <h3><?php _e('Armazenamento de Capas', 'book-manager'); ?></h3>
             <table class="form-table">
                 <tr>
-                    <th><label>Modo de capa</label></th>
+                    <th><label><?php _e('Modo de capa', 'book-manager'); ?></label></th>
                     <td>
                         <?php $cover_mode = isset($settings['cover_mode']) ? $settings['cover_mode'] : 'download'; ?>
-                        <label><input type="radio" name="cover_mode" value="download" <?php checked($cover_mode, 'download'); ?> /> Baixar para o servidor (recomendado)</label><br>
-                        <label><input type="radio" name="cover_mode" value="hotlink" <?php checked($cover_mode, 'hotlink'); ?> /> Hotlink do Google Books (não ocupa espaço)</label>
-                        <p class="description">Hotlink exibe a imagem direto do Google. Se o Google alterar a URL, a capa pode sumir.</p>
+                        <label><input type="radio" name="cover_mode" value="download" <?php checked($cover_mode, 'download'); ?> /> <?php _e('Baixar para o servidor (recomendado)', 'book-manager'); ?></label><br>
+                        <label><input type="radio" name="cover_mode" value="hotlink" <?php checked($cover_mode, 'hotlink'); ?> /> <?php _e('Hotlink do Google Books (não ocupa espaço)', 'book-manager'); ?></label>
+                        <p class="description"><?php _e('Hotlink exibe a imagem direto do Google. Se o Google alterar a URL, a capa pode sumir.', 'book-manager'); ?></p>
                     </td>
                 </tr>
             </table>
-            
-            <h2><?php _e('Ordem do Número de Chamada', 'book-manager'); ?></h2>
-            <p class="description"><?php _e('Arraste para definir a ordem de exibição.', 'book-manager'); ?></p>
-            <?php 
-            $call_number_order = isset($settings['call_number_order']) ? $settings['call_number_order'] : array('cdu', 'cutter', 'author', 'title', 'edition', 'volume', 'copies');
-            $order_labels = array(
-                'cdu' => __('Classificação', 'book-manager'),
-                'cutter' => __('Cutter', 'book-manager'),
-                'author' => __('Autor', 'book-manager'),
-                'title' => __('Título', 'book-manager'),
-                'edition' => __('Edição', 'book-manager'),
-                'volume' => __('Volume', 'book-manager'),
-                'copies' => __('Exemplares', 'book-manager'),
-            );
-            ?>
-            <ul id="bm-call-number-order" style="max-width:300px;list-style:none;padding:0;">
-                <?php foreach ($call_number_order as $field): ?>
-                    <li style="background:#f9f9f9;padding:8px 12px;margin:3px 0;border:1px solid #ddd;border-radius:4px;cursor:move;">
-                        <span class="dashicons dashicons-menu" style="color:#999;margin-right:8px;"></span>
-                        <?php echo esc_html($order_labels[$field]); ?>
-                        <input type="hidden" name="call_number_order[]" value="<?php echo esc_attr($field); ?>" />
-                    </li>
-                <?php endforeach; ?>
-            </ul>
-            <script>
-            jQuery(document).ready(function($) {
-                $('#bm-call-number-order').sortable({handle: '.dashicons-menu'});
-            });
-            </script>
 
-            <h2>Sistema de Classificação</h2>
-            <table class="form-table">
-                <tr>
-                    <th><label>CDU ou CDD</label></th>
-                    <td>
-                        <label><input type="radio" name="classification_system" value="cdu" <?php checked($settings['classification_system'], 'cdu'); ?> /> Classificação CDU</label><br>
-                        <label><input type="radio" name="classification_system" value="cdd" <?php checked($settings['classification_system'], 'cdd'); ?> /> Classificação CDD</label>
-                        <p class="description">Define qual sistema de classificação a IA usará ao gerar o Número de Chamada.</p>
-                    </td>
-                </tr>
-            </table>
-            
-
-            <p><input type="submit" name="save_settings" class="button button-primary" value="Salvar Configurações" /></p>
+            <p><input type="submit" name="save_settings" class="button button-primary" value="<?php _e('Salvar Configurações', 'book-manager'); ?>" /></p>
         </form>
     </div>
     <?php

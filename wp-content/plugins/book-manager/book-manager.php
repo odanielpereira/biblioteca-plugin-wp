@@ -83,7 +83,7 @@ function bm_register_discipline_taxonomy() {
         'rewrite'      => false,
         'hierarchical' => true,
         'show_ui'      => true,
-        'show_in_menu' => true,
+        'show_in_menu' => false,
         'capabilities' => array(
             'manage_terms' => 'manage_options', 'edit_terms' => 'manage_options',
             'delete_terms' => 'manage_options', 'assign_terms' => 'manage_options',
@@ -250,17 +250,41 @@ function bm_set_cached($key, $data, $expiry = 300) {
 }
 
 // FASE 12E: Renomear submenu "Biblioteca" para "Livros"
-function bm_rename_first_submenu() {
+function bm_reorder_submenus() {
     global $submenu;
-    if (isset($submenu['edit.php?post_type=bm_book'])) {
-        foreach ($submenu['edit.php?post_type=bm_book'] as $key => $item) {
-            if ($item[2] === 'edit.php?post_type=bm_book') {
-                $submenu['edit.php?post_type=bm_book'][$key][0] = 'Livros';
+    $parent = 'edit.php?post_type=bm_book';
+    if (!isset($submenu[$parent])) return;
+    
+    $items = $submenu[$parent];
+    
+    // Apenas estes itens aparecerão no menu (ordem exata)
+    $allowed = array(
+        'edit.php?post_type=bm_book' => 'Livros',
+        'post-new.php?post_type=bm_book' => 'Adicionar Novo',
+        'bm_service_desk' => 'Balcão de Atendimento',
+        'bm_students' => 'Alunos',
+        'bm_reports' => 'Relatórios',
+        'bm_labels' => 'Etiquetas',
+        'bm_taxonomias' => 'Taxonomias',
+        'bm_data_io' => 'Importação/Exportação',
+        'bm_settings' => 'Configurações',
+    );
+    
+    $reordered = array();
+    
+    foreach ($allowed as $slug => $title) {
+        foreach ($items as $item) {
+            if ($item[2] === $slug) {
+                $item[0] = $title;
+                $reordered[] = $item;
+                break;
             }
         }
     }
+    
+    $submenu[$parent] = $reordered;
 }
-add_action('admin_menu', 'bm_rename_first_submenu', 999);
+add_action('admin_menu', 'bm_reorder_submenus', 1000);
 
 function bm_hide_librarian_submenus() {
     if (current_user_can('manage_options')) return;
