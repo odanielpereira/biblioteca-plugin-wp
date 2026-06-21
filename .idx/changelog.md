@@ -984,3 +984,95 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 - **Ferramenta:** `write_file` (múltiplas tentativas), `Ctrl+Z` (reversão).
 - **Decisão:** A migração para taxonomias 100% dinâmicas exigirá um planejamento detalhado e execução em ambiente controlado. A Fase 37.5 permanece pendente. O chat atual assume função consultiva a partir deste ponto.
 
+**162 - Data:** 2026-06-20
+- **Ação:** Correção do escopo da função `bm_get_discipline_icon`.
+- **Detalhes:** A função estava declarada dentro do corpo de `bm_display_call_number` (nested function), causando comportamento imprevisível — os ícones de disciplina só existiam após a primeira chamada de `bm_display_call_number`. Movida para o escopo global, antes de `bm_display_call_number`, garantindo disponibilidade imediata em `single-bm_book.php` e demais locais.
+- **Ferramenta:** `write_file`
+- **Decisão:** Correção de bug estrutural. Funções de ícones agora independentes e disponíveis globalmente.
+
+**163 - Data:** 2026-06-20
+- **Ação:** Tarefa 37.5 concluída — Resolução do conflito das taxonomias Gênero e Categoria.
+- **Detalhes:** Adicionado `'map_meta_cap' => true` no registro das taxonomias dinâmicas para que as capabilities `edit_bm_books` fossem reconhecidas. Alterado `show_ui` de `false` para `true` nas taxonomias padrão (`bm_genre`, `bm_category`). Criada função `bm_remove_native_taxonomy_metaboxes()` para remover as metaboxes nativas do WordPress via `remove_meta_box` no hook `add_meta_boxes` (prioridade 20), evitando duplicação com os widgets dinâmicos. Resultado: widgets dinâmicos aparecem na edição do livro, gerenciamento de termos (adicionar/editar subgêneros) funciona sem erro de permissão, filtros do admin preservados sem duplicação.
+- **Arquivos modificados:** `includes/admin.php`
+- **Ferramenta:** `write_file`
+
+**164 - Data:** 2026-06-20
+- **Ação:** Correção da importação CSV para taxonomias.
+- **Detalhes:** Ao importar livros via CSV, colunas mapeadas para taxonomias (Gênero, Categoria, etc.) estavam sendo salvas como post meta (`update_post_meta`), em vez de termos de taxonomia. Substituído o bloco de salvamento por lógica condicional: se o campo é uma taxonomia (`taxonomy_exists`), divide os valores por vírgula, busca ou cria os termos via `term_exists`/`wp_insert_term` e atribui ao livro via `wp_set_post_terms`. Se não for taxonomia, mantém o salvamento como post meta. A importação agora preenche corretamente os dropdowns de Gênero e Categoria.
+- **Arquivos modificados:** `includes/admin.php`
+- **Ferramenta:** `write_file`
+
+**165 - Data:** 2026-06-20
+- **Ação:** Correção de código PHP exposto no dashboard do aluno.
+- **Detalhes:** O bloco do toggle de perfil público (`if (isset($_POST['bm_toggle_profile'])...`) estava sendo renderizado como texto no HTML do dashboard, logo após a seção "Lista de Leitura". A tag `<?php` que o precedia estava ausente, fazendo o código aparecer cru na tela. Adicionada a tag de abertura PHP faltante.
+- **Arquivos modificados:** `includes/users.php`
+- **Ferramenta:** `write_file`
+
+**166 - Data:** 2026-06-20
+- **Ação:** Tarefa 37.6 concluída — Upload de foto do aluno no dashboard.
+- **Detalhes:** Adicionado campo de upload de foto no dashboard público do aluno (`[bm_dashboard]`). Criado handler AJAX `bm_ajax_upload_photo` em `includes/frontend.php` com validação de tipo (JPG, PNG, WebP), tamanho máximo (2MB) e nonce de segurança. Upload processado via `wp_handle_upload()`, URL salva em `_bm_profile_photo` (user meta). Foto exibida no dashboard do aluno, na página de detalhes do aluno no admin e no perfil público `[bm_reader_profile]` (com fallback para avatar Gravatar e placeholder 👤). Script JavaScript vanilla para envio assíncrono com feedback visual.
+- **Arquivos modificados:** `includes/users.php`, `includes/frontend.php`
+- **Ferramenta:** `write_file`
+
+**167 - Data:** 2026-06-20
+- **Ação:** Tarefa 37.7 concluída — Carteirinha da biblioteca com impressão individual e em massa.
+- **Detalhes:** Implementado sistema completo de carteirinhas similar ao sistema de etiquetas. Criado handler AJAX individual (`bm_ajax_print_library_card`) acessível pelos dashboards de Aluno, Professor e Gestor. Criado handler de impressão em massa (`bm_ajax_print_library_cards_bulk`) com grid A4 (2 carteirinhas por linha). Criada página "Carteirinhas" no menu Biblioteca com seleção de alunos por checkboxes, filtros (busca, turma) e carrinho persistente via sessão PHP (`bm_library_cards_cart`). Função `bm_ajax_toggle_library_card` para adicionar/remover alunos do carrinho. Botão "Adicionar à carteirinha" na página de detalhes do aluno. CSS @media print para impressão limpa.
+- **Arquivos modificados:** `includes/frontend.php`, `includes/admin.php`, `includes/users.php`
+- **Ferramenta:** `write_file`
+
+**168 - Data:** 2026-06-20
+- **Ação:** Refinamento da carteirinha — novo layout, remoção de QR code e correção de impressão.
+- **Detalhes:** Removido QR code (continha apenas ID, considerado desnecessário). Novo layout com: foto, nome da escola, "Biblioteca Escolar", nome completo do aluno, tipo de usuário, ano/série, turma, turno, badges (medalhas) e vigência (ano atual/ano seguinte). Borda azul escuro (#003d6b) ao redor do cartão branco. Adicionado `print-color-adjust: exact` e `-webkit-print-color-adjust: exact` no CSS @media print para forçar impressão de cores de fundo e bordas. Adicionada borda sólida (`border: 2px solid #003d6b`) como garantia adicional na impressão.
+- **Arquivos modificados:** `includes/frontend.php`
+- **Ferramenta:** `write_file`
+
+**169 - Data:** 2026-06-20
+- **Ação:** Início da Tarefa 37.8 — bloqueio do wp-admin para não-admins, página de login com abas e painel do Gestor no frontend.
+- **Detalhes:** Adicionada função `bm_hide_admin_bar_for_non_admins` para ocultar a barra preta do WordPress de Alunos, Professores e Gestores. Modificado o shortcode `[bm_register]` para exibir duas abas: "Entrar" (formulário de login do WordPress) e "Cadastrar" (formulário já existente). Adicionada função `bm_block_wp_admin_for_non_admins` para redirecionar Alunos/Professores para `/painel-do-aluno/` e Gestores para o mesmo painel, caso tentassem acessar o wp-admin. Substituídos os links do painel do Gestor (Gerenciar Livros, Empréstimos, Aprovar Cadastros, Importar CSV, Sugestões) por URLs do frontend (`/gestao-da-biblioteca/...`). Durante os ajustes, um erro de sintaxe (tag PHP ausente) deixou o código do toggle de perfil público exposto como texto; corrigido adicionando a abertura `<?php`.
+- **Arquivos modificados:** `includes/users.php`
+- **Ferramenta:** `write_file`
+
+**170 - Data:** 2026-06-20
+- **Ação:** Reversão completa da Tarefa 37.8.
+- **Detalhes:** Após testes, o redirecionamento para `/painel-do-aluno/` e `/gestao-da-biblioteca/` falhou porque essas páginas não existiam no WordPress (URLs inexistentes). A página de login não oferecia link de logout. Diante desses problemas, o usuário decidiu cancelar a Tarefa 37.8 e a planejada 37.9, restaurando o arquivo `includes/users.php` a partir do commit anterior (Git). Todas as alterações da 37.8 foram desfeitas: a função de ocultar a barra preta, o redirecionamento do wp-admin, as abas de login/cadastro, e os links frontend do Gestor. O código voltou ao estado funcional da Tarefa 37.7.
+- **Arquivos modificados:** `includes/users.php` (restaurado via Git)
+- **Ferramenta:** substituição manual do arquivo
+- **Decisão:** A implementação do frontend completo será replanejada com a criação prévia das páginas e a inclusão de um link de logout.
+
+# Changelog — Atualização do Chat 10
+
+**Data:** 20 de junho de 2026  
+**Chat:** Chat 10  
+
+---
+
+**171 - Data:** 2026-06-20
+- **Ação:** Correção de variáveis não definidas na função `bm_ajax_print_library_card()`.
+- **Detalhes:** Adicionadas as definições das variáveis `$library_name`, `$vigencia`, `$turno`, `$serie_ano`, `$turma` e `$badges` antes do HTML da carteirinha individual. Sem essas variáveis, a carteirinha exibia espaços vazios nos campos de dados escolares, medalhas e vigência.
+- **Arquivos modificados:** `includes/frontend.php`
+- **Ferramenta:** `write_file`
+
+**172 - Data:** 2026-06-20
+- **Ação:** Tarefa 37.8 modificada — Página Minha Conta com abas de Login e Cadastro.
+- **Detalhes:** Transformada a página que contém o shortcode `[bm_register]` em uma página com duas abas: "Entrar" (formulário de login do WordPress) e "Cadastrar" (formulário de autocadastro existente). Login redireciona para a home do site. Logout redireciona para a própria página Minha Conta. Usuários já logados veem mensagem de boas-vindas com botão "Sair". Corrigido erro de sintaxe (`</div>` órfã e tag PHP ausente) que quebrou o site.
+- **Arquivos modificados:** `includes/users.php`
+- **Ferramenta:** `write_file`
+
+**173 - Data:** 2026-06-20
+- **Ação:** Criação do shortcode `[bm_catalog]`.
+- **Detalhes:** Adicionada a função `bm_catalog_shortcode()` em `includes/frontend.php`. O shortcode replica a vitrine de livros com grade de capas, filtros (busca, gênero, categoria, disciplina) e paginação de 60 livros, permitindo que o catálogo seja inserido em qualquer página editável, sem depender exclusivamente do template automático `/livros/`.
+- **Arquivos modificados:** `includes/frontend.php`
+- **Ferramenta:** `write_file`
+
+**174 - Data:** 2026-06-20
+- **Ação:** Tarefa 37.9 concluída — Dashboard do Gestor com cards clicáveis e novos indicadores.
+- **Detalhes:** 
+  - Adicionadas contagens de "Livros Agendados" e "Fichas Pendentes" na coleta de dados do dashboard do Gestor.
+  - Transformados os cards de "Empréstimos ativos", "Em atraso", "Reservas pendentes", "Cadastros pendentes" em links clicáveis que direcionam para as páginas correspondentes com o filtro de status já aplicado.
+  - Adicionados dois novos cards: "Livros Agendados" (azul) e "Fichas Pendentes" (vermelho), também com links clicáveis.
+  - Adicionado efeito hover (elevação e sombra) em todos os cards para indicar que são clicáveis.
+  - Corrigido bug: os links de status (active, overdue, waiting, scheduled) estavam abrindo a página de Empréstimos com o dropdown "Todos" em vez do status correto. A causa era o JavaScript de filtro por URL posicionado incorretamente dentro do evento `change` do dropdown.
+  - Corrigido o filtro "Agendado" que não reconhecia as linhas de reservas antecipadas — adicionada classe CSS `bm-status-scheduled` nas linhas da tabela e ajustado o seletor JavaScript.
+  - Incluídas as novas variáveis no cache do dashboard para evitar consultas repetidas.
+- **Arquivos modificados:** `includes/users.php`
+- **Ferramenta:** `write_file`

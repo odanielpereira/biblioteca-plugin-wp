@@ -534,7 +534,7 @@ Aqui está o bloco atualizado para substituir a Fase 33 no roadmap.md:
     5.  [x] **37.5 — Resolver conflito da taxonomia Gênero duplicada:** Garantir que as taxonomias fixas não gerem widgets duplicados na edição do livro. ⚠️ Pendente — Migração para dinâmicas iniciada mas revertida devido a erros em cadeia. Erro de permissão "Sorry, you are not allowed" persiste ao gerenciar termos com capabilities `edit_bm_books`.
     6.  [x] **37.6 — Adicionar foto do aluno no dashboard:** Permitir upload de foto de perfil pelo dashboard do aluno, sem acesso ao wp-admin.
     7.  [x] **37.7 — Criar carteirinha da biblioteca:** Gerar documento imprimível em formato de cartão de crédito para Aluno, Professor e Gestor, com nome, foto, tipo de usuário editável e QR code.
-    8.  [ ] **37.8 — Alunos, Professores e Gestores não acessam o wp-admin:** Migrar todas as ações administrativas desses perfis para o dashboard público via shortcodes.
+    8.  [x] **37.8 — Página Minha Conta com abas de Login e Cadastro:** Shortcode [bm_register] transformado em página com abas "Entrar" (login do WordPress, redireciona para home) e "Cadastrar" (formulário de autocadastro existente). Usuários logados veem saudação e botão "Sair" (logout redireciona para a própria página).
 
 ---
 
