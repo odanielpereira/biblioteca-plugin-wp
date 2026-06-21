@@ -262,6 +262,26 @@ function bm_rename_first_submenu() {
 }
 add_action('admin_menu', 'bm_rename_first_submenu', 999);
 
+function bm_hide_librarian_submenus() {
+    if (current_user_can('manage_options')) return;
+    if (!current_user_can('edit_bm_books')) return;
+    
+    if (!bm_librarian_can('dynamic_fields')) remove_submenu_page('edit.php?post_type=bm_book', 'bm_dynamic_fields');
+    if (!bm_librarian_can('taxonomies')) remove_submenu_page('edit.php?post_type=bm_book', 'bm_taxonomies');
+    if (!bm_librarian_can('labels')) remove_submenu_page('edit.php?post_type=bm_book', 'bm_labels');
+    if (!bm_librarian_can('import_csv')) remove_submenu_page('edit.php?post_type=bm_book', 'bm_data_io');
+    if (!bm_librarian_can('students')) {
+        remove_submenu_page('edit.php?post_type=bm_book', 'bm_students');
+        remove_submenu_page('edit.php?post_type=bm_book', 'bm_acquisition_suggestions');
+        remove_submenu_page('edit.php?post_type=bm_book', 'bm_library_cards');
+    }
+    if (!bm_librarian_can('loans') && !bm_librarian_can('service')) remove_submenu_page('edit.php?post_type=bm_book', 'bm_service_desk');
+    if (!bm_librarian_can('approve_users') && !bm_librarian_can('approve_readings')) {
+        remove_submenu_page('edit.php?post_type=bm_book', 'bm_students');
+    }
+}
+add_action('admin_menu', 'bm_hide_librarian_submenus', 999);
+
 // ==========================================
 // FASE 7F: SOFT DELETE E AUDITORIA
 // ==========================================

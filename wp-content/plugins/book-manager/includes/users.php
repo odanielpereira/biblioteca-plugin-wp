@@ -37,6 +37,14 @@ function bm_log_admin_action($action, $target_user_id) {
 // ==========================================
 // FASE 9A: VERIFICAÇÃO DE PERMISSÃO PARA NOVAS ROLES
 // ==========================================
+function bm_librarian_can($action) {
+    if (current_user_can('manage_options')) return true;
+    if (!current_user_can('edit_bm_books')) return false;
+    $settings = bm_get_settings();
+    $permissions = isset($settings['librarian_permissions']) ? $settings['librarian_permissions'] : array();
+    return isset($permissions[$action]) && $permissions[$action] === '1';
+}
+
 function bm_user_can_manage_books() {
     return current_user_can('manage_options') || current_user_can('edit_bm_books') || current_user_can('edit_bm_book');
 }

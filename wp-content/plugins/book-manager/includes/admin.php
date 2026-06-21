@@ -10,6 +10,66 @@ defined('ABSPATH') || exit;
 // FASE 7H: SCRIPTS DO ADMIN (DRAG AND DROP)
 // ==========================================
 function bm_admin_scripts($hook) {
+function bm_block_librarian_pages() {
+    if (current_user_can('manage_options')) return;
+    if (!current_user_can('edit_bm_books')) return;
+    
+    $page = isset($_GET['page']) ? sanitize_text_field($_GET['page']) : '';
+    $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : '';
+    
+    $page_permissions = array(
+        'bm_dynamic_fields' => 'dynamic_fields',
+        'bm_taxonomies' => 'taxonomies',
+        'bm_labels' => 'labels',
+        'bm_acquisition_suggestions' => 'students',
+        'bm_library_cards' => 'students',
+    );
+    
+    if (isset($page_permissions[$page])) {
+        if (!bm_librarian_can($page_permissions[$page])) {
+            wp_die(__('Acesso negado. Você não tem permissão para acessar esta página.', 'book-manager'));
+        }
+    }
+    
+    if ($page === 'bm_data_io') {
+        $tab_permissions = array(
+            'import_books' => 'import_csv',
+            'export_books' => 'export_csv',
+            'import_students' => 'student_import',
+            'import_call_number' => 'import_csv',
+            'export_call_number' => 'export_csv',
+            'export_import_all' => 'import_csv',
+        );
+        if ($tab && isset($tab_permissions[$tab])) {
+            if (!bm_librarian_can($tab_permissions[$tab])) {
+                wp_die(__('Acesso negado. Você não tem permissão para acessar esta página.', 'book-manager'));
+            }
+        }
+    }
+    
+    if ($page === 'bm_students') {
+        if (!bm_librarian_can('students')) {
+            wp_die(__('Acesso negado. Você não tem permissão para acessar esta página.', 'book-manager'));
+        }
+        if ($tab === 'approve_users' && !bm_librarian_can('approve_users')) {
+            wp_die(__('Acesso negado. Você não tem permissão para acessar esta página.', 'book-manager'));
+        }
+        if ($tab === 'approve_readings' && !bm_librarian_can('approve_readings')) {
+            wp_die(__('Acesso negado. Você não tem permissão para acessar esta página.', 'book-manager'));
+        }
+    }
+    
+    if ($page === 'bm_service_desk') {
+        if ($tab === 'loans' && !bm_librarian_can('loans')) {
+            wp_die(__('Acesso negado. Você não tem permissão para acessar esta página.', 'book-manager'));
+        }
+        if ($tab !== 'loans' && !bm_librarian_can('service')) {
+            wp_die(__('Acesso negado. Você não tem permissão para acessar esta página.', 'book-manager'));
+        }
+    }
+}
+add_action('admin_init', 'bm_block_librarian_pages');
+
     if (strpos($hook, 'bm_dynamic_fields') === false && strpos($hook, 'bm_book') === false) return;
     wp_enqueue_script('jquery-ui-sortable');
 }
