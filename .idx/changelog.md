@@ -1076,3 +1076,20 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
   - Incluídas as novas variáveis no cache do dashboard para evitar consultas repetidas.
 - **Arquivos modificados:** `includes/users.php`
 - **Ferramenta:** `write_file`
+
+**175 - Data:** 2026-06-21
+- **Ação:** Correção de loop infinito no status "Arquivado" da página de Empréstimos.
+- **Detalhes:** Ao selecionar o status "Arquivado", a página entrava em loop de recarregamento. Causa: o script `DOMContentLoaded` disparava o evento `change` no dropdown mesmo quando o status já era "archived", fazendo o navegador recarregar a página em ciclo. Solução: o script agora ignora o status "archived", já que a filtragem de arquivados é feita pelo PHP antes da página carregar.
+- **Arquivos modificados:** `includes/users.php`
+- **Ferramenta:** `write_file`
+
+**176 - Data:** 2026-06-21
+- **Ação:** Correção do limite de empréstimos por aluno — validação implementada.
+- **Detalhes:** A configuração "Máximo de empréstimos por aluno" (Limites e Prazos) nunca era verificada ao confirmar um empréstimo ou fazer uma reserva. O aluno conseguia pegar mais livros do que o permitido. Criada função `bm_get_active_loan_count()` que conta quantos livros o aluno tem emprestados no momento. Adicionada verificação em `bm_confirm_loan()` e `bm_reserve_book()`: se o número de empréstimos ativos atingiu o limite configurado, o sistema barra com a mensagem "Limite de X empréstimo(s) atingido. Devolva um livro antes de pegar outro." A verificação se aplica a todos os caminhos: página de Empréstimos, Balcão de Atendimento, empréstimo via agendamento e reservas (inclusive feitas por Professor/Gestor para um aluno). Nenhuma lógica existente de estoque, devolução ou circulação foi alterada.
+- **Arquivos modificados:** `includes/users.php`
+- **Ferramenta:** `write_file`
+
+**177 - Data:** 2026-06-21
+- **Ação:** Atualização do `roadmap.md` — Tarefa 37.8.
+- **Detalhes:** Substituída a descrição original ("Alunos, Professores e Gestores não acessam o wp-admin") pelo que foi realmente implementado: "Página Minha Conta com abas de Login e Cadastro". A tarefa foi marcada como concluída `[x]`.
+- **Ferramenta:** `write_file`

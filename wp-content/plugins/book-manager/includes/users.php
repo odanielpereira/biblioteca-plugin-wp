@@ -573,6 +573,12 @@ function bm_render_approval_page_content() {
 // ==========================================
 function bm_reserve_book($book_id, $user_id, $reserved_for = null) {
     $target_user_id = $reserved_for ? intval($reserved_for) : $user_id;
+        
+    $settings = bm_get_settings();
+    $active_loans = bm_get_active_loan_count($target_user_id);
+    if ($active_loans >= $settings['max_loans_student']) {
+        return array('error' => sprintf(__('Limite de %d empréstimo(s) atingido. Devolva um livro antes de pegar outro.', 'book-manager'), $settings['max_loans_student']));
+    }
     
     // Verificar atraso antes de reservar
     $loan_history = get_user_meta($target_user_id, '_bm_loan_history', true) ?: array();
@@ -1060,10 +1066,23 @@ add_action('wp_footer', 'bm_reserve_scripts');
 // FASE 9D: EMPRÉSTIMOS E DEVOLUÇÕES
 // FASE 12A: VERIFICAÇÃO DE ESTOQUE + BOTÃO REJEITAR + FILA
 // ==========================================
+function bm_get_active_loan_count($user_id) {
+    $loan_history = get_user_meta($user_id, '_bm_loan_history', true) ?: array();
+    $count = 0;
+    foreach ($loan_history as $loan) {
+        if ($loan['status'] === 'active') $count++;
+    }
+    return $count;
+}
 
 function bm_confirm_loan($book_id, $user_id, $days = null) {
     $settings = bm_get_settings();
     if ($days === null) $days = $settings['default_loan_days'];
+        
+    $active_loans = bm_get_active_loan_count($user_id);
+    if ($active_loans >= $settings['max_loans_student']) {
+        return array('error' => sprintf(__('Limite de %d empréstimo(s) atingido. Devolva um livro antes de pegar outro.', 'book-manager'), $settings['max_loans_student']));
+    }
     
     // Verificar estoque disponível
     $stock = bm_get_stock_info($book_id);
@@ -2054,11 +2073,11 @@ function bm_render_loans_page_content() {
             });
 
             
-            // Ao carregar a página, aplicar o filtro da URL
+            // Ao carregar a página, aplicar o filtro da URL (exceto Arquivado, que já vem filtrado pelo PHP)
             document.addEventListener('DOMContentLoaded', function() {
                 var urlParams = new URLSearchParams(window.location.search);
                 var urlStatus = urlParams.get('bm_status');
-                if (urlStatus) {
+                if (urlStatus && urlStatus !== 'archived') {
                     var dropdown = document.getElementById('bm-status-filter');
                     if (dropdown) {
                         dropdown.value = urlStatus;
