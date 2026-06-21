@@ -21,6 +21,182 @@ add_action('wp_loaded', 'bm_chatbot_init_session');
 // ==========================================
 // FASE 8B: FORÇAR TEMPLATES DO PLUGIN (SINGLE E ARCHIVE)
 // ==========================================
+
+function bm_catalog_shortcode() {
+    ob_start();
+    ?>
+    <style>
+    .bm-catalog { max-width:1000px; margin:0 auto; padding:20px; }
+    .bm-filters { display:flex; gap:10px; flex-wrap:wrap; margin:20px 0; align-items:end; }
+    .bm-filters label { display:block; font-size:12px; font-weight:bold; margin-bottom:3px; }
+    .bm-filters input[type="text"], .bm-filters select { padding:6px 10px; border:1px solid #ccc; border-radius:4px; }
+    .bm-filters input[type="text"] { min-width:200px; }
+    .bm-book-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:20px; margin-top:20px; }
+    .bm-book-card { background:#fff; border-radius:6px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition:transform 0.2s ease, box-shadow 0.2s ease; }
+    .bm-book-card:hover { transform:translateY(-4px); box-shadow:0 6px 20px rgba(0,0,0,0.15); }
+    .bm-book-card a { text-decoration:none; color:inherit; }
+    .bm-card-cover img { width:100%; height:220px; object-fit:cover; display:block; }
+    .bm-card-no-cover { height:220px; background:#f0f0f0; display:flex; align-items:center; justify-content:center; color:#999; font-size:14px; }
+    .bm-card-info { padding:10px; }
+    .bm-card-info h3 { font-size:14px; margin:0 0 5px 0; line-height:1.3; }
+    .bm-card-info p { font-size:12px; color:#666; margin:0; }
+    .bm-pagination { margin-top:30px; text-align:center; }
+    .bm-btn-filter { padding:6px 15px; background:#111; color:#fff; border:none; border-radius:4px; cursor:pointer; }
+    .bm-btn-filter:hover { background:#333; }
+    .bm-btn-clear { padding:6px 15px; background:#eee; color:#333; text-decoration:none; border-radius:4px; font-size:14px; }
+    .bm-btn-clear:hover { background:#ddd; }
+    .bm-btn-reserve { padding:4px 10px; background:#111; color:#fff; border:none; border-radius:3px; cursor:pointer; font-size:12px; margin-top:5px; }
+    .bm-btn-reserve:hover { background:#333; }
+    @media (max-width:768px) {
+        .bm-book-grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:16px; }
+        .bm-card-cover img, .bm-card-no-cover { height:200px; }
+    }
+    @media (max-width:480px) {
+        .bm-book-grid { grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:10px; }
+        .bm-card-cover img, .bm-card-no-cover { height:170px; }
+        .bm-filters { flex-direction:column; }
+        .bm-filters input[type="text"] { min-width:100%; }
+    }
+    </style>
+    <?php
+    $wl = function_exists('bm_get_white_label') ? bm_get_white_label() : array();
+    ?>
+    <div class="bm-catalog">
+        <h1><?php echo ($wl['enabled'] === '1' && !empty($wl['school_name'])) ? esc_html($wl['school_name']) : __('Catálogo de Livros', 'book-manager'); ?></h1>
+
+        <form method="get" class="bm-filters">
+            <div>
+                <label><?php _e('Buscar', 'book-manager'); ?></label>
+                <input type="text" name="bm_search" value="<?php echo isset($_GET['bm_search']) ? esc_attr($_GET['bm_search']) : ''; ?>" placeholder="<?php _e('Título ou autor', 'book-manager'); ?>" />
+            </div>
+            <div>
+                <label><?php _e('Gênero', 'book-manager'); ?></label>
+                <?php
+                wp_dropdown_categories(array(
+                    'show_option_all' => __('Todos os Gêneros', 'book-manager'),
+                    'taxonomy' => 'bm_genre',
+                    'name' => 'bm_genre',
+                    'selected' => isset($_GET['bm_genre']) ? $_GET['bm_genre'] : '',
+                    'hide_empty' => true,
+                ));
+                ?>
+            </div>
+            <div>
+                <label><?php _e('Categoria', 'book-manager'); ?></label>
+                <?php
+                wp_dropdown_categories(array(
+                    'show_option_all' => __('Todas as Categorias', 'book-manager'),
+                    'taxonomy' => 'bm_category',
+                    'name' => 'bm_category',
+                    'selected' => isset($_GET['bm_category']) ? $_GET['bm_category'] : '',
+                    'hide_empty' => true,
+                ));
+                ?>
+            </div>
+            <div>
+                <label><?php _e('Disciplina', 'book-manager'); ?></label>
+                <?php
+                wp_dropdown_categories(array(
+                    'show_option_all' => __('Todas as Disciplinas', 'book-manager'),
+                    'taxonomy' => 'bm_discipline',
+                    'name' => 'bm_discipline',
+                    'selected' => isset($_GET['bm_discipline']) ? $_GET['bm_discipline'] : '',
+                    'hide_empty' => true,
+                ));
+                ?>
+            </div>
+            <div>
+                <button type="submit" class="bm-btn-filter"><?php _e('Filtrar', 'book-manager'); ?></button>
+                <a href="<?php the_permalink(); ?>" class="bm-btn-clear"><?php _e('Limpar', 'book-manager'); ?></a>
+            </div>
+        </form>
+    <?php
+    $paged = get_query_var('paged') ? get_query_var('paged') : 1;
+    $args = array(
+        'post_type' => 'bm_book',
+        'posts_per_page' => 60,
+        'paged' => $paged,
+    );
+
+    $tax_query = array();
+    $bm_genre = isset($_GET['bm_genre']) ? $_GET['bm_genre'] : '';
+    if ($bm_genre !== '' && $bm_genre !== '0') {
+        $tax_query[] = array('taxonomy' => 'bm_genre', 'field' => 'term_id', 'terms' => intval($bm_genre));
+    }
+    $bm_category = isset($_GET['bm_category']) ? $_GET['bm_category'] : '';
+    if ($bm_category !== '' && $bm_category !== '0') {
+        $tax_query[] = array('taxonomy' => 'bm_category', 'field' => 'term_id', 'terms' => intval($bm_category));
+    }
+    $bm_discipline = isset($_GET['bm_discipline']) ? $_GET['bm_discipline'] : '';
+    if ($bm_discipline !== '' && $bm_discipline !== '0') {
+        $tax_query[] = array('taxonomy' => 'bm_discipline', 'field' => 'term_id', 'terms' => intval($bm_discipline));
+    }
+    if (count($tax_query) > 1) $tax_query['relation'] = 'AND';
+    if (!empty($tax_query)) $args['tax_query'] = $tax_query;
+
+    if (isset($_GET['bm_search']) && !empty($_GET['bm_search'])) {
+        $args['s'] = sanitize_text_field($_GET['bm_search']);
+    }
+
+    $bm_query = new WP_Query($args);
+    ?>
+        <?php if ($bm_query->have_posts()): ?>
+            <div class="bm-book-grid">
+                <?php while ($bm_query->have_posts()): $bm_query->the_post(); ?>
+                    <div class="bm-book-card">
+                        <a href="<?php the_permalink(); ?>">
+                            <?php 
+                            $hotlink = get_post_meta(get_the_ID(), '_bm_cover_hotlink', true);
+                            if (has_post_thumbnail()): ?>
+                                <div class="bm-card-cover">
+                                    <?php the_post_thumbnail('medium', array('style' => 'width:100%;height:220px;object-fit:cover;')); ?>
+                                </div>
+                            <?php elseif (!empty($hotlink)): ?>
+                                <div class="bm-card-cover">
+                                    <img src="<?php echo esc_url($hotlink); ?>" style="width:100%;height:220px;object-fit:cover;" alt="<?php the_title(); ?>" />
+                                </div>
+                            <?php else: ?>
+                                <div class="bm-card-no-cover">
+                                    <?php _e('Sem capa', 'book-manager'); ?>
+                                </div>
+                            <?php endif; ?>
+                            <div class="bm-card-info">
+                                <h3><?php the_title(); ?></h3>
+                                <?php $author = get_post_meta(get_the_ID(), '_bm_author', true); ?>
+                                <?php if ($author): ?>
+                                    <p><?php echo esc_html($author); ?></p>
+                                <?php endif; ?>
+                            </div>
+                        </a>
+                        <?php if (function_exists('bm_reserve_button')) bm_reserve_button(); ?>
+                    </div>
+                <?php endwhile; ?>
+            </div>
+
+            <div class="bm-pagination">
+                <?php
+                $big = 999999999;
+                echo paginate_links(array(
+                    'base' => str_replace($big, '%#%', esc_url(get_pagenum_link($big))),
+                    'format' => '?paged=%#%',
+                    'current' => max(1, $paged),
+                    'total' => $bm_query->max_num_pages,
+                    'prev_text' => '←',
+                    'next_text' => '→',
+                ));
+                ?>
+            </div>
+            <?php wp_reset_postdata(); ?>
+        <?php else: ?>
+            <p><?php _e('Nenhum livro encontrado.', 'book-manager'); ?></p>
+        <?php endif; ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+add_shortcode('bm_catalog', 'bm_catalog_shortcode');
+
+
 function bm_force_templates($template) {
     if (is_singular('bm_book')) {
         $plugin_template = plugin_dir_path(__FILE__) . '../single-bm_book.php';
@@ -1384,6 +1560,243 @@ function bm_ajax_print_receipt() {
     exit;
 }
 add_action('wp_ajax_bm_print_receipt', 'bm_ajax_print_receipt');
+
+function bm_ajax_print_library_card() {
+    if (!is_user_logged_in()) wp_die(__('Faça login.', 'book-manager'));
+    
+    $user_id = get_current_user_id();
+    $user = get_userdata($user_id);
+    if (!$user) wp_die(__('Usuário não encontrado.', 'book-manager'));
+    
+    $photo = get_user_meta($user_id, '_bm_profile_photo', true);
+    $roles = (array) $user->roles;
+    $user_labels = get_option('bm_user_labels', array());
+    
+    if (in_array('administrator', $roles)) {
+        $type_label = isset($user_labels['admin']) ? $user_labels['admin'] : __('Administrador', 'book-manager');
+    } elseif (in_array('bm_librarian', $roles) || in_array('gestor_biblioteca', $roles) || in_array('gestor da biblioteca', $roles)) {
+        $type_label = isset($user_labels['librarian']) ? $user_labels['librarian'] : __('Gestor da Biblioteca', 'book-manager');
+    } elseif (in_array('bm_teacher', $roles) || in_array('professor', $roles)) {
+        $type_label = isset($user_labels['teacher']) ? $user_labels['teacher'] : __('Professor', 'book-manager');
+    } else {
+        $type_label = isset($user_labels['student']) ? $user_labels['student'] : __('Aluno', 'book-manager');
+    }
+    
+    $library_name = __('Biblioteca Escolar', 'book-manager');
+    $vigencia = date('Y') . '/' . (date('Y') + 1);
+    $turno = get_user_meta($user_id, '_bm_user_' . sanitize_key('Turno'), true);
+    $serie_ano = get_user_meta($user_id, '_bm_user_' . sanitize_key('Série/Ano'), true);
+    $turma = get_user_meta($user_id, '_bm_user_' . sanitize_key('Turma'), true);
+    $badges = get_user_meta($user_id, '_bm_badges', true) ?: array();
+
+    $qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . $user_id;
+    $wl = function_exists('bm_get_white_label') ? bm_get_white_label() : array();
+    $school_name = ($wl['enabled'] === '1' && !empty($wl['school_name'])) ? $wl['school_name'] : get_bloginfo('name');
+    
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title><?php _e('Carteirinha da Biblioteca', 'book-manager'); ?></title>
+        <style>
+            @page { size: 85mm 54mm; margin: 0; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f5f5f5; }
+            .card-wrapper { width: 85mm; height: 54mm; background: #003d6b; border-radius: 8px; padding: 1.5mm; box-sizing: border-box; }
+            .card { width: 100%; height: 100%; background: #fff; border-radius: 5px; padding: 4mm; box-sizing: border-box; display: flex; gap: 3mm; font-family: Arial, sans-serif; color: #222; border: 2px solid #003d6b; }
+            .card-left { flex: 0 0 20mm; text-align: center; }
+            .card-left img { width: 20mm; height: 26mm; object-fit: cover; border-radius: 3px; border: 1px solid #ccc; }
+            .card-left .no-photo { width: 20mm; height: 26mm; background: #f0f0f0; border-radius: 3px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: 12mm; color: #999; }
+            .card-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; font-size: 7pt; }
+            .card-right .school { font-weight: bold; font-size: 7pt; color: #003d6b; }
+            .card-right .library { font-size: 6pt; color: #555; margin-bottom: 2mm; }
+            .card-right .name { font-weight: bold; font-size: 10pt; margin: 1mm 0; }
+            .card-right .info { font-size: 6.5pt; color: #444; }
+            .card-right .info span { margin-right: 3mm; }
+            .card-right .badges { display: flex; flex-wrap: wrap; gap: 1mm; margin-top: 1mm; }
+            .card-right .badge { font-size: 9pt; }
+            .card-right .vigencia { font-size: 6pt; color: #888; text-align: right; }
+            .no-print { text-align: center; margin: 20px; font-family: Arial, sans-serif; }
+            @media print {
+                body { background: #fff; }
+                .no-print { display: none; }
+                .card-wrapper { border-radius: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .card { -webkit-print-color-adjust: exact; print-color-adjust: exact; border: 2px solid #003d6b; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="no-print" style="padding:20px;background:#f9f9f9;margin-bottom:20px;">
+            <h2><?php _e('Carteirinha da Biblioteca', 'book-manager'); ?></h2>
+            <p><?php _e('Pressione Ctrl+P para imprimir. Use papel fotográfico ou PVC para melhor durabilidade.', 'book-manager'); ?></p>
+            <button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ <?php _e('Imprimir Carteirinha', 'book-manager'); ?></button>
+        </div>
+        <div class="card-wrapper">
+            <div class="card">
+                <div class="card-left">
+                    <?php if ($photo): ?>
+                        <img src="<?php echo esc_url($photo); ?>" alt="" />
+                    <?php else: ?>
+                        <div class="no-photo">👤</div>
+                    <?php endif; ?>
+                </div>
+                <div class="card-right">
+                    <div>
+                        <div class="school"><?php echo esc_html($school_name); ?></div>
+                        <div class="library"><?php echo esc_html($library_name); ?></div>
+                        <div class="name"><?php echo esc_html($user->display_name); ?></div>
+                        <div class="info">
+                            <?php echo esc_html($type_label); ?>
+                            <?php if ($serie_ano): ?><span>| <?php echo esc_html($serie_ano); ?></span><?php endif; ?>
+                            <?php if ($turma): ?><span>| <?php _e('Turma:', 'book-manager'); ?> <?php echo esc_html($turma); ?></span><?php endif; ?>
+                            <?php if ($turno): ?><span>| <?php echo esc_html($turno); ?></span><?php endif; ?>
+                        </div>
+                        <?php if (!empty($badges)): ?>
+                            <div class="badges">
+                                <?php foreach ($badges as $badge_key): 
+                                    $info = function_exists('bm_get_badge_info') ? bm_get_badge_info($badge_key) : array('icon' => '🏅');
+                                    echo '<span class="badge" title="' . esc_attr(isset($info['name']) ? $info['name'] : '') . '">' . $info['icon'] . '</span> ';
+                                endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="vigencia"><?php _e('Vigência:', 'book-manager'); ?> <?php echo $vigencia; ?></div>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+add_action('wp_ajax_bm_print_library_card', 'bm_ajax_print_library_card');
+function bm_ajax_print_library_cards_bulk() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(__('Sem permissão.', 'book-manager'));
+    
+    $ids = isset($_GET['ids']) ? explode(',', sanitize_text_field($_GET['ids'])) : array();
+    if (empty($ids)) wp_die(__('Nenhum aluno selecionado.', 'book-manager'));
+    
+    $user_labels = get_option('bm_user_labels', array());
+    $wl = function_exists('bm_get_white_label') ? bm_get_white_label() : array();
+    $school_name = ($wl['enabled'] === '1' && !empty($wl['school_name'])) ? $wl['school_name'] : get_bloginfo('name');
+    $library_name = __('Biblioteca Escolar', 'book-manager');
+    $vigencia = date('Y') . '/' . (date('Y') + 1);
+    
+    $users = array();
+    foreach ($ids as $id) {
+        $user = get_userdata(intval($id));
+        if ($user) {
+            $photo = get_user_meta($user->ID, '_bm_profile_photo', true);
+            $turno = get_user_meta($user->ID, '_bm_user_' . sanitize_key('Turno'), true);
+            $serie_ano = get_user_meta($user->ID, '_bm_user_' . sanitize_key('Série/Ano'), true);
+            $turma = get_user_meta($user->ID, '_bm_user_' . sanitize_key('Turma'), true);
+            $badges = get_user_meta($user->ID, '_bm_badges', true) ?: array();
+            
+            $roles = (array) $user->roles;
+            if (in_array('administrator', $roles)) {
+                $type_label = isset($user_labels['admin']) ? $user_labels['admin'] : __('Administrador', 'book-manager');
+            } elseif (in_array('bm_librarian', $roles) || in_array('gestor_biblioteca', $roles) || in_array('gestor da biblioteca', $roles)) {
+                $type_label = isset($user_labels['librarian']) ? $user_labels['librarian'] : __('Gestor da Biblioteca', 'book-manager');
+            } elseif (in_array('bm_teacher', $roles) || in_array('professor', $roles)) {
+                $type_label = isset($user_labels['teacher']) ? $user_labels['teacher'] : __('Professor', 'book-manager');
+            } else {
+                $type_label = isset($user_labels['student']) ? $user_labels['student'] : __('Aluno', 'book-manager');
+            }
+            $users[] = array(
+                'id' => $user->ID,
+                'name' => $user->display_name,
+                'photo' => $photo,
+                'type_label' => $type_label,
+                'turno' => $turno,
+                'serie_ano' => $serie_ano,
+                'turma' => $turma,
+                'badges' => $badges,
+            );
+        }
+    }
+    
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title><?php _e('Carteirinhas — Visualização', 'book-manager'); ?></title>
+        <style>
+            @page { size: A4; margin: 1cm 0.5cm 0.5cm 0.5cm; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+            .cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.3cm; padding: 0; }
+            .card-wrapper { width: 85mm; height: 54mm; background: #003d6b; border-radius: 8px; padding: 1.5mm; box-sizing: border-box; page-break-inside: avoid; margin: 0 auto; }
+            .card { width: 100%; height: 100%; background: #fff; border-radius: 5px; padding: 4mm; box-sizing: border-box; display: flex; gap: 3mm; font-family: Arial, sans-serif; color: #222; border: 2px solid #003d6b; }
+            .card-left { flex: 0 0 20mm; text-align: center; }
+            .card-left img { width: 20mm; height: 26mm; object-fit: cover; border-radius: 3px; border: 1px solid #ccc; }
+            .card-left .no-photo { width: 20mm; height: 26mm; background: #f0f0f0; border-radius: 3px; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: 12mm; color: #999; }
+            .card-right { flex: 1; display: flex; flex-direction: column; justify-content: space-between; font-size: 7pt; }
+            .card-right .school { font-weight: bold; font-size: 7pt; color: #003d6b; }
+            .card-right .library { font-size: 6pt; color: #555; margin-bottom: 2mm; }
+            .card-right .name { font-weight: bold; font-size: 10pt; margin: 1mm 0; }
+            .card-right .info { font-size: 6.5pt; color: #444; }
+            .card-right .info span { margin-right: 3mm; }
+            .card-right .badges { display: flex; flex-wrap: wrap; gap: 1mm; margin-top: 1mm; }
+            .card-right .badge { font-size: 9pt; }
+            .card-right .vigencia { font-size: 6pt; color: #888; text-align: right; }
+            .no-print { text-align: center; margin: 20px; font-family: Arial, sans-serif; }
+            @media print {
+                .no-print { display: none; }
+                body { margin: 0; padding: 0; }
+                .card-wrapper { border-radius: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .card { -webkit-print-color-adjust: exact; print-color-adjust: exact; border: 2px solid #003d6b; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="no-print" style="padding:20px;background:#f9f9f9;margin-bottom:20px;">
+            <h2><?php _e('Visualização de Carteirinhas', 'book-manager'); ?> (<?php echo count($users); ?> <?php _e('alunos', 'book-manager'); ?>)</h2>
+            <p><?php _e('Pressione Ctrl+P para imprimir. Ajuste as margens para "Mínimo".', 'book-manager'); ?></p>
+            <button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ <?php _e('Imprimir Agora', 'book-manager'); ?></button>
+        </div>
+        <div class="cards-grid">
+            <?php foreach ($users as $u): ?>
+                <div class="card-wrapper">
+                    <div class="card">
+                        <div class="card-left">
+                            <?php if ($u['photo']): ?>
+                                <img src="<?php echo esc_url($u['photo']); ?>" alt="" />
+                            <?php else: ?>
+                                <div class="no-photo">👤</div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="card-right">
+                            <div>
+                                <div class="school"><?php echo esc_html($school_name); ?></div>
+                                <div class="library"><?php echo esc_html($library_name); ?></div>
+                                <div class="name"><?php echo esc_html($u['name']); ?></div>
+                                <div class="info">
+                                    <?php echo esc_html($u['type_label']); ?>
+                                    <?php if ($u['serie_ano']): ?><span>| <?php echo esc_html($u['serie_ano']); ?></span><?php endif; ?>
+                                    <?php if ($u['turma']): ?><span>| <?php _e('Turma:', 'book-manager'); ?> <?php echo esc_html($u['turma']); ?></span><?php endif; ?>
+                                    <?php if ($u['turno']): ?><span>| <?php echo esc_html($u['turno']); ?></span><?php endif; ?>
+                                </div>
+                                <?php if (!empty($u['badges'])): ?>
+                                    <div class="badges">
+                                        <?php foreach ($u['badges'] as $badge_key): 
+                                            $info = function_exists('bm_get_badge_info') ? bm_get_badge_info($badge_key) : array('icon' => '🏅');
+                                            echo '<span class="badge" title="' . esc_attr(isset($info['name']) ? $info['name'] : '') . '">' . $info['icon'] . '</span> ';
+                                        endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="vigencia"><?php _e('Vigência:', 'book-manager'); ?> <?php echo $vigencia; ?></div>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+add_action('wp_ajax_bm_print_library_cards_bulk', 'bm_ajax_print_library_cards_bulk');
 
 
 // ==========================================

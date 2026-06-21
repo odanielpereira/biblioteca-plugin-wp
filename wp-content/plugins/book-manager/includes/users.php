@@ -71,12 +71,49 @@ function bm_registration_form() {
         if (in_array('bm_student', (array) $user->roles) && get_option('bm_recadastro_required', '0') === '1') {
             return bm_recadastro_form($user_id);
         }
-        return '<p>' . __('Você já está logado.', 'book-manager') . '</p>';
+        $logout_url = wp_logout_url(home_url('/minha-conta/'));
+        return '<div style="max-width:450px;margin:20px auto;text-align:center;">'
+            . '<p>' . sprintf(__('Bem-vindo, %s!', 'book-manager'), esc_html($user->display_name)) . '</p>'
+            . '<p><a href="' . esc_url($logout_url) . '" style="padding:10px 20px;background:#dc3545;color:#fff;border-radius:4px;text-decoration:none;">' . __('Sair', 'book-manager') . '</a></p>'
+            . '</div>';
     }
     
     ob_start();
     ?>
-    <form method="post" class="bm-register-form" style="max-width:450px;margin:20px auto;">
+    <style>
+    .bm-account-tabs { display:flex; gap:0; margin-bottom:20px; border-bottom:2px solid #ddd; }
+    .bm-account-tab { flex:1; padding:12px; text-align:center; cursor:pointer; background:#f5f5f5; border:none; font-size:15px; font-weight:bold; color:#666; transition:all 0.2s; }
+    .bm-account-tab.active { background:#fff; color:#111; border:2px solid #ddd; border-bottom:2px solid #fff; margin-bottom:-2px; }
+    .bm-account-panel { display:none; }
+    .bm-account-panel.active { display:block; }
+    </style>
+    <div style="max-width:450px;margin:20px auto;">
+        <div class="bm-account-tabs">
+            <button type="button" class="bm-account-tab active" onclick="bmSwitchTab('login')"><?php _e('Entrar', 'book-manager'); ?></button>
+            <button type="button" class="bm-account-tab" onclick="bmSwitchTab('register')"><?php _e('Cadastrar', 'book-manager'); ?></button>
+        </div>
+        
+        <div id="bm-panel-login" class="bm-account-panel active">
+            <form method="post" action="<?php echo esc_url(wp_login_url(home_url())); ?>" style="background:#f9f9f9;padding:20px;border-radius:8px;">
+                <p>
+                    <label><strong><?php _e('Nome de usuário ou e-mail', 'book-manager'); ?></strong></label>
+                    <input type="text" name="log" required style="width:100%;padding:8px;margin-top:4px;" />
+                </p>
+                <p>
+                    <label><strong><?php _e('Senha', 'book-manager'); ?></strong></label>
+                    <input type="password" name="pwd" required style="width:100%;padding:8px;margin-top:4px;" />
+                </p>
+                <p>
+                    <label><input type="checkbox" name="rememberme" value="forever" /> <?php _e('Lembrar-me', 'book-manager'); ?></label>
+                </p>
+                <p>
+                    <input type="submit" value="<?php _e('Acessar', 'book-manager'); ?>" style="padding:12px 24px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;width:100%;" />
+                </p>
+            </form>
+        </div>
+        
+        <div id="bm-panel-register" class="bm-account-panel">
+    <form method="post" class="bm-register-form">
         <?php wp_nonce_field('bm_register_action', 'bm_register_nonce'); ?>
         
         <h2><?php _e('Criar Conta', 'book-manager'); ?></h2>
@@ -154,7 +191,28 @@ function bm_registration_form() {
     });
     </script>
     <?php
-    
+        echo '</div>'; // Fecha bm-panel-register
+        echo '</div>'; // Fecha div principal
+    ?>
+        
+    <script>
+    function bmSwitchTab(tab) {
+        var tabs = document.querySelectorAll('.bm-account-tab');
+        var panels = document.querySelectorAll('.bm-account-panel');
+        tabs.forEach(function(t) { t.classList.remove('active'); });
+        panels.forEach(function(p) { p.classList.remove('active'); });
+        if (tab === 'login') {
+            tabs[0].classList.add('active');
+            document.getElementById('bm-panel-login').classList.add('active');
+        } else {
+            tabs[1].classList.add('active');
+            document.getElementById('bm-panel-register').classList.add('active');
+        }
+    }
+    </script>
+        
+    <?php
+
     if (isset($_POST['bm_register_submit']) && wp_verify_nonce($_POST['bm_register_nonce'], 'bm_register_action')) {
         $full_name = sanitize_text_field($_POST['bm_full_name']);
         $email = sanitize_email($_POST['bm_email']);
@@ -1606,7 +1664,7 @@ function bm_render_loans_page_content() {
                             $student_name = $student ? $student->display_name : '';
                         }
                     ?>
-                        <tr style="background:#fff8e1;">
+                        <tr class="bm-loan-row bm-status-scheduled" style="background:#fff8e1;">
                             <td><strong><a href="<?php echo get_permalink($br['book_id']); ?>" target="_blank"><?php echo esc_html($br['book_title']); ?></a></strong></td>
                             <td>
                                 <?php if ($student_name): ?>
@@ -1996,6 +2054,19 @@ function bm_render_loans_page_content() {
             });
 
             
+            // Ao carregar a página, aplicar o filtro da URL
+            document.addEventListener('DOMContentLoaded', function() {
+                var urlParams = new URLSearchParams(window.location.search);
+                var urlStatus = urlParams.get('bm_status');
+                if (urlStatus) {
+                    var dropdown = document.getElementById('bm-status-filter');
+                    if (dropdown) {
+                        dropdown.value = urlStatus;
+                        dropdown.dispatchEvent(new Event('change'));
+                    }
+                }
+            });
+            
             document.getElementById('bm-status-filter').addEventListener('change', function() {
                 var status = this.value;
                 // Se a página atual está no modo Arquivado, qualquer mudança de status precisa recarregar
@@ -2022,7 +2093,7 @@ function bm_render_loans_page_content() {
                     } else if (status === 'overdue') {
                         row.style.display = row.classList.contains('bm-status-overdue') ? '' : 'none';
                     } else if (status === 'scheduled') {
-                        row.style.display = row.classList.contains('bm-status-active') && row.querySelector('td:nth-child(3) span') && row.querySelector('td:nth-child(3) span').textContent.indexOf('📅') > -1 ? '' : 'none';
+                        row.style.display = row.classList.contains('bm-status-scheduled') ? '' : 'none';
                     } else if (status === 'separated') {
                         row.style.display = row.querySelector('td:nth-child(3) span') && row.querySelector('td:nth-child(3) span').textContent.indexOf('📚') > -1 ? '' : 'none';
                     } else {
@@ -2895,6 +2966,8 @@ function bm_librarian_dashboard_content() {
         $overdue_loans = $cached['overdue_loans'];
         $pending_reservations = $cached['pending_reservations'];
         $pending_approvals_count = $cached['pending_approvals_count'];
+        $scheduled_count = isset($cached['scheduled_count']) ? $cached['scheduled_count'] : 0;
+        $pending_readings_count = isset($cached['pending_readings_count']) ? $cached['pending_readings_count'] : 0;
     } else {
         $total_books = wp_count_posts('bm_book');
         $total = $total_books->publish + $total_books->draft;
@@ -2906,6 +2979,27 @@ function bm_librarian_dashboard_content() {
         $pending_reservations = array();
         $pending_approvals = get_users(array('meta_key' => 'bm_approval_status', 'meta_value' => 'pending'));
         $pending_approvals_count = count($pending_approvals);
+        
+        $scheduled_count = 0;
+        foreach ($all_books as $book) {
+            $bulk = get_post_meta($book->ID, '_bm_bulk_reservation', true);
+            if (is_array($bulk)) {
+                foreach ($bulk as $br) {
+                    if ($br['status'] === 'active' || $br['status'] === 'separated') {
+                        $scheduled_count++;
+                    }
+                }
+            }
+        }
+        
+        $pending_readings_count = 0;
+        $all_students_for_count = get_users(array('role' => 'bm_student', 'number' => 200));
+        foreach ($all_students_for_count as $student) {
+            $reading_log = get_user_meta($student->ID, '_bm_reading_log', true) ?: array();
+            foreach ($reading_log as $log) {
+                if ($log['status'] === 'pending') $pending_readings_count++;
+            }
+        }
         
         foreach ($all_books as $book) {
             $reservations = get_post_meta($book->ID, '_bm_reservations', true);
@@ -2939,6 +3033,8 @@ function bm_librarian_dashboard_content() {
             'overdue_loans' => $overdue_loans,
             'pending_reservations' => $pending_reservations,
             'pending_approvals_count' => $pending_approvals_count,
+            'scheduled_count' => $scheduled_count,
+            'pending_readings_count' => $pending_readings_count,
         );
         bm_set_cached($cache_key, $cache_data);
         $cached = $cache_data;
@@ -2962,23 +3058,47 @@ function bm_librarian_dashboard_content() {
                 <h3 style="margin:0;font-size:28px;"><?php echo $total; ?></h3>
                 <p style="margin:5px 0 0 0;color:#666;"><?php _e('Livros no acervo', 'book-manager'); ?></p>
             </div>
-            <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
-                <h3 style="margin:0;font-size:28px;"><?php echo count($active_loans); ?></h3>
-                <p style="margin:5px 0 0 0;color:#666;"><?php _e('Empréstimos ativos', 'book-manager'); ?></p>
-            </div>
-            <div style="background:#fff3f3;padding:15px;border-radius:6px;text-align:center;">
-                <h3 style="margin:0;font-size:28px;color:#dc3545;"><?php echo count($overdue_loans); ?></h3>
-                <p style="margin:5px 0 0 0;color:#dc3545;"><?php _e('Em atraso', 'book-manager'); ?></p>
-            </div>
-            <div style="background:#fff8e1;padding:15px;border-radius:6px;text-align:center;">
-                <h3 style="margin:0;font-size:28px;color:#f0ad4e;"><?php echo count($pending_reservations); ?></h3>
-                <p style="margin:5px 0 0 0;color:#f0ad4e;"><?php _e('Reservas pendentes', 'book-manager'); ?></p>
-            </div>
-            <div style="background:#e8f5e9;padding:15px;border-radius:6px;text-align:center;">
-                <h3 style="margin:0;font-size:28px;color:#46b450;"><?php echo $pending_approvals_count; ?></h3>
-                <p style="margin:5px 0 0 0;color:#46b450;"><?php _e('Cadastros pendentes', 'book-manager'); ?></p>
-            </div>
+            <a href="<?php echo admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=active'); ?>" style="text-decoration:none;">
+                <div class="bm-dash-card" style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
+                    <h3 style="margin:0;font-size:28px;"><?php echo count($active_loans); ?></h3>
+                    <p style="margin:5px 0 0 0;color:#666;"><?php _e('Empréstimos ativos', 'book-manager'); ?></p>
+                </div>
+            </a>
+            <a href="<?php echo admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=overdue'); ?>" style="text-decoration:none;">
+                <div class="bm-dash-card" style="background:#fff3f3;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
+                    <h3 style="margin:0;font-size:28px;color:#dc3545;"><?php echo count($overdue_loans); ?></h3>
+                    <p style="margin:5px 0 0 0;color:#dc3545;"><?php _e('Em atraso', 'book-manager'); ?></p>
+                </div>
+            </a>
+            <a href="<?php echo admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=waiting'); ?>" style="text-decoration:none;">
+                <div class="bm-dash-card" style="background:#fff8e1;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
+                    <h3 style="margin:0;font-size:28px;color:#f0ad4e;"><?php echo count($pending_reservations); ?></h3>
+                    <p style="margin:5px 0 0 0;color:#f0ad4e;"><?php _e('Reservas pendentes', 'book-manager'); ?></p>
+                </div>
+            </a>
+            <a href="<?php echo admin_url('admin.php?page=bm_students&tab=approve_users'); ?>" style="text-decoration:none;">
+                <div class="bm-dash-card" style="background:#e8f5e9;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
+                    <h3 style="margin:0;font-size:28px;color:#46b450;"><?php echo $pending_approvals_count; ?></h3>
+                    <p style="margin:5px 0 0 0;color:#46b450;"><?php _e('Cadastros pendentes', 'book-manager'); ?></p>
+                </div>
+            </a>
+            <a href="<?php echo admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=scheduled'); ?>" style="text-decoration:none;">
+                <div class="bm-dash-card" style="background:#e3f2fd;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
+                    <h3 style="margin:0;font-size:28px;color:#1565c0;"><?php echo $scheduled_count; ?></h3>
+                    <p style="margin:5px 0 0 0;color:#1565c0;"><?php _e('Livros Agendados', 'book-manager'); ?></p>
+                </div>
+            </a>
+            <a href="<?php echo admin_url('admin.php?page=bm_students&tab=approve_readings'); ?>" style="text-decoration:none;">
+                <div class="bm-dash-card" style="background:#fce4ec;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
+                    <h3 style="margin:0;font-size:28px;color:#c62828;"><?php echo $pending_readings_count; ?></h3>
+                    <p style="margin:5px 0 0 0;color:#c62828;"><?php _e('Fichas Pendentes', 'book-manager'); ?></p>
+                </div>
+            </a>
         </div>
+        
+        <style>
+        .bm-dash-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
+        </style>        
 
                 
         <?php

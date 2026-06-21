@@ -3594,6 +3594,172 @@ function bm_add_labels_page() {
 
 add_action('admin_menu', 'bm_add_labels_page');
 
+function bm_add_library_cards_page() {
+    add_submenu_page('edit.php?post_type=bm_book', __('Carteirinhas', 'book-manager'), __('Carteirinhas', 'book-manager'), 'edit_bm_books', 'bm_library_cards', 'bm_render_library_cards_page');
+}
+add_action('admin_menu', 'bm_add_library_cards_page');
+
+function bm_render_library_cards_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    if (!session_id()) session_start();
+    $cart = isset($_SESSION['bm_library_cards_cart']) ? $_SESSION['bm_library_cards_cart'] : array();
+    
+    if (isset($_POST['clear_cart'])) {
+        $_SESSION['bm_library_cards_cart'] = array();
+        $cart = array();
+        echo '<div class="notice notice-success"><p>' . __('Carteirinhas removidas.', 'book-manager') . '</p></div>';
+    }
+    
+    $filter_search = isset($_GET['filter_search']) ? sanitize_text_field($_GET['filter_search']) : '';
+    $filter_group = isset($_GET['filter_group']) ? sanitize_text_field($_GET['filter_group']) : '';
+    
+    $args = array('role' => 'bm_student', 'number' => 50);
+    if ($filter_search) $args['search'] = '*' . $filter_search . '*';
+    
+    $students = get_users($args);
+    
+    if ($filter_group) {
+        $filtered = array();
+        foreach ($students as $student) {
+            $group = get_user_meta($student->ID, '_bm_user_' . sanitize_key('Turma'), true);
+            if (mb_strtolower(trim($group)) === mb_strtolower(trim($filter_group))) {
+                $filtered[] = $student;
+            }
+        }
+        $students = $filtered;
+    }
+    
+    if (isset($_POST['add_selected']) && isset($_POST['user_ids'])) {
+        foreach ($_POST['user_ids'] as $id) {
+            if (!in_array($id, $cart)) $cart[] = intval($id);
+        }
+        $_SESSION['bm_library_cards_cart'] = $cart;
+    }
+    
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Geração de Carteirinhas', 'book-manager'); ?></h1>
+        
+        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:400px;">
+                <h2><?php _e('Selecionar Alunos', 'book-manager'); ?></h2>
+                
+                <form method="get" style="margin-bottom:15px;">
+                    <input type="hidden" name="post_type" value="bm_book">
+                    <input type="hidden" name="page" value="bm_library_cards">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
+                        <div><label><?php _e('Buscar', 'book-manager'); ?></label><input type="text" name="filter_search" value="<?php echo esc_attr($filter_search); ?>" placeholder="<?php _e('Nome ou e-mail', 'book-manager'); ?>" style="padding:4px 8px;" /></div>
+                        <div><label><?php _e('Turma', 'book-manager'); ?></label><input type="text" name="filter_group" value="<?php echo esc_attr($filter_group); ?>" placeholder="<?php _e('Ex: 1º Ano', 'book-manager'); ?>" style="width:80px;padding:4px 8px;" /></div>
+                        <div><button type="submit" class="button"><?php _e('Filtrar', 'book-manager'); ?></button></div>
+                    </div>
+                </form>
+                
+                <form method="post">
+                    <table class="wp-list-table widefat fixed striped">
+                        <thead>
+                            <tr>
+                                <th style="width:30px;"><input type="checkbox" id="bm-select-all" onclick="var cbs=document.querySelectorAll('input[name=\'user_ids[]\']');for(var i=0;i<cbs.length;i++)cbs[i].checked=this.checked;" /></th>
+                                <th><?php _e('Aluno', 'book-manager'); ?></th>
+                                <th><?php _e('Turma', 'book-manager'); ?></th>
+                                <th><?php _e('E-mail', 'book-manager'); ?></th>
+                                <th><?php _e('Foto', 'book-manager'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($students as $student): 
+                                $photo = get_user_meta($student->ID, '_bm_profile_photo', true);
+                                $group = get_user_meta($student->ID, '_bm_user_' . sanitize_key('Turma'), true);
+                            ?>
+                                <tr>
+                                    <td><input type="checkbox" name="user_ids[]" value="<?php echo $student->ID; ?>" <?php checked(in_array($student->ID, $cart)); ?> /></td>
+                                    <td><strong><?php echo esc_html($student->display_name); ?></strong></td>
+                                    <td><?php echo esc_html($group); ?></td>
+                                    <td><?php echo esc_html($student->user_email); ?></td>
+                                    <td><?php echo $photo ? '✅' : '❌'; ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                    <p style="margin-top:10px;">
+                        <button type="submit" name="add_selected" class="button button-primary"><?php _e('Adicionar à carteirinha', 'book-manager'); ?></button>
+                    </p>
+                </form>
+            </div>
+            
+            <div style="flex:0 0 350px;">
+                <h2>🖨️ <?php _e('Carteirinhas selecionadas', 'book-manager'); ?> (<?php echo count($cart); ?>)</h2>
+                
+                <?php if (empty($cart)): ?>
+                    <p><?php _e('Nenhuma carteirinha selecionada.', 'book-manager'); ?></p>
+                <?php else: ?>
+                    <ul style="max-height:400px;overflow-y:auto;list-style:none;padding:0;margin:0;">
+                        <?php 
+                        foreach ($cart as $uid): 
+                            $u = get_userdata($uid);
+                            if (!$u) continue;
+                            $photo = get_user_meta($uid, '_bm_profile_photo', true);
+                            $group = get_user_meta($uid, '_bm_user_' . sanitize_key('Turma'), true);
+                        ?>
+                            <li style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #eee;">
+                                <button type="button" class="bm-remove-card" data-user="<?php echo $uid; ?>" style="background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1;">✕</button>
+                                <div style="flex:1;font-size:12px;">
+                                    <strong><?php echo esc_html($u->display_name); ?></strong>
+                                    <?php if ($group): ?><br><small><?php echo esc_html($group); ?></small><?php endif; ?>
+                                    <?php if (!$photo): ?><br><small style="color:#f0ad4e;">⚠️ <?php _e('Sem foto', 'book-manager'); ?></small><?php endif; ?>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    
+                    <form method="post" style="margin-top:10px;display:flex;gap:10px;">
+                        <button type="submit" name="clear_cart" class="button"><?php _e('Limpar todas', 'book-manager'); ?></button>
+                        <button type="button" id="bm-preview-cards" class="button button-primary">🖨️ <?php _e('Visualizar Impressão', 'book-manager'); ?></button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('bm-remove-card')) {
+            var userId = e.target.getAttribute('data-user');
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() { location.reload(); };
+            xhr.send('action=bm_toggle_library_card&user_id=' + userId);
+        }
+        if (e.target.classList.contains('bm-card-toggle')) {
+            var userId = e.target.getAttribute('data-user');
+            var btn = e.target;
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                var r = JSON.parse(xhr.responseText);
+                if (r.success) {
+                    btn.textContent = r.action === 'added' ? '🪪 Remover da carteirinha' : '🪪 Adicionar à carteirinha';
+                }
+            };
+            xhr.send('action=bm_toggle_library_card&user_id=' + userId);
+        }
+    });
+    
+    var previewCardsBtn = document.getElementById('bm-preview-cards');
+    if (previewCardsBtn) {
+        previewCardsBtn.addEventListener('click', function() {
+            var cart = <?php echo json_encode(array_values($cart)); ?>;
+            if (cart.length === 0) { alert('<?php _e("Nenhuma carteirinha selecionada.", "book-manager"); ?>'); return; }
+            var url = '<?php echo admin_url("admin-ajax.php"); ?>?action=bm_print_library_cards_bulk&ids=' + cart.join(',');
+            window.open(url, '_blank');
+        });
+    }
+    </script>
+    <?php
+}
+
 function bm_labels_init_session() {
     if (!session_id() && !headers_sent()) session_start();
     if (!isset($_SESSION['bm_labels_cart'])) $_SESSION['bm_labels_cart'] = array();
@@ -3617,7 +3783,24 @@ function bm_ajax_toggle_label() {
     
     wp_die(json_encode(array('success' => true, 'action' => $action, 'count' => count($_SESSION['bm_labels_cart']))));
 }
-add_action('wp_ajax_bm_toggle_label', 'bm_ajax_toggle_label');
+function bm_ajax_toggle_library_card() {
+    if (!session_id()) session_start();
+    if (!isset($_SESSION['bm_library_cards_cart'])) $_SESSION['bm_library_cards_cart'] = array();
+    
+    $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+    if (!$user_id) wp_die(json_encode(array('success' => false)));
+    
+    if (in_array($user_id, $_SESSION['bm_library_cards_cart'])) {
+        $_SESSION['bm_library_cards_cart'] = array_diff($_SESSION['bm_library_cards_cart'], array($user_id));
+        $action = 'removed';
+    } else {
+        $_SESSION['bm_library_cards_cart'][] = $user_id;
+        $action = 'added';
+    }
+    
+    wp_die(json_encode(array('success' => true, 'action' => $action, 'count' => count($_SESSION['bm_library_cards_cart']))));
+}
+add_action('wp_ajax_bm_toggle_library_card', 'bm_ajax_toggle_library_card');
 
 function bm_label_button() {
     if (!is_singular('bm_book')) return;
