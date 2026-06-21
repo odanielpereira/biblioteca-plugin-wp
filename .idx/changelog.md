@@ -1092,4 +1092,4 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 **177 - Data:** 2026-06-21
 - **Ação:** Atualização do `roadmap.md` — Tarefa 37.8.
 - **Detalhes:** Substituída a descrição original ("Alunos, Professores e Gestores não acessam o wp-admin") pelo que foi realmente implementado: "Página Minha Conta com abas de Login e Cadastro". A tarefa foi marcada como concluída `[x]`.
-- **Ferramenta:** `write_file`
+- **Ferramenta:** `write_file` 
