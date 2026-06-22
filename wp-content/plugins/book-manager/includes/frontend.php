@@ -2659,52 +2659,6 @@ function bm_resolve_cutter_conflict($cutter, $post_id) {
     return $cutter;
 }
 
-function bm_archive_loan($book_id, $loan_id, $user_id = 0, $date = '') {
-    if (empty($loan_id)) {
-        // Gerar identificador para registros sem loan_id (ex: rejeitados)
-        if ($user_id && $date) {
-            $loan_id = $book_id . '-' . $user_id . '-' . strtotime($date);
-        } else {
-            return array('error' => __('Registro inválido.', 'book-manager'));
-        }
-    }
-    $archived = get_post_meta($book_id, '_bm_archived', true);
-    if (!is_array($archived)) $archived = array();
-    if (!in_array($loan_id, $archived)) {
-        $archived[] = $loan_id;
-        update_post_meta($book_id, '_bm_archived', $archived);
-    }
-    return array('success' => true, 'message' => __('Registro arquivado.', 'book-manager'));
-}
-
-function bm_ajax_archive_loan() {
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
-    check_ajax_referer('bm_service_nonce', 'nonce');
-    $book_id = intval($_POST['book_id']);
-    $loan_id = sanitize_text_field($_POST['loan_id']);
-    $result = bm_archive_loan($book_id, $loan_id);
-    wp_die(json_encode($result));
-}
-add_action('wp_ajax_bm_archive_loan', 'bm_ajax_archive_loan');
-
-function bm_unarchive_loan($book_id, $loan_id) {
-    if (empty($loan_id)) return array('error' => __('Registro inválido.', 'book-manager'));
-    $archived = get_post_meta($book_id, '_bm_archived', true);
-    if (!is_array($archived)) $archived = array();
-    $archived = array_diff($archived, array($loan_id));
-    update_post_meta($book_id, '_bm_archived', array_values($archived));
-    return array('success' => true, 'message' => __('Registro desarquivado.', 'book-manager'));
-}
-
-function bm_ajax_unarchive_loan() {
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
-    check_ajax_referer('bm_service_nonce', 'nonce');
-    $book_id = intval($_POST['book_id']);
-    $loan_id = sanitize_text_field($_POST['loan_id']);
-    $result = bm_unarchive_loan($book_id, $loan_id);
-    wp_die(json_encode($result));
-}
-add_action('wp_ajax_bm_unarchive_loan', 'bm_ajax_unarchive_loan');
 
 function bm_add_call_number_metabox() { add_meta_box('bm_call_number', __('Número de Chamada', 'book-manager'), 'bm_render_call_number_metabox', 'bm_book', 'side', 'default'); }
 add_action('add_meta_boxes', 'bm_add_call_number_metabox');

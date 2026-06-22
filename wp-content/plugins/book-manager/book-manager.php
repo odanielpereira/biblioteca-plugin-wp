@@ -17,9 +17,14 @@ defined('ABSPATH') || exit;
 // ==========================================
 // MÓDULOS DO PLUGIN
 // ==========================================
-require_once plugin_dir_path(__FILE__) . 'includes/admin.php';
+require_once plugin_dir_path(__FILE__) . 'includes/admin-settings.php';
+require_once plugin_dir_path(__FILE__) . 'includes/admin-fields.php';
+require_once plugin_dir_path(__FILE__) . 'includes/admin-csv.php';
+require_once plugin_dir_path(__FILE__) . 'includes/users-circulacao.php';
+require_once plugin_dir_path(__FILE__) . 'includes/users-dashboard.php';
+require_once plugin_dir_path(__FILE__) . 'includes/users-gamificacao.php';
+require_once plugin_dir_path(__FILE__) . 'includes/admin-service.php';
 require_once plugin_dir_path(__FILE__) . 'includes/frontend.php';
-require_once plugin_dir_path(__FILE__) . 'includes/users.php';
 require_once plugin_dir_path(__FILE__) . 'includes/reports.php';
 
 // ==========================================
