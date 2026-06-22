@@ -1125,3 +1125,26 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
   - Corrigido: erro de sintaxe (botão Salvar e `</form>` fora da função `bm_render_call_number_settings_page`).
 - **Arquivos modificados:** `includes/admin.php`, `book-manager.php`
 - **Ferramenta:** `write_file`
+
+**Entrada 182 — Data:** 2026-06-22  
+- **Ação:** Fase 38.2 concluída — Modularização dos arquivos `admin.php` e `users.php`.  
+- **Detalhes:** Os dois maiores arquivos do plugin foram divididos em 7 módulos menores, conforme planejado no escopo.md:  
+  - `includes/admin-settings.php` — funções globais e páginas de configuração  
+  - `includes/admin-fields.php` — metaboxes, gerenciamento de campos dinâmicos  
+  - `includes/admin-csv.php` — importação e exportação de CSV, ZIP e Nº Chamada  
+  - `includes/admin-service.php` — balcão de atendimento, alunos, empréstimos, etiquetas, taxonomias, carteirinhas, relatórios  
+  - `includes/users-circulacao.php` — reservas, empréstimos, devoluções, multas, WhatsApp, registro e aprovações  
+  - `includes/users-dashboard.php` — dashboards do Aluno, Professor e Gestor  
+  - `includes/users-gamificacao.php` — ranking, fichas de leitura, XP, medalhas e perfil público  
+  Nenhuma linha de lógica foi alterada. As funções foram apenas movidas para novos arquivos, preservando nomes, parâmetros, hooks e a ordem de carregamento no `book-manager.php`. Os módulos de configurações e campos são carregados primeiro, seguidos pelos de circulação e dashboards, garantindo que as dependências estejam disponíveis antes de serem usadas.  
+- **Ferramenta:** `write_file`
+
+**Entrada 183 — Data:** 2026-06-22  
+- **Ação:** Correção de funções duplicadas entre `users-circulacao.php` e `frontend.php`.  
+- **Detalhes:** As funções `bm_archive_loan()`, `bm_ajax_archive_loan()`, `bm_unarchive_loan()` e `bm_ajax_unarchive_loan()` estavam definidas tanto no novo módulo `users-circulacao.php` quanto no arquivo original `frontend.php`, causando erro fatal "Cannot redeclare". O bloco duplicado foi removido do `frontend.php`, mantendo as funções apenas no módulo de circulação.  
+- **Ferramenta:** `write_file`
+
+**Entrada 184 — Data:** 2026-06-22  
+- **Ação:** Remoção do arquivo `includes/users.php` original.  
+- **Detalhes:** Após a migração completa de todas as funções para os novos módulos, o arquivo `users.php` foi removido da pasta do plugin, pois não era mais carregado pelo `book-manager.php` e seu conteúdo já estava integralmente em `users-circulacao.php`, `users-dashboard.php` e `users-gamificacao.php`.  
+- **Ferramenta:** exclusão manual
