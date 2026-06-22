@@ -1,7 +1,7 @@
 <?php
 /**
  * Book Manager — Módulo de Gamificação
- * Ranking, fichas de leitura, XP, medalhas, perfil público
+ * Ranking, fichas de leitura, XP, medalhas, perfil público, detalhes do aluno
  */
 
 defined('ABSPATH') || exit;
@@ -34,6 +34,7 @@ function bm_get_top_books($period = 'month', $limit = 10, $genre = '') {
     
     foreach ($books as $book) {
         $count = 0;
+        $loan_history_all = array();
         $users = get_users(array('role' => 'bm_student'));
         foreach ($users as $user) {
             $loans = get_user_meta($user->ID, '_bm_loan_history', true) ?: array();
@@ -406,7 +407,6 @@ function bm_reading_log_shortcode() {
             }
             </script>
 
-
             <script>
             (function() {
                 var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -542,6 +542,196 @@ function bm_ajax_update_rating() {
     wp_die();
 }
 add_action('wp_ajax_bm_update_rating', 'bm_ajax_update_rating');
+
+// ==========================================
+// FASE 10B: APROVAÇÃO DE FICHAS DE LEITURA
+// ==========================================
+function bm_render_reading_approval_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    bm_render_reading_approval_page_content();
+}
+
+function bm_render_reading_approval_page_content() {
+
+    if (isset($_POST['bm_reading_action']) && wp_verify_nonce($_POST['bm_reading_nonce'], 'bm_reading_action')) {
+        $user_id = intval($_POST['user_id']);
+        $book_id = intval($_POST['book_id']);
+        $action = sanitize_text_field($_POST['bm_reading_action']);
+        $bonus_xp = isset($_POST['bm_bonus_xp']) ? intval($_POST['bm_bonus_xp']) : 0;
+        
+        $reading_log = get_user_meta($user_id, '_bm_reading_log', true) ?: array();
+        foreach ($reading_log as &$log) {
+            if ($log['book_id'] == $book_id) {
+                $log['status'] = $action === 'approve' ? 'approved' : 'rejected';
+                break;
+            }
+        }
+        update_user_meta($user_id, '_bm_reading_log', $reading_log);
+        
+        if ($action === 'approve') {
+            $xp_reading = isset($_POST['bm_xp_reading']) ? intval($_POST['bm_xp_reading']) : 0;
+            $xp_review = isset($_POST['bm_xp_review']) ? intval($_POST['bm_xp_review']) : 0;
+            $xp_video = isset($_POST['bm_xp_video']) ? intval($_POST['bm_xp_video']) : 0;
+            bm_award_xp_on_approval($user_id, $book_id, $xp_reading, $xp_review, $xp_video);
+        }
+        
+        
+        if ($action === 'approve' && isset($_POST['bm_featured_review']) && $_POST['bm_featured_review'] === '1') {
+            $reading_log = get_user_meta($user_id, '_bm_reading_log', true) ?: array();
+            foreach ($reading_log as &$log) {
+                if ($log['book_id'] == $book_id) {
+                    $log['featured'] = true;
+                    break;
+                }
+            }
+            update_user_meta($user_id, '_bm_reading_log', $reading_log);
+            
+            $featured_count = 0;
+            $all_users = get_users(array('role__in' => array('bm_student', 'bm_teacher')));
+
+            foreach ($all_users as $u) {
+                $u_log = get_user_meta($u->ID, '_bm_reading_log', true) ?: array();
+                foreach ($u_log as &$l) {
+                    if ($l['book_id'] == $book_id && $l['status'] === 'approved' && isset($l['featured']) && $l['featured']) {
+                        $featured_count++;
+                        if ($featured_count > 3) {
+                            $l['featured'] = false;
+                        }
+                    }
+                }
+                update_user_meta($u->ID, '_bm_reading_log', $u_log);
+            }
+        }
+
+        echo $action === 'approve' 
+            ? '<div class="notice notice-success"><p>' . __('Ficha aprovada! XP concedido.', 'book-manager') . '</p></div>'
+            : '<div class="notice notice-error"><p>' . __('Ficha rejeitada.', 'book-manager') . '</p></div>';
+    }
+    
+    $all_users = get_users(array('role__in' => array('bm_student', 'bm_teacher')));
+    $readings = array();
+    $current_filter = isset($_GET['bm_reading_status']) ? sanitize_text_field($_GET['bm_reading_status']) : 'pending';
+    
+    foreach ($all_users as $user) {
+        $reading_log = get_user_meta($user->ID, '_bm_reading_log', true) ?: array();
+        foreach ($reading_log as $log) {
+            if ($log['status'] === $current_filter) {
+                $log['user_id'] = $user->ID;
+                $log['user_name'] = $user->display_name;
+                $log['book_title'] = get_the_title($log['book_id']);
+                $readings[] = $log;
+            }
+        }
+    }
+    
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Aprovar Fichas de Leitura', 'book-manager'); ?></h1>
+        <form method="get" style="margin-bottom:15px;">
+            <input type="hidden" name="post_type" value="bm_book">
+            <input type="hidden" name="page" value="bm_students">
+            <input type="hidden" name="tab" value="approve_readings">
+            <label><strong><?php _e('Status:', 'book-manager'); ?></strong></label>
+            <select name="bm_reading_status" onchange="this.form.submit()" style="margin-left:5px;">
+                <option value="pending" <?php selected($current_filter, 'pending'); ?>><?php _e('Pendentes', 'book-manager'); ?></option>
+                <option value="approved" <?php selected($current_filter, 'approved'); ?>><?php _e('Aprovadas', 'book-manager'); ?></option>
+            </select>
+        </form>
+        <?php if (empty($readings)): ?>
+            <p><?php _e('Nenhuma ficha pendente.', 'book-manager'); ?></p>
+        <?php else: ?>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Aluno', 'book-manager'); ?></th>
+                        <th><?php _e('Livro', 'book-manager'); ?></th>
+                        <th><?php _e('Nota', 'book-manager'); ?></th>
+                        <th><?php _e('Resenha', 'book-manager'); ?></th>
+                        <th><?php _e('Vídeo', 'book-manager'); ?></th>
+                        <?php $settings = bm_get_settings(); ?>
+                        <?php if ($settings['xp_enabled'] === '1'): ?>
+                        <th><?php _e('Nota Leitura', 'book-manager'); ?></th>
+                        <th><?php _e('Nota Resenha', 'book-manager'); ?></th>
+                        <th><?php _e('Nota Vídeo', 'book-manager'); ?></th>
+                        <?php endif; ?>
+                        <th><?php _e('Data', 'book-manager'); ?></th>
+                        <th><?php _e('Ações', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($readings as $reading): 
+                        $is_pending = ($reading['status'] === 'pending');
+                    ?>
+                        <tr>
+                            <td><?php echo esc_html($reading['user_name']); ?></td>
+                            <td>
+                                <?php 
+                                $cover_url = get_the_post_thumbnail_url($reading['book_id'], 'thumbnail');
+                                if (!$cover_url) $cover_url = get_post_meta($reading['book_id'], '_bm_cover_hotlink', true);
+                                if ($cover_url): ?>
+                                    <img src="<?php echo esc_url($cover_url); ?>" style="width:40px;height:56px;object-fit:cover;border-radius:3px;margin-right:8px;vertical-align:middle;" alt="" />
+                                <?php else: ?>
+                                    <div style="width:40px;height:56px;background:#f0f0f0;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:8px;text-align:center;line-height:56px;font-size:8px;color:#999;"><?php _e('Sem capa', 'book-manager'); ?></div>
+                                <?php endif; ?>
+                                <?php echo esc_html($reading['book_title']); ?>
+                            </td>
+                            <td><?php echo $reading['rating'] > 0 ? str_repeat('★', $reading['rating']) . str_repeat('☆', 5 - $reading['rating']) : '—'; ?></td>
+                            <td><?php echo esc_html($reading['review']); ?></td>
+                            <td>
+                                <?php if (!empty($reading['video_url'])): ?>
+                                    <a href="<?php echo esc_url($reading['video_url']); ?>" target="_blank">🎬</a>
+                                <?php else: ?>
+                                    —
+                                <?php endif; ?>
+                            </td>
+                            <?php $settings = bm_get_settings(); ?>
+                            <?php if ($settings['xp_enabled'] === '1' && $is_pending): ?>
+                            <td>
+                                <input type="number" name="bm_xp_reading" value="0" min="0" max="100" style="width:60px;padding:4px;text-align:center;" title="<?php _e('Nota da leitura', 'book-manager'); ?>" form="approve-<?php echo $reading['user_id'] . '-' . $reading['book_id']; ?>" />
+                            </td>
+                            <td>
+                                <input type="number" name="bm_xp_review" value="0" min="0" max="100" style="width:60px;padding:4px;text-align:center;" title="<?php _e('Nota da resenha', 'book-manager'); ?>" form="approve-<?php echo $reading['user_id'] . '-' . $reading['book_id']; ?>" />
+                            </td>
+                            <td>
+                                <input type="number" name="bm_xp_video" value="0" min="0" max="100" style="width:60px;padding:4px;text-align:center;" title="<?php _e('Nota do vídeo', 'book-manager'); ?>" form="approve-<?php echo $reading['user_id'] . '-' . $reading['book_id']; ?>" />
+                            </td>
+                            <?php elseif ($settings['xp_enabled'] === '1' && !$is_pending): ?>
+                            <td colspan="3" style="color:#999;">—</td>
+                            <?php endif; ?>
+                            <td><?php echo date('d/m/Y', strtotime($reading['date'])); ?></td>
+                            <td>
+                                <?php if ($is_pending): ?>
+                                <form method="post" style="display:inline;" id="approve-<?php echo $reading['user_id'] . '-' . $reading['book_id']; ?>">
+                                    <?php wp_nonce_field('bm_reading_action', 'bm_reading_nonce'); ?>
+                                    <input type="hidden" name="user_id" value="<?php echo $reading['user_id']; ?>">
+                                    <input type="hidden" name="book_id" value="<?php echo $reading['book_id']; ?>">
+                                    <label style="margin-right:10px;"><input type="checkbox" name="bm_featured_review" value="1" form="approve-<?php echo $reading['user_id'] . '-' . $reading['book_id']; ?>" /> ⭐ <?php _e('Destacar', 'book-manager'); ?></label>
+                                    <button type="submit" name="bm_reading_action" value="approve" class="button button-primary"><?php _e('Aprovar', 'book-manager'); ?></button>
+                                    <button type="submit" name="bm_reading_action" value="reject" class="button"><?php _e('Rejeitar', 'book-manager'); ?></button>
+                                </form>
+                                <?php else: ?>
+                                <form method="post" style="display:inline;" id="unapprove-<?php echo $reading['user_id'] . '-' . $reading['book_id']; ?>">
+                                    <?php wp_nonce_field('bm_reading_action', 'bm_reading_nonce'); ?>
+                                    <input type="hidden" name="user_id" value="<?php echo $reading['user_id']; ?>">
+                                    <input type="hidden" name="book_id" value="<?php echo $reading['book_id']; ?>">
+                                    <button type="submit" name="bm_reading_action" value="unapprove" class="button button-small" style="background:#ffc107;color:#111;border-color:#ffc107;"><?php _e('Desaprovar', 'book-manager'); ?></button>
+                                </form>
+                                <form method="post" style="display:inline;" id="delete-<?php echo $reading['user_id'] . '-' . $reading['book_id']; ?>" onsubmit="return confirm('<?php _e('Excluir esta ficha permanentemente?', 'book-manager'); ?>');">
+                                    <?php wp_nonce_field('bm_reading_action', 'bm_reading_nonce'); ?>
+                                    <input type="hidden" name="user_id" value="<?php echo $reading['user_id']; ?>">
+                                    <input type="hidden" name="book_id" value="<?php echo $reading['book_id']; ?>">
+                                    <button type="submit" name="bm_reading_action" value="delete" class="button button-small" style="background:#dc3545;color:#fff;border-color:#dc3545;"><?php _e('Excluir', 'book-manager'); ?></button>
+                                </form>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+    <?php
+}
 
 // ==========================================
 // FASE 10D: XP E MEDALHAS (BADGES)
@@ -700,6 +890,9 @@ function bm_badges_shortcode() {
 }
 add_shortcode('bm_badges', 'bm_badges_shortcode');
 
+// ==========================================
+// FASE 27: PERFIL PÚBLICO DO LEITOR
+// ==========================================
 function bm_reader_profile_shortcode($atts) {
     $atts = shortcode_atts(array('id' => 0), $atts);
     $user_id = intval($atts['id']);
@@ -716,6 +909,7 @@ function bm_reader_profile_shortcode($atts) {
     if (!$student || !in_array('bm_student', (array) $student->roles)) {
         return '<p>' . __('Leitor não encontrado.', 'book-manager') . '</p>';
     }
+    
     
     $profile_public = get_user_meta($user_id, '_bm_profile_public', true);
     if ($profile_public !== '1' && get_current_user_id() !== $user_id && !current_user_can('manage_options')) {
@@ -852,7 +1046,529 @@ function bm_reader_profile_shortcode($atts) {
 }
 add_shortcode('bm_reader_profile', 'bm_reader_profile_shortcode');
 
-// Conceder XP manualmente ao aprovar ficha de leitura (Fase 36.1)
+// ==========================================
+// FASE 12J-T4/T5/T6: PÁGINA INDIVIDUAL DO ALUNO
+// ==========================================
+function bm_handle_student_export() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    if (!isset($_POST['bm_export_student']) || !isset($_POST['bm_student_detail_nonce'])) return;
+    if (!wp_verify_nonce($_POST['bm_student_detail_nonce'], 'bm_student_detail_action')) return;
+    
+    $student_id = isset($_GET['student_id']) ? intval($_GET['student_id']) : 0;
+    $student = get_userdata($student_id);
+    if (!$student) return;
+    
+    $loan_history = get_user_meta($student_id, '_bm_loan_history', true) ?: array();
+    $reading_log = get_user_meta($student_id, '_bm_reading_log', true) ?: array();
+    
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="historico_' . sanitize_user($student->display_name) . '.csv"');
+    echo "\xEF\xBB\xBF";
+    $output = fopen('php://output', 'w');
+    fputcsv($output, array('Tipo', 'Livro', 'Data', 'Status', 'Detalhes'), ';');
+    
+    foreach ($loan_history as $loan) {
+        fputcsv($output, array(
+            'Empréstimo',
+            get_the_title($loan['book_id']),
+            $loan['loan_date'],
+            $loan['status'],
+            isset($loan['due_date']) ? 'Devolução: ' . $loan['due_date'] : '',
+        ), ';');
+    }
+    foreach ($reading_log as $log) {
+        fputcsv($output, array(
+            'Ficha de Leitura',
+            get_the_title($log['book_id']),
+            $log['date'],
+            $log['status'],
+            'Nota: ' . ($log['rating'] ?? '—'),
+        ), ';');
+    }
+    fclose($output);
+    exit;
+}
+add_action('admin_init', 'bm_handle_student_export');
+
+function bm_add_student_detail_page() {
+    add_submenu_page(null, __('Detalhes do Aluno', 'book-manager'), __('Detalhes do Aluno', 'book-manager'), 'edit_bm_books', 'bm_student_detail', 'bm_render_student_detail_page');
+}
+add_action('admin_menu', 'bm_add_student_detail_page');
+
+function bm_render_student_detail_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $student_id = isset($_GET['student_id']) ? intval($_GET['student_id']) : 0;
+    $student = get_userdata($student_id);
+    if (!$student) {
+        echo '<div class="wrap"><p>' . __('Aluno não encontrado.', 'book-manager') . '</p></div>';
+        return;
+    }
+    
+    $msg = '';
+    
+    if (isset($_POST['bm_return_from_detail']) && wp_verify_nonce($_POST['bm_student_detail_nonce'], 'bm_student_detail_action')) {
+        $return_book_id = intval($_POST['bm_return_book_id']);
+        $return_user_id = intval($_POST['bm_return_user_id']);
+        $result = bm_return_book($return_book_id, $return_user_id);
+        if (isset($result['error'])) {
+            $msg = '<div class="notice notice-error"><p>' . esc_html($result['error']) . '</p></div>';
+        } else {
+            $msg = '<div class="notice notice-success"><p>' . esc_html($result['message']) . '</p></div>';
+        }
+    }
+
+    if (isset($_POST['bm_apply_manual_penalty']) && wp_verify_nonce($_POST['bm_student_detail_nonce'], 'bm_student_detail_action')) {
+        $type = sanitize_text_field($_POST['bm_manual_penalty_type']);
+        $value = floatval($_POST['bm_manual_penalty_value']);
+        $note = sanitize_text_field($_POST['bm_manual_penalty_note']);
+        $penalty = array('type' => $type, 'value' => $value, 'note' => $note);
+        bm_apply_penalty($student_id, $penalty);
+        $msg = '<div class="notice notice-success"><p>' . __('Penalidade aplicada!', 'book-manager') . '</p></div>';
+    }
+
+    if (isset($_POST['bm_save_notes']) && wp_verify_nonce($_POST['bm_student_detail_nonce'], 'bm_student_detail_action')) {
+        update_user_meta($student_id, '_bm_internal_notes', sanitize_textarea_field($_POST['bm_internal_notes']));
+        $msg = '<div class="notice notice-success"><p>' . __('Observações salvas.', 'book-manager') . '</p></div>';
+    }
+
+    if (isset($_POST['bm_save_student_data']) && wp_verify_nonce($_POST['bm_student_detail_nonce'], 'bm_student_detail_action')) {
+        $user_fields = get_option('bm_user_dynamic_fields', array());
+        foreach ($user_fields as $field_name => $info) {
+            $meta_key = '_bm_user_' . sanitize_key($field_name);
+            $post_key = 'bm_edit_' . $meta_key;
+            if (isset($_POST[$post_key])) {
+                update_user_meta($student_id, $meta_key, sanitize_text_field($_POST[$post_key]));
+            }
+        }
+        $nome_key = '_bm_user_' . sanitize_key('Nome completo');
+        $email_key = '_bm_user_' . sanitize_key('E-mail');
+        $novo_nome = get_user_meta($student_id, $nome_key, true);
+        $novo_email = get_user_meta($student_id, $email_key, true);
+        $wp_update = array('ID' => $student_id);
+        if (!empty($novo_nome)) $wp_update['display_name'] = $novo_nome;
+        if (!empty($novo_email)) $wp_update['user_email'] = $novo_email;
+        if (count($wp_update) > 1) wp_update_user($wp_update);
+        $msg = '<div class="notice notice-success"><p>' . __('Dados do aluno atualizados!', 'book-manager') . '</p></div>';
+    }
+    
+    $user_fields = get_option('bm_user_dynamic_fields', array());
+    $notes = get_user_meta($student_id, '_bm_internal_notes', true);
+    $xp = bm_get_xp($student_id);
+    $badges = get_user_meta($student_id, '_bm_badges', true) ?: array();
+    $loan_history = get_user_meta($student_id, '_bm_loan_history', true) ?: array();
+    $reading_log = get_user_meta($student_id, '_bm_reading_log', true) ?: array();
+    $status = get_user_meta($student_id, 'bm_approval_status', true) ?: 'approved';
+    $phone = get_user_meta($student_id, '_bm_user_' . sanitize_key('Telefone'), true);
+    
+    $active_loans = 0; $overdue_count = 0;
+    $loan_details = array();
+    foreach ($loan_history as $loan) {
+        $loan['book_title'] = get_the_title($loan['book_id']);
+        $loan['is_overdue'] = ($loan['status'] === 'active' && isset($loan['due_date']) && strtotime($loan['due_date']) < time());
+        if ($loan['status'] === 'active') {
+            $active_loans++;
+            if ($loan['is_overdue']) $overdue_count++;
+        }
+        $loan_details[] = $loan;
+    }
+    usort($loan_details, function($a, $b) {
+        $date_a = isset($a['loan_date']) ? strtotime($a['loan_date']) : (isset($a['date']) ? strtotime($a['date']) : 0);
+        $date_b = isset($b['loan_date']) ? strtotime($b['loan_date']) : (isset($b['date']) ? strtotime($b['date']) : 0);
+        return $date_b - $date_a;
+    });
+    
+    ?>
+    <div class="wrap" style="max-width:900px;">
+        <h1><?php _e('Detalhes do Aluno', 'book-manager'); ?></h1>
+        <?php echo $msg; ?>
+        
+        <p><a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students'); ?>">← <?php _e('Voltar para lista', 'book-manager'); ?></a></p>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin:15px 0;">
+            <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
+                <h3 style="margin:0;font-size:28px;"><?php echo $xp; ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;">XP</p>
+            </div>
+            <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
+                <h3 style="margin:0;font-size:28px;"><?php echo count($badges); ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;">Medalhas</p>
+            </div>
+            <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
+                <h3 style="margin:0;font-size:28px;"><?php echo $active_loans; ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;">Empréstimos ativos</p>
+            </div>
+            <div style="background:<?php echo $overdue_count > 0 ? '#fff3f3' : '#f9f9f9'; ?>;padding:15px;border-radius:6px;text-align:center;">
+                <h3 style="margin:0;font-size:28px;color:<?php echo $overdue_count > 0 ? '#dc3545' : '#111'; ?>;"><?php echo $overdue_count; ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;">Em atraso</p>
+            </div>
+            <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
+                <h3 style="margin:0;font-size:28px;"><?php echo count($reading_log); ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;">Fichas de leitura</p>
+            </div>
+        </div>
+        
+        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:300px;">
+                <h2>👤 <?php echo esc_html($student->display_name); ?></h2>
+                <?php $profile_photo = get_user_meta($student_id, '_bm_profile_photo', true); ?>
+                <?php if ($profile_photo): ?>
+                    <div style="text-align:center;margin-bottom:10px;">
+                        <img src="<?php echo esc_url($profile_photo); ?>" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:2px solid #ddd;" alt="" />
+                    </div>
+                <?php endif; ?>
+                <p><strong>E-mail:</strong> <?php echo esc_html($student->user_email); ?></p>
+                <p><strong>Status:</strong> <?php echo esc_html($status); ?></p>
+                
+                <form method="post" id="bm-edit-student-form">
+                    <?php wp_nonce_field('bm_student_detail_action', 'bm_student_detail_nonce'); ?>
+                    <?php foreach ($user_fields as $field_name => $info): 
+                        $meta_key = '_bm_user_' . sanitize_key($field_name);
+                        $value = get_user_meta($student_id, $meta_key, true);
+                        $name_lower = mb_strtolower(trim($field_name));
+                        if (empty($value) && in_array($name_lower, array('nome completo', 'nome'))) $value = $student->display_name;
+                        if (empty($value) && in_array($name_lower, array('e-mail', 'email'))) $value = $student->user_email;
+                    ?>
+                        <p>
+                            <strong><?php echo esc_html($field_name); ?>:</strong>
+                            <?php if ($info['type'] === 'textarea'): ?>
+                                <textarea name="bm_edit_<?php echo esc_attr($meta_key); ?>" style="width:100%;max-width:300px;padding:4px 8px;margin-top:2px;" rows="3"><?php echo esc_textarea($value); ?></textarea>
+                            <?php else: ?>
+                                <input type="<?php echo $info['type'] === 'email' ? 'email' : 'text'; ?>" name="bm_edit_<?php echo esc_attr($meta_key); ?>" value="<?php echo esc_attr($value); ?>" style="width:100%;max-width:300px;padding:4px 8px;margin-top:2px;" />
+                            <?php endif; ?>
+                        </p>
+                    <?php endforeach; ?>
+                    <p style="margin-top:10px;">
+                        <button type="submit" name="bm_save_student_data" class="button button-primary"><?php _e('Salvar Alterações', 'book-manager'); ?></button>
+                    </p>
+                </form>
+                
+                <?php if ($phone): ?>
+                    <p><?php echo bm_whatsapp_button($phone, '', '📱 WhatsApp'); ?></p>
+                <?php endif; ?>
+            </div>
+            
+        <?php
+        $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
+        $return_logs = array();
+        foreach ($all_books as $book) {
+            $logs = get_post_meta($book->ID, '_bm_return_log', true) ?: array();
+            foreach ($logs as $log) {
+                if ($log['user_id'] == $student_id) {
+                    $log['book_title'] = $book->post_title;
+                    $return_logs[] = $log;
+                }
+            }
+        }
+        ?>
+        <?php if (!empty($return_logs)): ?>
+            <h2>📋 <?php _e('Histórico de Devoluções', 'book-manager'); ?></h2>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Livro', 'book-manager'); ?></th>
+                        <th><?php _e('Condição', 'book-manager'); ?></th>
+                        <th><?php _e('Observação', 'book-manager'); ?></th>
+                        <th><?php _e('Data', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach (array_reverse($return_logs) as $log): 
+                        $condition_label = $log['condition'] === 'good' ? '✅ ' . __('Bom', 'book-manager') : ($log['condition'] === 'acceptable' ? '⚠️ ' . __('Aceitável', 'book-manager') : '❌ ' . __('Danificado', 'book-manager'));
+                    ?>
+                        <tr>
+                            <td><?php echo esc_html($log['book_title']); ?></td>
+                            <td><?php echo $condition_label; ?></td>
+                            <td><?php echo esc_html(isset($log['note']) ? $log['note'] : '—'); ?></td>
+                            <td><?php echo date('d/m/Y', strtotime($log['date'])); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+        <?php $penalties = get_user_meta($student_id, '_bm_penalties', true) ?: array(); ?>
+        <?php if (!empty($penalties)): ?>
+            <h2>🚫 <?php _e('Penalidades', 'book-manager'); ?></h2>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Tipo', 'book-manager'); ?></th>
+                        <th><?php _e('Valor', 'book-manager'); ?></th>
+                        <th><?php _e('Data', 'book-manager'); ?></th>
+                        <th><?php _e('Status', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach (array_reverse($penalties) as $p): 
+                        $type_label = $p['type'] === 'warning' ? __('Advertência', 'book-manager') : ($p['type'] === 'suspension' ? __('Suspensão', 'book-manager') : __('Multa', 'book-manager'));
+                        $value_display = $p['type'] === 'fine' ? 'R$ ' . number_format($p['value'], 2, ',', '.') : ($p['type'] === 'suspension' ? $p['value'] . ' ' . __('dias', 'book-manager') : '—');
+                        $is_active = get_user_meta($student_id, '_bm_penalty_active', true) === '1';
+                    ?>
+                        <tr>
+                            <td><?php echo $type_label; ?></td>
+                            <td><?php echo esc_html(isset($p['note']) ? $p['note'] : '—'); ?></td>
+                            <td><?php echo $value_display; ?></td>
+                            <td><?php echo date('d/m/Y', strtotime($p['date'])); ?></td>
+                            <td>
+                                <?php echo $is_active ? '🚫 ' . __('Ativa', 'book-manager') : '✅ ' . __('Cumprida', 'book-manager'); ?>
+                                <?php if ($is_active): ?>
+                                    <div style="margin-top:5px;">
+                                        <button type="button" class="button button-small bm-revoke-penalty" data-student="<?php echo $student_id; ?>" data-index="<?php echo count($penalties) - 1; ?>" style="background:#dc3545;color:#fff;border-color:#dc3545;"><?php _e('Revogar', 'book-manager'); ?></button>
+                                        <button type="button" class="button button-small bm-alter-penalty" data-student="<?php echo $student_id; ?>" data-index="<?php echo count($penalties) - 1; ?>" data-type="<?php echo $p['type']; ?>" data-value="<?php echo $p['value']; ?>" style="background:#ffc107;color:#111;border-color:#ffc107;"><?php _e('Alterar', 'book-manager'); ?></button>
+                                        <?php if ($p['type'] === 'fine'): ?>
+                                            <button type="button" class="button button-small bm-pay-penalty" data-student="<?php echo $student_id; ?>" data-index="<?php echo count($penalties) - 1; ?>" style="background:#46b450;color:#fff;border-color:#46b450;"><?php _e('Quitar', 'book-manager'); ?></button>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>    
+
+    <script>
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('bm-revoke-penalty')) {
+            if (!confirm('<?php _e('Revogar esta penalidade? O aluno será liberado imediatamente.', 'book-manager'); ?>')) return;
+            var btn = e.target;
+            btn.disabled = true;
+            btn.textContent = '...';
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                var r = JSON.parse(xhr.responseText);
+                if (r.success) { location.reload(); }
+                else { alert(r.message); btn.disabled = false; btn.textContent = '<?php _e('Revogar', 'book-manager'); ?>'; }
+            };
+            xhr.send('action=bm_manage_penalty&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>&student_id=' + btn.getAttribute('data-student') + '&penalty_index=' + btn.getAttribute('data-index') + '&penalty_action=revoke');
+        }
+        
+        if (e.target.classList.contains('bm-pay-penalty')) {
+            if (!confirm('<?php _e('Confirmar quitação da multa? O aluno será liberado.', 'book-manager'); ?>')) return;
+            var btn = e.target;
+            btn.disabled = true;
+            btn.textContent = '...';
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                var r = JSON.parse(xhr.responseText);
+                if (r.success) { location.reload(); }
+                else { alert(r.message); btn.disabled = false; btn.textContent = '<?php _e('Quitar', 'book-manager'); ?>'; }
+            };
+            xhr.send('action=bm_manage_penalty&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>&student_id=' + btn.getAttribute('data-student') + '&penalty_index=' + btn.getAttribute('data-index') + '&penalty_action=pay');
+        }
+        
+        if (e.target.classList.contains('bm-alter-penalty')) {
+            var btn = e.target;
+            var type = btn.getAttribute('data-type');
+            var current = btn.getAttribute('data-value');
+            var label = type === 'suspension' ? '<?php _e('Nova duração (dias):', 'book-manager'); ?>' : '<?php _e('Novo valor (R$):', 'book-manager'); ?>';
+            var newVal = prompt(label, current);
+            if (!newVal || isNaN(newVal) || parseFloat(newVal) <= 0) return;
+            if (!confirm('<?php _e('Alterar penalidade?', 'book-manager'); ?>')) return;
+            btn.disabled = true;
+            btn.textContent = '...';
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                var r = JSON.parse(xhr.responseText);
+                if (r.success) { location.reload(); }
+                else { alert(r.message); btn.disabled = false; btn.textContent = '<?php _e('Alterar', 'book-manager'); ?>'; }
+            };
+            xhr.send('action=bm_manage_penalty&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>&student_id=' + btn.getAttribute('data-student') + '&penalty_index=' + btn.getAttribute('data-index') + '&penalty_action=alter&new_value=' + newVal);
+        }
+    });
+    </script>
+
+            <div style="flex:1;min-width:300px;">
+
+        <h2>🚫 <?php _e('Aplicar Penalidade Manual', 'book-manager'); ?></h2>
+        <form method="post" style="background:#fff8e1;padding:15px;border-radius:8px;border:1px solid #ffc107;margin-bottom:15px;">
+            <?php wp_nonce_field('bm_student_detail_action', 'bm_student_detail_nonce'); ?>
+            <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+                <div>
+                    <label><strong><?php _e('Tipo:', 'book-manager'); ?></strong></label>
+                    <select name="bm_manual_penalty_type">
+                        <option value="warning"><?php _e('Advertência', 'book-manager'); ?></option>
+                        <option value="suspension"><?php _e('Suspensão (dias)', 'book-manager'); ?></option>
+                        <option value="fine"><?php _e('Multa (R$)', 'book-manager'); ?></option>
+                    </select>
+                </div>
+                <div>
+                    <label><strong><?php _e('Valor:', 'book-manager'); ?></strong></label>
+                    <input type="number" name="bm_manual_penalty_value" min="0" step="0.01" style="width:100px;" placeholder="0" />
+                </div>
+                <div>
+                    <label><strong><?php _e('Descrição:', 'book-manager'); ?></strong></label>
+                    <input type="text" name="bm_manual_penalty_note" style="width:250px;" placeholder="<?php _e('Ex: Livro danificado na página 32', 'book-manager'); ?>" />
+                </div>
+                <div>
+                    <button type="submit" name="bm_apply_manual_penalty" class="button" style="background:#ff9800;color:#fff;border-color:#ff9800;"><?php _e('Aplicar Penalidade', 'book-manager'); ?></button>
+                </div>
+            </div>
+        </form>
+
+                <h2>📝 <?php _e('Observações Internas', 'book-manager'); ?></h2>
+                <form method="post">
+                    <?php wp_nonce_field('bm_student_detail_action', 'bm_student_detail_nonce'); ?>
+                    <textarea name="bm_internal_notes" rows="5" style="width:100%;"><?php echo esc_textarea($notes); ?></textarea>
+                    <p style="margin-top:5px;">
+                        <button type="submit" name="bm_save_notes" class="button"><?php _e('Salvar Observações', 'book-manager'); ?></button>
+                        <button type="submit" name="bm_export_student" class="button" style="float:right;">📥 <?php _e('Exportar Histórico (CSV)', 'book-manager'); ?></button>
+                    </p>
+                </form>
+            </div>
+        </div>
+        
+        <?php if (!empty($loan_details)): ?>
+            <h2>📋 <?php _e('Histórico de Empréstimos', 'book-manager'); ?></h2>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Livro', 'book-manager'); ?></th>
+                        <th><?php _e('Empréstimo', 'book-manager'); ?></th>
+                        <th><?php _e('Devolução', 'book-manager'); ?></th>
+                        <th><?php _e('Status', 'book-manager'); ?></th>
+                        <th><?php _e('Ação', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($loan_details as $loan): 
+                        $status_label = '';
+                        $status_color = '#666';
+                        $row_style = '';
+                        if ($loan['status'] === 'active') {
+                            if ($loan['is_overdue']) {
+                                $status_label = '🔴 ' . __('Atrasado', 'book-manager');
+                                $status_color = '#dc3545';
+                                $row_style = 'background:#fff3f3;';
+                            } else {
+                                $status_label = '🔵 ' . __('Emprestado', 'book-manager');
+                                $status_color = '#0073aa';
+                            }
+                        } elseif ($loan['status'] === 'returned') {
+                            $status_label = '✅ ' . __('Devolvido', 'book-manager');
+                            $status_color = '#46b450';
+                        } elseif ($loan['status'] === 'cancelled') {
+                            $status_label = '❌ ' . __('Cancelado', 'book-manager');
+                            $status_color = '#6c757d';
+                        } elseif ($loan['status'] === 'rejected') {
+                            $status_label = '⛔ ' . __('Rejeitado', 'book-manager');
+                            $status_color = '#dc3545';
+                        }
+                    ?>
+                        <tr style="<?php echo $row_style; ?>">
+                            <td><?php echo esc_html($loan['book_title']); ?></td>
+                            <td><?php echo isset($loan['loan_date']) ? date('d/m/Y', strtotime($loan['loan_date'])) : '—'; ?></td>
+                            <td><?php echo isset($loan['due_date']) ? date('d/m/Y', strtotime($loan['due_date'])) : '—'; ?></td>
+                            <td style="color:<?php echo $status_color; ?>;font-weight:bold;"><?php echo $status_label; ?></td>
+                            <td>
+                                <?php if ($loan['status'] === 'active'): ?>
+                                    <button type="button" class="button button-small bm-return-detail-btn" style="background:#46b450;color:#fff;border-color:#46b450;" data-book="<?php echo $loan['book_id']; ?>" data-user="<?php echo $student_id; ?>">📥 <?php _e('Devolver', 'book-manager'); ?></button>
+                                <?php else: ?>
+                                    <span style="color:#999;">—</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
+        <script>
+        document.addEventListener('click', function(e) {
+            if (!e.target.classList.contains('bm-return-detail-btn')) return;
+            e.preventDefault();
+            var self = e.target;
+            if (!confirm('Confirmar devolução?')) return;
+            self.disabled = true;
+            self.textContent = '...';
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', ajaxurl);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            xhr.onload = function() {
+                var r = JSON.parse(xhr.responseText);
+                if (r.success) {
+                    var row = self.closest('tr');
+                    if (row) {
+                        row.style.opacity = '0.5';
+                        var situacaoCell = row.querySelector('td:nth-child(4)');
+                        if (situacaoCell) situacaoCell.innerHTML = '<span style="color:#46b450;font-weight:bold;">✅ Devolvido</span>';
+                    }
+                    self.remove();
+                } else {
+                    alert(r.message || 'Erro');
+                    self.disabled = false;
+                    self.textContent = '📥 Devolver';
+                }
+            };
+            xhr.send('action=bm_service_return&book_id=' + self.getAttribute('data-book') + '&user_id=' + self.getAttribute('data-user') + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+        });
+        </script>
+
+        <?php if (!empty($badges)): ?>
+            <h2>🏅 <?php _e('Medalhas', 'book-manager'); ?></h2>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                <?php foreach ($badges as $badge_key): 
+                    $info = bm_get_badge_info($badge_key);
+                ?>
+                    <div style="background:#fff8e1;padding:10px 15px;border-radius:8px;text-align:center;border:1px solid #ffc107;" title="<?php echo esc_attr($info['desc']); ?>">
+                        <div style="font-size:28px;"><?php echo $info['icon']; ?></div>
+                        <div style="font-size:11px;font-weight:bold;"><?php echo esc_html($info['name']); ?></div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+        
+        <?php 
+        $recent_logs = array_slice(array_reverse($reading_log), 0, 5);
+        if (!empty($recent_logs)): 
+        ?>
+            <h2>📝 <?php _e('Últimas Fichas de Leitura', 'book-manager'); ?></h2>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php _e('Livro', 'book-manager'); ?></th>
+                        <th><?php _e('Data', 'book-manager'); ?></th>
+                        <th><?php _e('Nota', 'book-manager'); ?></th>
+                        <th><?php _e('XP', 'book-manager'); ?></th>
+                        <th><?php _e('Status', 'book-manager'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($recent_logs as $log): ?>
+                        <tr>
+                            <td><?php echo esc_html(get_the_title($log['book_id'])); ?></td>
+                            <td><?php echo date('d/m/Y', strtotime($log['date'])); ?></td>
+                            <td><?php echo $log['rating'] > 0 ? str_repeat('★', $log['rating']) : '—'; ?></td>
+                            <td>
+                                <?php 
+                                if (isset($log['xp_total'])) {
+                                    echo esc_html($log['xp_total']) . ' XP';
+                                } elseif (isset($log['xp_awarded']) && $log['xp_awarded']) {
+                                    echo __('Sim', 'book-manager');
+                                } else {
+                                    echo '—';
+                                }
+                                ?>
+                            </td>
+                            <td><?php echo $log['status'] === 'approved' ? '✅' : '⏳'; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
+// ==========================================
+// FASE 36.1: CONCEDER XP MANUALMENTE
+// ==========================================
 function bm_award_xp_on_approval($user_id, $book_id, $xp_reading = 0, $xp_review = 0, $xp_video = 0) {
     $total_xp = intval($xp_reading) + intval($xp_review) + intval($xp_video);
     if ($total_xp <= 0) return;

@@ -544,5 +544,5 @@ Aqui está o bloco atualizado para substituir a Fase 33 no roadmap.md:
 
 *   **Tarefas:**
     1.  [x] **38.1 — Mudar ordem dos submenus do WordPress:** Reorganizar os submenus do menu Biblioteca priorizando Balcão de Atendimento, Alunos, Livros, Importação/Exportação, Relatórios e Configurações.
-    2.  [ ] **38.2 — Modularização — dividir arquivos grandes:** Separar `admin.php` e `users.php` em módulos menores por responsabilidade (ex: `admin-csv.php`, `admin-fields.php`, `admin-service.php`).
+    2.  [ ] **38.2 — Modularização — dividir arquivos grandes:** Separar `admin.php` e `users.php` em módulos menores por responsabilidade técnica. `admin.php` será dividido em `admin-csv.php`, `admin-fields.php`, `admin-service.php` e `admin-settings.php`. `users.php` será dividido em `users-circulation.php` e `users-dashboard.php`. Os arquivos originais deixarão de existir.    
 ```

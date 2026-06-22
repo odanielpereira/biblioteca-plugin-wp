@@ -1,10 +1,23 @@
 <?php
+/**
+ * Book Manager — Módulo de Campos e Metaboxes
+ * Metaboxes, listagem admin, filtros, campos dinâmicos, resenha oficial
+ */
+
 defined('ABSPATH') || exit;
 
 // ==========================================
-// METABOXES E CAMPOS DINÂMICOS
+// FASE 7H: SCRIPTS DO ADMIN (DRAG AND DROP)
 // ==========================================
+function bm_admin_scripts($hook) {
+    if (strpos($hook, 'bm_dynamic_fields') === false && strpos($hook, 'bm_book') === false) return;
+    wp_enqueue_script('jquery-ui-sortable');
+}
+add_action('admin_enqueue_scripts', 'bm_admin_scripts');
 
+// ==========================================
+// FASE 2/7A/7B/7F: METABOX DETALHES DO LIVRO
+// ==========================================
 function bm_render_book_details_metabox( $post ) {
     wp_nonce_field( 'bm_save_book_details', 'bm_book_details_nonce' );
     $fixed_fields = array(
@@ -26,6 +39,7 @@ function bm_render_book_details_metabox( $post ) {
     foreach ($fixed_fields as $key => $info) { if (!isset($all_fields[$key])) $all_fields[$key] = array_merge($info, array('key' => $key, 'source' => 'fixed')); }
     foreach ($dynamic_fields as $key => $info) { if (!isset($all_fields[$key])) $all_fields[$key] = array('label' => $key . ':', 'type' => $info['type'], 'key' => '_bm_dynamic_' . sanitize_key($key), 'source' => 'dynamic'); }
     
+    // FASE 34.3: Remover campos reservados da exibição
     $reserved_names = array('cdu', 'cdd', 'classificação', 'classificacao', 'cutter');
     foreach ($all_fields as $fkey => $field) {
         if (in_array(mb_strtolower(trim($fkey)), $reserved_names)) {
@@ -47,6 +61,7 @@ function bm_render_book_details_metabox( $post ) {
         }
     }
 
+    // FASE 35.2: Botões "Preencher via ISBN" e "Buscar ISBN"
     $isbn_value = get_post_meta($post->ID, '_bm_isbn', true);
     $title_value = $post->post_title;
     $author_value = get_post_meta($post->ID, '_bm_author', true);
@@ -63,6 +78,7 @@ function bm_render_book_details_metabox( $post ) {
     </p>
     <script>
     jQuery(document).ready(function($) {
+        // Preencher via ISBN
         $('#bm-fill-by-isbn').on('click', function() {
             var btn = $(this);
             btn.prop('disabled', true);
@@ -85,6 +101,7 @@ function bm_render_book_details_metabox( $post ) {
             });
         });
         
+        // Buscar ISBN pelo título e autor
         $('#bm-search-isbn').on('click', function() {
             var btn = $(this);
             btn.prop('disabled', true);
@@ -97,7 +114,9 @@ function bm_render_book_details_metabox( $post ) {
                 author: $('#_bm_author').val()
             }, function(r) {
                 $('#bm-fill-loading').hide();
+                console.log('bm_search_isbn response:', r);
                 if (r.success) {
+                    console.log('Setting ISBN:', r.data.isbn);
                     $('#_bm_isbn').val(r.data.isbn);
                     $('#bm-fill-by-isbn').prop('disabled', false);
                     $('#bm-fill-result').css('color', 'green').text('ISBN encontrado: ' + r.data.isbn).show();
@@ -119,8 +138,29 @@ function bm_render_book_details_metabox( $post ) {
     }
 }
 function bm_add_book_details_metabox() { add_meta_box('bm_book_details', __('Detalhes do Livro','book-manager'), 'bm_render_book_details_metabox', 'bm_book', 'normal', 'high'); }
+add_action('add_meta_boxes', 'bm_add_book_details_metabox');
 
+function bm_save_book_details_metabox_data( $post_id ) {
+    if (!isset($_POST['bm_book_details_nonce']) || !wp_verify_nonce($_POST['bm_book_details_nonce'],'bm_save_book_details')) return;
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    foreach (array('_bm_author','_bm_publisher','_bm_isbn','_bm_location','_bm_library_unit') as $f) {
+        if (isset($_POST[$f])) update_post_meta($post_id, $f, sanitize_text_field($_POST[$f]));
+    }
+    if (isset($_POST['_bm_copies'])) update_post_meta($post_id, '_bm_copies', absint($_POST['_bm_copies']));
+    $dynamic_fields = get_option('bm_dynamic_fields', array());
+    foreach ($dynamic_fields as $field => $info) {
+        $key = '_bm_dynamic_' . sanitize_key($field);
+        if (isset($_POST[$key])) update_post_meta($post_id, $key, sanitize_text_field($_POST[$key]));
+    }
+}
+add_action('save_post_bm_book', 'bm_save_book_details_metabox_data');
+
+// ==========================================
+// FASE 12E-T2: METABOXES PARA TAXONOMIAS DINÂMICAS
+// ==========================================
 function bm_add_dynamic_taxonomy_metaboxes() {
+    // Garantir que as taxonomias padrão estejam presentes (Fase 34.2)
     bm_install_default_taxonomies();
     $taxonomies = get_option('bm_dynamic_taxonomies', array());
     if (!is_array($taxonomies)) return;
@@ -139,6 +179,7 @@ function bm_add_dynamic_taxonomy_metaboxes() {
     }
 }
 add_action('add_meta_boxes', 'bm_add_dynamic_taxonomy_metaboxes');
+
 function bm_remove_native_taxonomy_metaboxes() {
     remove_meta_box('bm_genrediv', 'bm_book', 'side');
     remove_meta_box('bm_categorydiv', 'bm_book', 'side');
@@ -179,24 +220,9 @@ function bm_save_dynamic_taxonomy_terms($post_id) {
 }
 add_action('save_post_bm_book', 'bm_save_dynamic_taxonomy_terms');
 
-add_action('add_meta_boxes', 'bm_add_book_details_metabox');
-function bm_save_book_details_metabox_data( $post_id ) {
-    if (!isset($_POST['bm_book_details_nonce']) || !wp_verify_nonce($_POST['bm_book_details_nonce'],'bm_save_book_details')) return;
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
-    foreach (array('_bm_author','_bm_publisher','_bm_isbn','_bm_location','_bm_library_unit') as $f) {
-        if (isset($_POST[$f])) update_post_meta($post_id, $f, sanitize_text_field($_POST[$f]));
-    }
-    if (isset($_POST['_bm_copies'])) update_post_meta($post_id, '_bm_copies', absint($_POST['_bm_copies']));
-    $dynamic_fields = get_option('bm_dynamic_fields', array());
-    foreach ($dynamic_fields as $field => $info) {
-        $key = '_bm_dynamic_' . sanitize_key($field);
-        if (isset($_POST[$key])) update_post_meta($post_id, $key, sanitize_text_field($_POST[$key]));
-    }
-}
-add_action('save_post_bm_book', 'bm_save_book_details_metabox_data');
-
-// Metabox de Resenha Oficial
+// ==========================================
+// FASE 10C: RESENHA OFICIAL DO GESTOR/ADMIN
+// ==========================================
 function bm_add_official_review_metabox() {
     add_meta_box('bm_official_review', __('Resenha Oficial', 'book-manager'), 'bm_render_official_review_metabox', 'bm_book', 'normal', 'high');
 }
@@ -233,13 +259,96 @@ function bm_save_official_review($post_id) {
 }
 add_action('save_post_bm_book', 'bm_save_official_review');
 
-// Gerenciamento de Campos Dinâmicos
+// ==========================================
+// FASE 4/7C: LISTAGEM E FILTROS ADMIN
+// ==========================================
+function bm_manage_book_columns($columns) {
+    $new = array();
+    foreach ($columns as $k => $t) { $new[$k] = $t; if ($k==='title') { $new['_bm_author']=__('Autor','book-manager'); $new['_bm_publisher']=__('Editora','book-manager'); $new['taxonomy-bm_genre']=__('Gênero','book-manager'); $new['taxonomy-bm_category']=__('Categoria','book-manager'); } }
+    if (!isset($new['taxonomy-bm_genre'])) { $new['taxonomy-bm_genre']=__('Gênero','book-manager'); $new['taxonomy-bm_category']=__('Categoria','book-manager'); }
+    return $new;
+}
+add_filter('manage_bm_book_posts_columns','bm_manage_book_columns');
+
+function bm_manage_book_custom_column_content($col,$pid) {
+    if ('_bm_author'===$col) echo esc_html(get_post_meta($pid,'_bm_author',true));
+    elseif ('_bm_publisher'===$col) echo esc_html(get_post_meta($pid,'_bm_publisher',true));
+}
+add_action('manage_bm_book_posts_custom_column','bm_manage_book_custom_column_content',10,2);
+
+function bm_add_book_filter_form() {
+    global $typenow; if ('bm_book'!==$typenow) return;
+    $fa = isset($_GET['_bm_author'])?sanitize_text_field($_GET['_bm_author']):'';
+    $fp = isset($_GET['_bm_publisher'])?sanitize_text_field($_GET['_bm_publisher']):'';
+    ?><style>.bm-filter-form p{display:inline-block;margin-right:15px;vertical-align:top}.bm-filter-form label{margin-right:5px;font-weight:bold}.bm-filter-form input[type="text"],.bm-filter-form select{padding:5px;border:1px solid #ccc;border-radius:4px}</style>
+    <div class="bm-filter-form">
+    <?php
+    echo '<input type="hidden" name="post_type" value="bm_book">';
+    if (isset($_GET['orderby']) && !empty($_GET['orderby'])) echo '<input type="hidden" name="orderby" value="'.esc_attr(sanitize_text_field($_GET['orderby'])).'">';
+    if (isset($_GET['order']) && !empty($_GET['order'])) echo '<input type="hidden" name="order" value="'.esc_attr(sanitize_text_field($_GET['order'])).'">';
+    if (isset($_GET['s'])&&!empty($_GET['s'])) echo '<input type="hidden" name="s" value="'.esc_attr(sanitize_text_field($_GET['s'])).'">';
+    ?>
+    <p><label for="_bm_author"><?php _e('Autor:','book-manager'); ?></label><input type="text" id="_bm_author" name="_bm_author" value="<?php echo esc_attr($fa); ?>" placeholder="<?php _e('Filtrar por autor','book-manager'); ?>"></p>
+    <p><label for="_bm_publisher"><?php _e('Editora:','book-manager'); ?></label><input type="text" id="_bm_publisher" name="_bm_publisher" value="<?php echo esc_attr($fp); ?>" placeholder="<?php _e('Filtrar por editora','book-manager'); ?>"></p>
+    <?php
+  
+    wp_dropdown_categories(array('show_option_all'=>__('Todos os Gêneros','book-manager'),'taxonomy'=>'bm_genre','name'=>'bm_genre_filter','selected'=>isset($_GET['bm_genre_filter'])?$_GET['bm_genre_filter']:''));
+    wp_dropdown_categories(array('show_option_all'=>__('Todas as Categorias','book-manager'),'taxonomy'=>'bm_category','name'=>'bm_category_filter','selected'=>isset($_GET['bm_category_filter'])?$_GET['bm_category_filter']:''));
+
+    $dynamic_taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!is_array($dynamic_taxonomies)) $dynamic_taxonomies = array();
+    $skip = array('bm_genre', 'bm_category', 'bm_discipline');
+    foreach ($dynamic_taxonomies as $slug => $info) {
+        if (in_array($slug, $skip)) continue;
+        wp_dropdown_categories(array(
+            'show_option_all' => $info['label'],
+            'taxonomy' => $slug,
+            'name' => $slug . '_filter',
+            'selected' => isset($_GET[$slug . '_filter']) ? $_GET[$slug . '_filter'] : '',
+        ));
+    }
+    ?>
+    <input type="submit" name="filter_action" class="button" value="<?php _e('Filtrar','book-manager'); ?>">
+    <a href="<?php echo admin_url('edit.php?post_type=bm_book'); ?>" class="button"><?php _e('Limpar Filtros','book-manager'); ?></a>
+    </div><?php
+}
+add_action('restrict_manage_posts','bm_add_book_filter_form');
+
+function bm_filter_books_by_metadata($query) {
+    if (!is_admin()||!$query->is_main_query()||'bm_book'!==$query->get('post_type')) return;
+    
+    // Não interferir em ações em lote
+    if (isset($_GET['action']) || isset($_GET['action2'])) return;
+    
+    $meta = array();
+    if (isset($_GET['_bm_author'])&&!empty($_GET['_bm_author'])) $meta[]=array('key'=>'_bm_author','value'=>sanitize_text_field($_GET['_bm_author']),'compare'=>'LIKE');
+    if (isset($_GET['_bm_publisher'])&&!empty($_GET['_bm_publisher'])) $meta[]=array('key'=>'_bm_publisher','value'=>sanitize_text_field($_GET['_bm_publisher']),'compare'=>'LIKE');
+    if (!empty($meta)) { $meta['relation']='AND'; $query->set('meta_query',$meta); }
+    if (isset($_GET['bm_genre_filter'])&&!empty($_GET['bm_genre_filter'])) { $tq=$query->get('tax_query')?:array(); $tq[]=array('taxonomy'=>'bm_genre','field'=>'term_id','terms'=>intval($_GET['bm_genre_filter'])); $query->set('tax_query',$tq); }
+    if (isset($_GET['bm_category_filter'])&&!empty($_GET['bm_category_filter'])) { $tq=$query->get('tax_query')?:array(); $tq[]=array('taxonomy'=>'bm_category','field'=>'term_id','terms'=>intval($_GET['bm_category_filter'])); $query->set('tax_query',$tq); }
+
+    $dynamic_taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!is_array($dynamic_taxonomies)) $dynamic_taxonomies = array();
+    foreach ($dynamic_taxonomies as $slug => $info) {
+        if (isset($_GET[$slug . '_filter']) && !empty($_GET[$slug . '_filter'])) {
+            $tq = $query->get('tax_query') ?: array();
+            $tq[] = array('taxonomy' => $slug, 'field' => 'term_id', 'terms' => intval($_GET[$slug . '_filter']));
+            $query->set('tax_query', $tq);
+        }
+    }
+}
+add_action('pre_get_posts','bm_filter_books_by_metadata');
+
+// ==========================================
+// FASE 7B/7H: GERENCIAMENTO DE CAMPOS DINÂMICOS
+// ==========================================
 function bm_render_dynamic_fields_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     $message = '';
     
     $active_tab = isset($_GET['tab']) && $_GET['tab'] === 'users' ? 'users' : 'books';
 
+    // FASE 34.3: Limpar campos dinâmicos com nomes reservados ou chaves vazias
     if ($active_tab === 'books') {
         $reserved_names = array('cdu', 'cdd', 'classificação', 'classificacao', 'cutter');
         $fields_to_check = get_option('bm_dynamic_fields', array());
@@ -289,14 +398,16 @@ function bm_render_dynamic_fields_page() {
             $type = isset($_POST['new_field_type']) ? sanitize_text_field($_POST['new_field_type']) : 'text';
             $name_lower = mb_strtolower(trim($name));
             
+            // Bloquear nomes reservados do Número de Chamada (apenas na aba de livros)
             if ($active_tab === 'books') {
                 $reserved_names = array('cdu', 'cdd', 'classificação', 'classificacao', 'cutter');
                 if (in_array($name_lower, $reserved_names)) {
                     $message = __('Este nome é reservado para o Número de Chamada. Use outro nome.','book-manager');
-                    $name = '';
+                    $name = ''; // Impede a criação
                 }
             }
             
+            // Verificar duplicatas (case-insensitive)
             $duplicate = false;
             foreach ($fields as $existing_name => $info) {
                 if (mb_strtolower(trim($existing_name)) === $name_lower) {
@@ -355,8 +466,10 @@ function bm_render_dynamic_fields_page() {
             }
             update_option($option_name, $fields);
             
+            // Preservar ordem: campos renomeados mantêm posição
             $final_order = array();
             foreach ($order as $key) {
+                // Se foi renomeado, usa o novo nome
                 if (isset($rename_names[$key]) && !empty($rename_names[$key]) && $key !== $rename_names[$key]) {
                     $final_order[] = $rename_names[$key];
                 } else {
@@ -466,15 +579,3 @@ function bm_render_dynamic_fields_page() {
     <script>jQuery(document).ready(function($){$('#bm-fields-table tbody').sortable({handle:'.dashicons-menu'});});</script>
     <?php
 }
-
-function bm_admin_scripts($hook) {
-    if (strpos($hook, 'bm_dynamic_fields') === false && strpos($hook, 'bm_book') === false) return;
-    wp_enqueue_script('jquery-ui-sortable');
-}
-add_action('admin_enqueue_scripts', 'bm_admin_scripts');
-
-// Registrar submenu Gerenciar Campos
-function bm_register_dynamic_fields_submenu() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Gerenciar Campos','book-manager'), __('Gerenciar Campos','book-manager'), 'edit_bm_books', 'bm_dynamic_fields', 'bm_render_dynamic_fields_page');
-}
-add_action('admin_menu', 'bm_register_dynamic_fields_submenu');

@@ -1,9 +1,18 @@
 <?php
+/**
+ * Book Manager — Módulo de Importação/Exportação
+ * CSV, ZIP, Nº Chamada, central de dados
+ */
+
 defined('ABSPATH') || exit;
 
 // ==========================================
-// IMPORTAÇÃO E EXPORTAÇÃO CSV
+// FASE 18: PÁGINA UNIFICADA — IMPORTAÇÃO/EXPORTAÇÃO
 // ==========================================
+function bm_add_data_io_page() {
+    add_submenu_page('edit.php?post_type=bm_book', __('Importação/Exportação', 'book-manager'), __('Importação/Exportação', 'book-manager'), 'edit_bm_books', 'bm_data_io', 'bm_render_data_io_page');
+}
+add_action('admin_menu', 'bm_add_data_io_page');
 
 function bm_render_data_io_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
@@ -41,6 +50,9 @@ function bm_render_data_io_page() {
     <?php
 }
 
+// ==========================================
+// FASE 6A/7G: IMPORTAÇÃO CSV COM MAPEAMENTO DINÂMICO
+// ==========================================
 function bm_render_csv_import_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     $message = ''; $preview = array(); $duplicates = array();
@@ -73,7 +85,7 @@ function bm_render_csv_import_page() {
                 if (isset($mapping['_bm_publisher'])&&isset($row[$mapping['_bm_publisher']])) $publisher=sanitize_text_field($row[$mapping['_bm_publisher']]);
                 if (empty($title)) { $skipped++; continue; }
                 $csv_location = isset($mapping['_bm_location']) && isset($row[$mapping['_bm_location']]) ? sanitize_text_field($row[$mapping['_bm_location']]) : '';
-                $exists = bm_find_duplicate_book($title,$author,$publisher);
+                $exists = bm_find_duplicate_book($title,$author,$publisher,$csv_location);
                 if ($exists && $skip_duplicates) { $dup_skipped++; continue; }
                 if ($exists) { $dup_forced++; }
                 $post_id = wp_insert_post(array('post_type'=>'bm_book','post_title'=>$title,'post_status'=>'publish'));
@@ -168,7 +180,6 @@ function bm_render_csv_import_page() {
                             }
                         }
                     }
-                    
                     if ($youtube_search) {
                         $youtube_data = bm_search_youtube_video($title, $author, $publisher);
                         if ($youtube_data && !empty($youtube_data['url'])) {
@@ -369,24 +380,9 @@ function bm_find_duplicate_book($title,$author,$publisher) {
     return false;
 }
 
-function bm_render_call_number_export_page() {
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
-    
-    $total = wp_count_posts('bm_book');
-    $total = $total->publish + $total->draft + $total->trash;
-    ?>
-    <div class="wrap">
-        <h1><?php _e('Exportar Número de Chamada', 'book-manager'); ?></h1>
-        <p><?php echo sprintf(__('%d livros no acervo. Apenas livros com Classificação ou Cutter preenchidos serão exportados.', 'book-manager'), $total); ?></p>
-        <form method="post">
-            <?php wp_nonce_field('bm_cn_export_action', 'bm_cn_export_nonce'); ?>
-            <p><?php _e('Exporta: Título, Classificação, Cutter, Edição, Volume.', 'book-manager'); ?></p>
-            <?php submit_button(__('Exportar CSV', 'book-manager')); ?>
-        </form>
-    </div>
-    <?php
-}
-
+// ==========================================
+// FASE 6B/7E: EXPORTAÇÃO CSV FLEXÍVEL
+// ==========================================
 function bm_handle_csv_export() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     if (!isset($_POST['bm_csv_export_nonce'])||!wp_verify_nonce($_POST['bm_csv_export_nonce'],'bm_csv_export_action')) return;
@@ -428,6 +424,7 @@ function bm_handle_csv_export() {
     }
     fclose($output); exit;
 }
+add_action('admin_init', 'bm_handle_csv_export', 10);
 
 function bm_csv_export_redirect() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
@@ -436,10 +433,16 @@ function bm_csv_export_redirect() {
     $books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
     $count = count($books);
     
+    $redirect_url = add_query_arg(array(
+        'post_type' => 'bm_book',
+        'page' => 'bm_data_io',
+        'tab' => 'export_books',
+        'exported' => $count,
+    ), admin_url('edit.php'));
+    
     set_transient('bm_export_message', $count, 60);
 }
 add_action('admin_init', 'bm_csv_export_redirect', 9);
-add_action('admin_init', 'bm_handle_csv_export', 10);
 
 function bm_render_csv_export_page() {
     if (!current_user_can('manage_options')) return;
@@ -472,131 +475,9 @@ function bm_render_csv_export_page() {
     <?php
 }
 
-function bm_render_call_number_import_page() {
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
-    
-    $message = '';
-    $stage = isset($_POST['import_stage']) ? $_POST['import_stage'] : '';
-    $headers = array();
-    
-    if ('process' === $stage && isset($_POST['bm_cn_import_nonce']) && wp_verify_nonce($_POST['bm_cn_import_nonce'], 'bm_cn_import_action')) {
-        $imported = 0; $skipped = 0;
-        
-        $mapping_raw = isset($_POST['mapping']) ? array_map('sanitize_text_field', $_POST['mapping']) : array();
-        $mapping = array();
-        foreach ($mapping_raw as $csv_index => $field) {
-            if (!empty($field)) $mapping[$field] = intval($csv_index);
-        }
-        
-        if (!empty($_POST['csv_data'])) {
-            $rows = json_decode(stripslashes($_POST['csv_data']), true);
-            foreach ($rows as $row) {
-                $title = '';
-                if (isset($mapping['title']) && isset($row[$mapping['title']])) $title = trim(sanitize_text_field($row[$mapping['title']]));
-                if (empty($title)) { $skipped++; continue; }
-                
-                $existing = get_posts(array('post_type' => 'bm_book', 'title' => $title, 'posts_per_page' => 1, 'post_status' => 'any'));
-                if (empty($existing)) { $skipped++; continue; }
-                
-                $post_id = $existing[0]->ID;
-                
-                if (isset($mapping['_bm_cdu']) && isset($row[$mapping['_bm_cdu']])) {
-                    update_post_meta($post_id, '_bm_cdu', sanitize_text_field($row[$mapping['_bm_cdu']]));
-                }
-                if (isset($mapping['_bm_cutter']) && isset($row[$mapping['_bm_cutter']])) {
-                    update_post_meta($post_id, '_bm_cutter', sanitize_text_field($row[$mapping['_bm_cutter']]));
-                }
-                if (isset($mapping['_bm_edition']) && isset($row[$mapping['_bm_edition']])) {
-                    update_post_meta($post_id, '_bm_edition', sanitize_text_field($row[$mapping['_bm_edition']]));
-                }
-                if (isset($mapping['_bm_volume']) && isset($row[$mapping['_bm_volume']])) {
-                    update_post_meta($post_id, '_bm_volume', sanitize_text_field($row[$mapping['_bm_volume']]));
-                }
-                
-                update_post_meta($post_id, '_bm_cutter_cached', '1');
-                update_post_meta($post_id, '_bm_cutter_locked', '1');
-                $imported++;
-            }
-        }
-        $message = sprintf(__('%d números de chamada importados, %d ignorados.', 'book-manager'), $imported, $skipped);
-    }
-    
-    if ('' === $stage && isset($_FILES['csv_file']) && isset($_POST['bm_cn_import_nonce'])) {
-        if (!wp_verify_nonce($_POST['bm_cn_import_nonce'], 'bm_cn_import_action')) {
-            $message = __('Erro de segurança.', 'book-manager');
-        } elseif (empty($_FILES['csv_file']['tmp_name'])) {
-            $message = __('Nenhum arquivo enviado.', 'book-manager');
-        } else {
-            $filetype = wp_check_filetype($_FILES['csv_file']['name']);
-            if ('csv' !== $filetype['ext']) {
-                $message = __('Formato inválido.', 'book-manager');
-            } else {
-                $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
-                if ($handle) {
-                    $line = 0; $all_rows = array();
-                    while (($data = fgetcsv($handle, 0, ';')) !== false) {
-                        if (1 === ++$line) { $headers = array_map('sanitize_text_field', $data); continue; }
-                        $all_rows[] = $data;
-                    }
-                    fclose($handle);
-                    if (empty($headers)) {
-                        $message = __('Arquivo sem cabeçalho.', 'book-manager');
-                    } else {
-                        $stage = 'map';
-                    }
-                    $_POST['csv_data_preview'] = json_encode($all_rows, JSON_UNESCAPED_UNICODE);
-                    $_POST['csv_headers'] = json_encode($headers, JSON_UNESCAPED_UNICODE);
-                }
-            }
-        }
-    }
-    
-    $system_fields = array(
-        'title' => __('Título (obrigatório)', 'book-manager'),
-        '_bm_cdu' => __('Classificação (CDU/CDD)', 'book-manager'),
-        '_bm_cutter' => __('Cutter', 'book-manager'),
-        '_bm_edition' => __('Edição', 'book-manager'),
-        '_bm_volume' => __('Volume', 'book-manager'),
-    );
-    ?>
-    <div class="wrap">
-        <h1><?php _e('Importar Número de Chamada via CSV', 'book-manager'); ?></h1>
-        <?php if ($message): ?><div class="notice notice-success is-dismissible"><p><?php echo esc_html($message); ?></p></div><?php endif; ?>
-        
-        <?php if ('map' === $stage && !empty($headers)): ?>
-            <h2><?php _e('Mapeamento de Colunas', 'book-manager'); ?></h2>
-            <p><?php _e('Associe cada coluna do seu arquivo ao campo correspondente.', 'book-manager'); ?></p>
-            <form method="post">
-                <?php wp_nonce_field('bm_cn_import_action', 'bm_cn_import_nonce'); ?>
-                <input type="hidden" name="import_stage" value="process">
-                <input type="hidden" name="csv_data" value="<?php echo esc_attr(json_encode(json_decode(stripslashes($_POST['csv_data_preview']), true), JSON_UNESCAPED_UNICODE)); ?>">
-                <?php foreach ($headers as $i => $h): ?>
-                    <p><strong><?php echo esc_html($h); ?></strong> →
-                    <select name="mapping[<?php echo $i; ?>]">
-                        <option value=""><?php _e('— Ignorar —', 'book-manager'); ?></option>
-                        <?php foreach ($system_fields as $key => $label): ?>
-                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
-                        <?php endforeach; ?>
-                    </select></p>
-                <?php endforeach; ?>
-                <?php submit_button(__('Importar', 'book-manager')); ?>
-            </form>
-        <?php else: ?>
-            <form method="post" enctype="multipart/form-data">
-                <?php wp_nonce_field('bm_cn_import_action', 'bm_cn_import_nonce'); ?>
-                <table class="form-table">
-                    <tr>
-                        <th><label for="csv_file"><?php _e('Arquivo CSV', 'book-manager'); ?></label></th>
-                        <td><input type="file" id="csv_file" name="csv_file" accept=".csv" /><p class="description"><?php _e('CSV com colunas: Título, Classificação, Cutter, Edição, Volume.', 'book-manager'); ?></p></td>
-                    </tr>
-                </table>
-                <?php submit_button(__('Enviar Arquivo', 'book-manager')); ?>
-            </form>
-        <?php endif; ?>
-    </div>
-    <?php
-}
-
+// ==========================================
+// FASE 12H: IMPORTAÇÃO DE ALUNOS EM MASSA
+// ==========================================
 function bm_render_student_import_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     
@@ -747,462 +628,154 @@ function bm_render_student_import_page() {
     <?php
 }
 
-function bm_export_books_full() {
-    $books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
-    if (empty($books)) return array('csv' => '', 'count' => 0);
-    
-    $dynamic_fields = get_option('bm_dynamic_fields', array());
-    $dynamic_taxonomies = get_option('bm_dynamic_taxonomies', array());
-    if (!is_array($dynamic_taxonomies)) $dynamic_taxonomies = array();
-    
-    $headers = array('Título', 'Autor', 'Editora', 'ISBN', 'Localização', 'Exemplares', 'Unidade');
-    $headers[] = 'Gêneros';
-    $headers[] = 'Categorias';
-    $headers[] = 'Disciplinas';
-    foreach ($dynamic_taxonomies as $slug => $info) {
-        $headers[] = $info['label'];
-    }
-    foreach ($dynamic_fields as $name => $info) {
-        $headers[] = $name;
-    }
-    $headers = array_merge($headers, array('Classificação', 'Cutter', 'Edição', 'Volume', 'Capa (URL)', 'Sinopse', 'Atividades Pedagógicas', 'Resenha Oficial', 'Link Oficial'));
-    
-    $output = fopen('php://temp', 'r+');
-    fprintf($output, "\xEF\xBB\xBF");
-    fputcsv($output, $headers, ';');
-    
-    foreach ($books as $book) {
-        $row = array();
-        $row[] = $book->post_title;
-        $row[] = get_post_meta($book->ID, '_bm_author', true);
-        $row[] = get_post_meta($book->ID, '_bm_publisher', true);
-        $row[] = get_post_meta($book->ID, '_bm_isbn', true);
-        $row[] = get_post_meta($book->ID, '_bm_location', true);
-        $row[] = get_post_meta($book->ID, '_bm_copies', true);
-        $row[] = get_post_meta($book->ID, '_bm_library_unit', true);
-        
-        $genres = wp_get_post_terms($book->ID, 'bm_genre', array('fields' => 'names'));
-        $row[] = implode(', ', $genres);
-        $categories = wp_get_post_terms($book->ID, 'bm_category', array('fields' => 'names'));
-        $row[] = implode(', ', $categories);
-        $disciplines = wp_get_post_terms($book->ID, 'bm_discipline', array('fields' => 'names'));
-        $row[] = implode(', ', $disciplines);
-        
-        foreach ($dynamic_taxonomies as $slug => $info) {
-            $terms = wp_get_post_terms($book->ID, $slug, array('fields' => 'names'));
-            $row[] = implode(', ', $terms);
-        }
-        
-        foreach ($dynamic_fields as $name => $info) {
-            $key = '_bm_dynamic_' . sanitize_key($name);
-            $row[] = get_post_meta($book->ID, $key, true);
-        }
-        
-        $row[] = get_post_meta($book->ID, '_bm_cdu', true);
-        $row[] = get_post_meta($book->ID, '_bm_cutter', true);
-        $row[] = get_post_meta($book->ID, '_bm_edition', true);
-        $row[] = get_post_meta($book->ID, '_bm_volume', true);
-        
-        $cover = get_the_post_thumbnail_url($book->ID, 'full');
-        if (!$cover) $cover = get_post_meta($book->ID, '_bm_cover_hotlink', true);
-        $row[] = $cover ? $cover : '';
-        
-        $row[] = get_post_meta($book->ID, '_bm_dynamic_sinopse', true);
-        $row[] = get_post_meta($book->ID, '_bm_activities', true);
-        $row[] = get_post_meta($book->ID, '_bm_official_review', true);
-        $row[] = get_post_meta($book->ID, '_bm_official_link', true);
-        
-        fputcsv($output, $row, ';');
-    }
-    
-    rewind($output);
-    $csv = stream_get_contents($output);
-    fclose($output);
-    return array('csv' => $csv, 'count' => count($books));
-}
-
-function bm_export_students_full() {
-    $students = get_users(array('role' => 'bm_student', 'number' => 999));
-    if (empty($students)) return array('csv' => '', 'count' => 0);
-    
-    $user_fields = get_option('bm_user_dynamic_fields', array());
-    
-    $headers = array('Nome', 'E-mail', 'Status de Aprovação');
-    foreach ($user_fields as $field_name => $info) {
-        $headers[] = $field_name;
-    }
-    $headers[] = 'Bloqueado (multa ativa)';
-    
-    $output = fopen('php://temp', 'r+');
-    fprintf($output, "\xEF\xBB\xBF");
-    fputcsv($output, $headers, ';');
-    
-    foreach ($students as $student) {
-        $row = array();
-        $row[] = $student->display_name;
-        $row[] = $student->user_email;
-        $row[] = get_user_meta($student->ID, 'bm_approval_status', true) ?: 'approved';
-        
-        foreach ($user_fields as $field_name => $info) {
-            $meta_key = '_bm_user_' . sanitize_key($field_name);
-            $row[] = get_user_meta($student->ID, $meta_key, true);
-        }
-        
-        $blocked = get_user_meta($student->ID, '_bm_penalty_active', true) === '1' ? 'Sim' : 'Não';
-        $row[] = $blocked;
-        
-        fputcsv($output, $row, ';');
-    }
-    
-    rewind($output);
-    $csv = stream_get_contents($output);
-    fclose($output);
-    return array('csv' => $csv, 'count' => count($students));
-}
-
-function bm_export_loans_full() {
-    $books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
-    $all_records = array();
-    
-    foreach ($books as $book) {
-        $book_title = $book->post_title;
-        $book_author = get_post_meta($book->ID, '_bm_author', true);
-        
-        $reservations = get_post_meta($book->ID, '_bm_reservations', true);
-        if (is_array($reservations)) {
-            foreach ($reservations as $r) {
-                $user = get_userdata($r['user_id']);
-                if (!$user) continue;
-                
-                $status_labels = array(
-                    'waiting' => __('Reservado', 'book-manager'),
-                    'active' => __('Emprestado', 'book-manager'),
-                    'returned' => __('Devolvido', 'book-manager'),
-                    'rejected' => __('Rejeitado', 'book-manager'),
-                    'cancelled' => __('Cancelado', 'book-manager'),
-                );
-                $status = isset($status_labels[$r['status']]) ? $status_labels[$r['status']] : $r['status'];
-                
-                $days_late = '';
-                if ($r['status'] === 'returned' && isset($r['due_date']) && isset($r['returned_date'])) {
-                    $due_time = strtotime($r['due_date']);
-                    $return_time = strtotime($r['returned_date']);
-                    if ($return_time > $due_time) {
-                        $days_late = ceil(($return_time - $due_time) / DAY_IN_SECONDS);
-                    }
-                }
-                
-                $penalties = get_user_meta($r['user_id'], '_bm_penalties', true) ?: array();
-                $has_penalty = 'Não';
-                foreach ($penalties as $p) {
-                    if (isset($p['note']) && strpos($p['note'], (string)$book->ID) !== false) {
-                        $has_penalty = 'Sim';
-                        break;
-                    }
-                }
-                
-                $all_records[] = array(
-                    'student_name' => $user->display_name,
-                    'student_email' => $user->user_email,
-                    'book_title' => $book_title,
-                    'book_author' => $book_author,
-                    'status' => $status,
-                    'reservation_date' => isset($r['date']) ? $r['date'] : '',
-                    'loan_date' => isset($r['loan_date']) ? $r['loan_date'] : '',
-                    'due_date' => isset($r['due_date']) ? $r['due_date'] : '',
-                    'returned_date' => isset($r['returned_date']) ? $r['returned_date'] : '',
-                    'type' => 'Normal',
-                    'days_late' => $days_late,
-                    'penalty' => $has_penalty,
-                );
-            }
-        }
-        
-        $bulk = get_post_meta($book->ID, '_bm_bulk_reservation', true);
-        if (is_array($bulk)) {
-            foreach ($bulk as $br) {
-                $teacher = get_userdata($br['teacher_id']);
-                $student = !empty($br['student_id']) ? get_userdata($br['student_id']) : null;
-                $user = $student ?: $teacher;
-                if (!$user) continue;
-                
-                $status_labels = array(
-                    'active' => __('Agendado', 'book-manager'),
-                    'separated' => __('Separado', 'book-manager'),
-                    'completed' => __('Concluído', 'book-manager'),
-                    'cancelled' => __('Cancelado', 'book-manager'),
-                );
-                $status = isset($status_labels[$br['status']]) ? $status_labels[$br['status']] : $br['status'];
-                
-                $all_records[] = array(
-                    'student_name' => $user->display_name,
-                    'student_email' => $user->user_email,
-                    'book_title' => $book_title,
-                    'book_author' => $book_author,
-                    'status' => $status,
-                    'reservation_date' => isset($br['created_at']) ? $br['created_at'] : '',
-                    'loan_date' => isset($br['start_date']) ? $br['start_date'] : '',
-                    'due_date' => isset($br['end_date']) ? $br['end_date'] : '',
-                    'returned_date' => '',
-                    'type' => 'Agendamento',
-                    'days_late' => '',
-                    'penalty' => 'Não',
-                );
-            }
-        }
-    }
-    
-    if (empty($all_records)) return array('csv' => '', 'count' => 0);
-    
-    $headers = array(
-        'Nome do aluno', 'E-mail do aluno', 'Título do livro', 'Autor do livro',
-        'Status', 'Data da reserva', 'Data do empréstimo', 'Devolução prevista',
-        'Devolução real', 'Tipo', 'Dias em atraso', 'Penalidade aplicada'
-    );
-    
-    $output = fopen('php://temp', 'r+');
-    fprintf($output, "\xEF\xBB\xBF");
-    fputcsv($output, $headers, ';');
-    
-    foreach ($all_records as $record) {
-        fputcsv($output, array(
-            $record['student_name'], $record['student_email'], $record['book_title'], $record['book_author'],
-            $record['status'], $record['reservation_date'], $record['loan_date'], $record['due_date'],
-            $record['returned_date'], $record['type'], $record['days_late'], $record['penalty'],
-        ), ';');
-    }
-    
-    rewind($output);
-    $csv = stream_get_contents($output);
-    fclose($output);
-    return array('csv' => $csv, 'count' => count($all_records));
-}
-
-function bm_export_readings_full() {
-    $users = get_users(array('role__in' => array('bm_student', 'bm_teacher'), 'number' => 999));
-    $all_readings = array();
-    
-    foreach ($users as $user) {
-        $reading_log = get_user_meta($user->ID, '_bm_reading_log', true);
-        if (!is_array($reading_log) || empty($reading_log)) continue;
-        
-        foreach ($reading_log as $log) {
-            $book_title = get_the_title($log['book_id']);
-            if (empty($book_title)) continue;
-            
-            $status_labels = array('approved' => __('Aprovada', 'book-manager'), 'pending' => __('Pendente', 'book-manager'), 'rejected' => __('Rejeitada', 'book-manager'));
-            $status = isset($status_labels[$log['status']]) ? $status_labels[$log['status']] : $log['status'];
-            
-            $all_readings[] = array(
-                'student_name' => $user->display_name,
-                'student_email' => $user->user_email,
-                'book_title' => $book_title,
-                'rating' => isset($log['rating']) ? $log['rating'] : 0,
-                'review' => isset($log['review']) ? $log['review'] : '',
-                'video_url' => isset($log['video_url']) ? $log['video_url'] : '',
-                'date' => isset($log['date']) ? $log['date'] : '',
-                'status' => $status,
-                'featured' => isset($log['featured']) && $log['featured'] ? 'Sim' : 'Não',
-            );
-        }
-    }
-    
-    if (empty($all_readings)) return array('csv' => '', 'count' => 0);
-    
-    $headers = array('Nome do aluno', 'E-mail do aluno', 'Título do livro', 'Nota', 'Resenha', 'Vídeo', 'Data', 'Status', 'Destaque');
-    $output = fopen('php://temp', 'r+');
-    fprintf($output, "\xEF\xBB\xBF");
-    fputcsv($output, $headers, ';');
-    foreach ($all_readings as $reading) {
-        $rating_display = $reading['rating'] > 0 ? str_repeat('★', $reading['rating']) . str_repeat('☆', 5 - $reading['rating']) : '';
-        fputcsv($output, array($reading['student_name'], $reading['student_email'], $reading['book_title'], $rating_display, $reading['review'], $reading['video_url'], $reading['date'], $reading['status'], $reading['featured']), ';');
-    }
-    rewind($output);
-    $csv = stream_get_contents($output);
-    fclose($output);
-    return array('csv' => $csv, 'count' => count($all_readings));
-}
-
-function bm_export_taxonomies_full() {
-    $taxonomies = array('bm_genre', 'bm_category', 'bm_discipline');
-    $dynamic_taxonomies = get_option('bm_dynamic_taxonomies', array());
-    if (!is_array($dynamic_taxonomies)) $dynamic_taxonomies = array();
-    foreach ($dynamic_taxonomies as $slug => $info) {
-        $taxonomies[] = $slug;
-    }
-    
-    $all_terms = array();
-    foreach ($taxonomies as $taxonomy) {
-        $taxonomy_obj = get_taxonomy($taxonomy);
-        if (!$taxonomy_obj) continue;
-        $taxonomy_label = $taxonomy_obj->label;
-        $terms = get_terms(array('taxonomy' => $taxonomy, 'hide_empty' => false));
-        if (is_wp_error($terms) || empty($terms)) continue;
-        foreach ($terms as $term) {
-            $parent_name = '';
-            if ($term->parent > 0) {
-                $parent_term = get_term($term->parent, $taxonomy);
-                if ($parent_term && !is_wp_error($parent_term)) {
-                    $parent_name = $parent_term->name;
-                }
-            }
-            $all_terms[] = array(
-                'taxonomy' => $taxonomy_label,
-                'name' => $term->name,
-                'slug' => $term->slug,
-                'parent' => $parent_name,
-                'description' => $term->description,
-                'count' => $term->count,
-            );
-        }
-    }
-    
-    if (empty($all_terms)) return array('csv' => '', 'count' => 0);
-    
-    $headers = array('Taxonomia', 'Termo', 'Slug', 'Termo Pai', 'Descrição', 'Livros');
-    $output = fopen('php://temp', 'r+');
-    fprintf($output, "\xEF\xBB\xBF");
-    fputcsv($output, $headers, ';');
-    foreach ($all_terms as $term) {
-        fputcsv($output, array($term['taxonomy'], $term['name'], $term['slug'], $term['parent'], $term['description'], $term['count']), ';');
-    }
-    rewind($output);
-    $csv = stream_get_contents($output);
-    fclose($output);
-    return array('csv' => $csv, 'count' => count($all_terms));
-}
-
-function bm_handle_export_all() {
+// ==========================================
+// FASE 19: IMPORTAÇÃO DE NÚMERO DE CHAMADA VIA CSV
+// ==========================================
+function bm_render_call_number_import_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
-    if (!isset($_POST['bm_export_all_submit']) || !isset($_POST['bm_export_all_nonce'])) return;
-    if (!wp_verify_nonce($_POST['bm_export_all_nonce'], 'bm_export_all_action')) return;
     
-    $modules = isset($_POST['bm_export_modules']) ? array_map('sanitize_text_field', $_POST['bm_export_modules']) : array();
-    $format = isset($_POST['bm_export_format']) ? sanitize_text_field($_POST['bm_export_format']) : 'zip';
+    $message = '';
+    $stage = isset($_POST['import_stage']) ? $_POST['import_stage'] : '';
+    $headers = array();
     
-    if (empty($modules)) return;
+    if ('process' === $stage && isset($_POST['bm_cn_import_nonce']) && wp_verify_nonce($_POST['bm_cn_import_nonce'], 'bm_cn_import_action')) {
+        $imported = 0; $skipped = 0;
+        
+        $mapping_raw = isset($_POST['mapping']) ? array_map('sanitize_text_field', $_POST['mapping']) : array();
+        $mapping = array();
+        foreach ($mapping_raw as $csv_index => $field) {
+            if (!empty($field)) $mapping[$field] = intval($csv_index);
+        }
+        
+        if (!empty($_POST['csv_data'])) {
+            $rows = json_decode(stripslashes($_POST['csv_data']), true);
+            foreach ($rows as $row) {
+                $title = '';
+                if (isset($mapping['title']) && isset($row[$mapping['title']])) $title = trim(sanitize_text_field($row[$mapping['title']]));
+                if (empty($title)) { $skipped++; continue; }
+                
+                $existing = get_posts(array('post_type' => 'bm_book', 'title' => $title, 'posts_per_page' => 1, 'post_status' => 'any'));
+                if (empty($existing)) { $skipped++; continue; }
+                
+                $post_id = $existing[0]->ID;
+                
+                if (isset($mapping['_bm_cdu']) && isset($row[$mapping['_bm_cdu']])) {
+                    update_post_meta($post_id, '_bm_cdu', sanitize_text_field($row[$mapping['_bm_cdu']]));
+                }
+                if (isset($mapping['_bm_cutter']) && isset($row[$mapping['_bm_cutter']])) {
+                    update_post_meta($post_id, '_bm_cutter', sanitize_text_field($row[$mapping['_bm_cutter']]));
+                }
+                if (isset($mapping['_bm_edition']) && isset($row[$mapping['_bm_edition']])) {
+                    update_post_meta($post_id, '_bm_edition', sanitize_text_field($row[$mapping['_bm_edition']]));
+                }
+                if (isset($mapping['_bm_volume']) && isset($row[$mapping['_bm_volume']])) {
+                    update_post_meta($post_id, '_bm_volume', sanitize_text_field($row[$mapping['_bm_volume']]));
+                }
+                
+                update_post_meta($post_id, '_bm_cutter_cached', '1');
+                update_post_meta($post_id, '_bm_cutter_locked', '1');
+                $imported++;
+            }
+        }
+        $message = sprintf(__('%d números de chamada importados, %d ignorados.', 'book-manager'), $imported, $skipped);
+    }
     
-    $module_map = array(
-        'books' => array('func' => 'bm_export_books_full', 'name' => 'livros', 'ext' => 'csv'),
-        'students' => array('func' => 'bm_export_students_full', 'name' => 'alunos', 'ext' => 'csv'),
-        'loans' => array('func' => 'bm_export_loans_full', 'name' => 'historico_circulacao', 'ext' => 'csv'),
-        'readings' => array('func' => 'bm_export_readings_full', 'name' => 'fichas_leitura', 'ext' => 'csv'),
-        'taxonomies' => array('func' => 'bm_export_taxonomies_full', 'name' => 'taxonomias', 'ext' => 'csv'),
-        'settings' => array('func' => 'bm_export_settings_full', 'name' => 'configuracoes_biblioteca', 'ext' => 'json'),
+    if ('' === $stage && isset($_FILES['csv_file']) && isset($_POST['bm_cn_import_nonce'])) {
+        if (!wp_verify_nonce($_POST['bm_cn_import_nonce'], 'bm_cn_import_action')) {
+            $message = __('Erro de segurança.', 'book-manager');
+        } elseif (empty($_FILES['csv_file']['tmp_name'])) {
+            $message = __('Nenhum arquivo enviado.', 'book-manager');
+        } else {
+            $filetype = wp_check_filetype($_FILES['csv_file']['name']);
+            if ('csv' !== $filetype['ext']) {
+                $message = __('Formato inválido.', 'book-manager');
+            } else {
+                $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
+                if ($handle) {
+                    $line = 0; $all_rows = array();
+                    while (($data = fgetcsv($handle, 0, ';')) !== false) {
+                        if (1 === ++$line) { $headers = array_map('sanitize_text_field', $data); continue; }
+                        $all_rows[] = $data;
+                    }
+                    fclose($handle);
+                    if (empty($headers)) {
+                        $message = __('Arquivo sem cabeçalho.', 'book-manager');
+                    } else {
+                        $stage = 'map';
+                    }
+                    $_POST['csv_data_preview'] = json_encode($all_rows, JSON_UNESCAPED_UNICODE);
+                    $_POST['csv_headers'] = json_encode($headers, JSON_UNESCAPED_UNICODE);
+                }
+            }
+        }
+    }
+    
+    $system_fields = array(
+        'title' => __('Título (obrigatório)', 'book-manager'),
+        '_bm_cdu' => __('Classificação (CDU/CDD)', 'book-manager'),
+        '_bm_cutter' => __('Cutter', 'book-manager'),
+        '_bm_edition' => __('Edição', 'book-manager'),
+        '_bm_volume' => __('Volume', 'book-manager'),
     );
-    
-    if ($format === 'csv' && count($modules) === 1) {
-        $module = $modules[0];
-        if (!isset($module_map[$module])) return;
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Importar Número de Chamada via CSV', 'book-manager'); ?></h1>
+        <?php if ($message): ?><div class="notice notice-success is-dismissible"><p><?php echo esc_html($message); ?></p></div><?php endif; ?>
         
-        $info = $module_map[$module];
-        $result = call_user_func($info['func']);
-        $content = $result['csv'];
-        $count = $result['count'];
-        
-        if (empty($content) || $count === 0) {
-            $error_messages = array(
-                'books' => __('Nenhum livro encontrado para exportar.', 'book-manager'),
-                'students' => __('Nenhum aluno encontrado para exportar.', 'book-manager'),
-                'loans' => __('Nenhum registro de circulação encontrado para exportar.', 'book-manager'),
-                'readings' => __('Nenhuma ficha de leitura encontrada para exportar.', 'book-manager'),
-                'taxonomies' => __('Nenhuma taxonomia encontrada para exportar.', 'book-manager'),
-                'settings' => __('Nenhuma configuração encontrada para exportar.', 'book-manager'),
-            );
-            $error_msg = isset($error_messages[$module]) ? $error_messages[$module] : __('Nenhum dado encontrado.', 'book-manager');
-            set_transient('bm_export_all_message', array('type' => 'error', 'text' => $error_msg), 60);
-            wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'export'), admin_url('edit.php')));
-            exit;
-        }
-        
-        $upload_dir = wp_upload_dir();
-        $filename = $info['name'] . '_' . date('Y-m-d_His') . '.' . $info['ext'];
-        $filepath = $upload_dir['path'] . '/' . $filename;
-        $fileurl = $upload_dir['url'] . '/' . $filename;
-        file_put_contents($filepath, $content);
-        
-        $success_messages = array(
-            'books' => sprintf(__('✅ %d livros exportados com sucesso!', 'book-manager'), $count),
-            'students' => sprintf(__('✅ %d alunos exportados com sucesso!', 'book-manager'), $count),
-            'loans' => sprintf(__('✅ %d registros de circulação exportados com sucesso!', 'book-manager'), $count),
-            'readings' => sprintf(__('✅ %d fichas de leitura exportadas com sucesso!', 'book-manager'), $count),
-            'taxonomies' => sprintf(__('✅ %d termos de taxonomias exportados com sucesso!', 'book-manager'), $count),
-            'settings' => sprintf(__('✅ Configurações exportadas com sucesso! (%d itens)', 'book-manager'), $count),
-        );
-        $message = isset($success_messages[$module]) ? $success_messages[$module] : __('Exportado com sucesso!', 'book-manager');
-        
-        if ($module === 'settings') {
-            $message .= '<br><small style="color:#f0ad4e;">⚠️ ' . __('As chaves de API NÃO foram incluídas. Você precisará configurá-las manualmente ao importar.', 'book-manager') . '</small>';
-        }
-        $message .= ' <a href="' . esc_url($fileurl) . '" class="button button-primary" style="margin-left:10px;">📥 ' . __('Baixar arquivo', 'book-manager') . '</a>';
-        set_transient('bm_export_all_message', array('type' => 'success', 'text' => $message), 60);
-        wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'export'), admin_url('edit.php')));
-        exit;
-    }
-    
-    $files = array();
-    $total_counts = array();
-    
-    foreach ($modules as $module) {
-        if (!isset($module_map[$module])) continue;
-        $info = $module_map[$module];
-        $result = call_user_func($info['func']);
-        $content = $result['csv'];
-        $count = $result['count'];
-        
-        if (empty($content) || $count === 0) continue;
-        
-        $filename = $info['name'] . '.' . $info['ext'];
-        $files[$filename] = $content;
-        $total_counts[$info['name']] = $count;
-    }
-    
-    if (empty($files)) {
-        set_transient('bm_export_all_message', array('type' => 'error', 'text' => __('Nenhum dado encontrado nos módulos selecionados.', 'book-manager')), 60);
-        wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'export'), admin_url('edit.php')));
-        exit;
-    }
-    
-    $upload_dir = wp_upload_dir();
-    $zip_filename = 'backup_biblioteca_' . date('Y-m-d_His') . '.zip';
-    $zip_filepath = $upload_dir['path'] . '/' . $zip_filename;
-    
-    $zip = new ZipArchive();
-    if ($zip->open($zip_filepath, ZipArchive::CREATE) !== true) {
-        set_transient('bm_export_all_message', array('type' => 'error', 'text' => __('Erro ao criar arquivo ZIP.', 'book-manager')), 60);
-        wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'export'), admin_url('edit.php')));
-        exit;
-    }
-    
-    foreach ($files as $filename => $content) {
-        $zip->addFromString($filename, $content);
-    }
-    $zip->close();
-    
-    $zip_fileurl = $upload_dir['url'] . '/' . $zip_filename;
-    
-    $count_parts = array();
-    foreach ($total_counts as $name => $count) {
-        $labels = array(
-            'livros' => __('livros', 'book-manager'),
-            'alunos' => __('alunos', 'book-manager'),
-            'historico_circulacao' => __('registros de circulação', 'book-manager'),
-            'fichas_leitura' => __('fichas de leitura', 'book-manager'),
-            'taxonomias' => __('termos de taxonomias', 'book-manager'),
-            'configuracoes_biblioteca' => __('configurações', 'book-manager'),
-        );
-        $label = isset($labels[$name]) ? $labels[$name] : $name;
-        $count_parts[] = $count . ' ' . $label;
-    }
-    
-    $message = '✅ ' . __('Backup exportado com sucesso!', 'book-manager') . ' ' . implode(', ', $count_parts) . '.';
-    $message .= '<br><small style="color:#f0ad4e;">⚠️ ' . __('As chaves de API NÃO foram incluídas no arquivo de configurações.', 'book-manager') . '</small>';
-    $message .= ' <a href="' . esc_url($zip_fileurl) . '" class="button button-primary" style="margin-left:10px;">📥 ' . __('Baixar arquivo ZIP', 'book-manager') . '</a>';
-    set_transient('bm_export_all_message', array('type' => 'success', 'text' => $message), 60);
-    wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'export'), admin_url('edit.php')));
-    exit;
+        <?php if ('map' === $stage && !empty($headers)): ?>
+            <h2><?php _e('Mapeamento de Colunas', 'book-manager'); ?></h2>
+            <p><?php _e('Associe cada coluna do seu arquivo ao campo correspondente.', 'book-manager'); ?></p>
+            <form method="post">
+                <?php wp_nonce_field('bm_cn_import_action', 'bm_cn_import_nonce'); ?>
+                <input type="hidden" name="import_stage" value="process">
+                <input type="hidden" name="csv_data" value="<?php echo esc_attr(json_encode(json_decode(stripslashes($_POST['csv_data_preview']), true), JSON_UNESCAPED_UNICODE)); ?>">
+                <?php foreach ($headers as $i => $h): ?>
+                    <p><strong><?php echo esc_html($h); ?></strong> →
+                    <select name="mapping[<?php echo $i; ?>]">
+                        <option value=""><?php _e('— Ignorar —', 'book-manager'); ?></option>
+                        <?php foreach ($system_fields as $key => $label): ?>
+                            <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
+                        <?php endforeach; ?>
+                    </select></p>
+                <?php endforeach; ?>
+                <?php submit_button(__('Importar', 'book-manager')); ?>
+            </form>
+        <?php else: ?>
+            <form method="post" enctype="multipart/form-data">
+                <?php wp_nonce_field('bm_cn_import_action', 'bm_cn_import_nonce'); ?>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="csv_file"><?php _e('Arquivo CSV', 'book-manager'); ?></label></th>
+                        <td><input type="file" id="csv_file" name="csv_file" accept=".csv" /><p class="description"><?php _e('CSV com colunas: Título, Classificação, Cutter, Edição, Volume.', 'book-manager'); ?></p></td>
+                    </tr>
+                </table>
+                <?php submit_button(__('Enviar Arquivo', 'book-manager')); ?>
+            </form>
+        <?php endif; ?>
+    </div>
+    <?php
 }
-add_action('admin_init', 'bm_handle_export_all', 20);
+
+// ==========================================
+// FASE 19: EXPORTAÇÃO DE NÚMERO DE CHAMADA
+// ==========================================
+function bm_render_call_number_export_page() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    
+    $total = wp_count_posts('bm_book');
+    $total = $total->publish + $total->draft + $total->trash;
+    ?>
+    <div class="wrap">
+        <h1><?php _e('Exportar Número de Chamada', 'book-manager'); ?></h1>
+        <p><?php echo sprintf(__('%d livros no acervo. Apenas livros com Classificação ou Cutter preenchidos serão exportados.', 'book-manager'), $total); ?></p>
+        <form method="post">
+            <?php wp_nonce_field('bm_cn_export_action', 'bm_cn_export_nonce'); ?>
+            <p><?php _e('Exporta: Título, Classificação, Cutter, Edição, Volume.', 'book-manager'); ?></p>
+            <?php submit_button(__('Exportar CSV', 'book-manager')); ?>
+        </form>
+    </div>
+    <?php
+}
 
 function bm_handle_call_number_export() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
@@ -1237,12 +810,16 @@ function bm_handle_call_number_export() {
 }
 add_action('admin_init', 'bm_handle_call_number_export');
 
+// ==========================================
+// FASE 33: CENTRAL DE EXPORTAR/IMPORTAR TUDO
+// ==========================================
 function bm_render_export_import_all_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     
     $subtab = isset($_GET['subtab']) ? sanitize_text_field($_GET['subtab']) : 'export';
     ?>
     <div class="wrap">
+
     <?php
     $export_msg = get_transient('bm_export_all_message');
     if ($export_msg) {
@@ -1485,6 +1062,548 @@ function bm_render_export_import_all_page() {
     <?php
 }
 
+function bm_export_books_full() {
+    $books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
+    if (empty($books)) return array('csv' => '', 'count' => 0);
+    
+    $dynamic_fields = get_option('bm_dynamic_fields', array());
+    $dynamic_taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!is_array($dynamic_taxonomies)) $dynamic_taxonomies = array();
+    
+    $headers = array('Título', 'Autor', 'Editora', 'ISBN', 'Localização', 'Exemplares', 'Unidade');
+    $headers[] = 'Gêneros';
+    $headers[] = 'Categorias';
+    $headers[] = 'Disciplinas';
+    foreach ($dynamic_taxonomies as $slug => $info) {
+        $headers[] = $info['label'];
+    }
+    foreach ($dynamic_fields as $name => $info) {
+        $headers[] = $name;
+    }
+    $headers = array_merge($headers, array('Classificação', 'Cutter', 'Edição', 'Volume', 'Capa (URL)', 'Sinopse', 'Atividades Pedagógicas', 'Resenha Oficial', 'Link Oficial'));
+    
+    $output = fopen('php://temp', 'r+');
+    fprintf($output, "\xEF\xBB\xBF");
+    fputcsv($output, $headers, ';');
+    
+    foreach ($books as $book) {
+        $row = array();
+        $row[] = $book->post_title;
+        $row[] = get_post_meta($book->ID, '_bm_author', true);
+        $row[] = get_post_meta($book->ID, '_bm_publisher', true);
+        $row[] = get_post_meta($book->ID, '_bm_isbn', true);
+        $row[] = get_post_meta($book->ID, '_bm_location', true);
+        $row[] = get_post_meta($book->ID, '_bm_copies', true);
+        $row[] = get_post_meta($book->ID, '_bm_library_unit', true);
+        
+        $genres = wp_get_post_terms($book->ID, 'bm_genre', array('fields' => 'names'));
+        $row[] = implode(', ', $genres);
+        $categories = wp_get_post_terms($book->ID, 'bm_category', array('fields' => 'names'));
+        $row[] = implode(', ', $categories);
+        $disciplines = wp_get_post_terms($book->ID, 'bm_discipline', array('fields' => 'names'));
+        $row[] = implode(', ', $disciplines);
+        
+        foreach ($dynamic_taxonomies as $slug => $info) {
+            $terms = wp_get_post_terms($book->ID, $slug, array('fields' => 'names'));
+            $row[] = implode(', ', $terms);
+        }
+        
+        foreach ($dynamic_fields as $name => $info) {
+            $key = '_bm_dynamic_' . sanitize_key($name);
+            $row[] = get_post_meta($book->ID, $key, true);
+        }
+        
+        $row[] = get_post_meta($book->ID, '_bm_cdu', true);
+        $row[] = get_post_meta($book->ID, '_bm_cutter', true);
+        $row[] = get_post_meta($book->ID, '_bm_edition', true);
+        $row[] = get_post_meta($book->ID, '_bm_volume', true);
+        
+        $cover = get_the_post_thumbnail_url($book->ID, 'full');
+        if (!$cover) $cover = get_post_meta($book->ID, '_bm_cover_hotlink', true);
+        $row[] = $cover ? $cover : '';
+        
+        $row[] = get_post_meta($book->ID, '_bm_dynamic_sinopse', true);
+        $row[] = get_post_meta($book->ID, '_bm_activities', true);
+        $row[] = get_post_meta($book->ID, '_bm_official_review', true);
+        $row[] = get_post_meta($book->ID, '_bm_official_link', true);
+        
+        fputcsv($output, $row, ';');
+    }
+    
+    rewind($output);
+    $csv = stream_get_contents($output);
+    fclose($output);
+    return array('csv' => $csv, 'count' => count($books));
+}
+
+function bm_export_students_full() {
+    $students = get_users(array('role' => 'bm_student', 'number' => 999));
+    if (empty($students)) return array('csv' => '', 'count' => 0);
+    
+    $user_fields = get_option('bm_user_dynamic_fields', array());
+    
+    $headers = array('Nome', 'E-mail', 'Status de Aprovação');
+    foreach ($user_fields as $field_name => $info) {
+        $headers[] = $field_name;
+    }
+    $headers[] = 'Bloqueado (multa ativa)';
+    
+    $output = fopen('php://temp', 'r+');
+    fprintf($output, "\xEF\xBB\xBF");
+    fputcsv($output, $headers, ';');
+    
+    foreach ($students as $student) {
+        $row = array();
+        $row[] = $student->display_name;
+        $row[] = $student->user_email;
+        $row[] = get_user_meta($student->ID, 'bm_approval_status', true) ?: 'approved';
+        
+        foreach ($user_fields as $field_name => $info) {
+            $meta_key = '_bm_user_' . sanitize_key($field_name);
+            $row[] = get_user_meta($student->ID, $meta_key, true);
+        }
+        
+        $blocked = get_user_meta($student->ID, '_bm_penalty_active', true) === '1' ? 'Sim' : 'Não';
+        $row[] = $blocked;
+        
+        fputcsv($output, $row, ';');
+    }
+    
+    rewind($output);
+    $csv = stream_get_contents($output);
+    fclose($output);
+    return array('csv' => $csv, 'count' => count($students));
+}
+
+function bm_export_loans_full() {
+    $books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
+    $all_records = array();
+    
+    foreach ($books as $book) {
+        $book_title = $book->post_title;
+        $book_author = get_post_meta($book->ID, '_bm_author', true);
+        
+        $reservations = get_post_meta($book->ID, '_bm_reservations', true);
+        if (is_array($reservations)) {
+            foreach ($reservations as $r) {
+                $user = get_userdata($r['user_id']);
+                if (!$user) continue;
+                
+                $status_labels = array(
+                    'waiting' => __('Reservado', 'book-manager'),
+                    'active' => __('Emprestado', 'book-manager'),
+                    'returned' => __('Devolvido', 'book-manager'),
+                    'rejected' => __('Rejeitado', 'book-manager'),
+                    'cancelled' => __('Cancelado', 'book-manager'),
+                );
+                $status = isset($status_labels[$r['status']]) ? $status_labels[$r['status']] : $r['status'];
+                
+                $days_late = '';
+                if ($r['status'] === 'returned' && isset($r['due_date']) && isset($r['returned_date'])) {
+                    $due_time = strtotime($r['due_date']);
+                    $return_time = strtotime($r['returned_date']);
+                    if ($return_time > $due_time) {
+                        $days_late = ceil(($return_time - $due_time) / DAY_IN_SECONDS);
+                    }
+                }
+                
+                $penalties = get_user_meta($r['user_id'], '_bm_penalties', true) ?: array();
+                $has_penalty = 'Não';
+                foreach ($penalties as $p) {
+                    if (isset($p['note']) && strpos($p['note'], (string)$book->ID) !== false) {
+                        $has_penalty = 'Sim';
+                        break;
+                    }
+                }
+                
+                $all_records[] = array(
+                    'student_name' => $user->display_name,
+                    'student_email' => $user->user_email,
+                    'book_title' => $book_title,
+                    'book_author' => $book_author,
+                    'status' => $status,
+                    'reservation_date' => isset($r['date']) ? $r['date'] : '',
+                    'loan_date' => isset($r['loan_date']) ? $r['loan_date'] : '',
+                    'due_date' => isset($r['due_date']) ? $r['due_date'] : '',
+                    'returned_date' => isset($r['returned_date']) ? $r['returned_date'] : '',
+                    'type' => 'Normal',
+                    'days_late' => $days_late,
+                    'penalty' => $has_penalty,
+                );
+            }
+        }
+        
+        $bulk = get_post_meta($book->ID, '_bm_bulk_reservation', true);
+        if (is_array($bulk)) {
+            foreach ($bulk as $br) {
+                $teacher = get_userdata($br['teacher_id']);
+                $student = !empty($br['student_id']) ? get_userdata($br['student_id']) : null;
+                $user = $student ?: $teacher;
+                if (!$user) continue;
+                
+                $status_labels = array(
+                    'active' => __('Agendado', 'book-manager'),
+                    'separated' => __('Separado', 'book-manager'),
+                    'completed' => __('Concluído', 'book-manager'),
+                    'cancelled' => __('Cancelado', 'book-manager'),
+                );
+                $status = isset($status_labels[$br['status']]) ? $status_labels[$br['status']] : $br['status'];
+                
+                $all_records[] = array(
+                    'student_name' => $user->display_name,
+                    'student_email' => $user->user_email,
+                    'book_title' => $book_title,
+                    'book_author' => $book_author,
+                    'status' => $status,
+                    'reservation_date' => isset($br['created_at']) ? $br['created_at'] : '',
+                    'loan_date' => isset($br['start_date']) ? $br['start_date'] : '',
+                    'due_date' => isset($br['end_date']) ? $br['end_date'] : '',
+                    'returned_date' => '',
+                    'type' => 'Agendamento',
+                    'days_late' => '',
+                    'penalty' => 'Não',
+                );
+            }
+        }
+    }
+    
+    if (empty($all_records)) return array('csv' => '', 'count' => 0);
+    
+    $headers = array(
+        'Nome do aluno', 'E-mail do aluno', 'Título do livro', 'Autor do livro',
+        'Status', 'Data da reserva', 'Data do empréstimo', 'Devolução prevista',
+        'Devolução real', 'Tipo', 'Dias em atraso', 'Penalidade aplicada'
+    );
+    
+    $output = fopen('php://temp', 'r+');
+    fprintf($output, "\xEF\xBB\xBF");
+    fputcsv($output, $headers, ';');
+    
+    foreach ($all_records as $record) {
+        fputcsv($output, array(
+            $record['student_name'], $record['student_email'], $record['book_title'], $record['book_author'],
+            $record['status'], $record['reservation_date'], $record['loan_date'], $record['due_date'],
+            $record['returned_date'], $record['type'], $record['days_late'], $record['penalty'],
+        ), ';');
+    }
+    
+    rewind($output);
+    $csv = stream_get_contents($output);
+    fclose($output);
+    return array('csv' => $csv, 'count' => count($all_records));
+}
+
+function bm_export_taxonomies_full() {
+    $taxonomies = array('bm_genre', 'bm_category', 'bm_discipline');
+    $dynamic_taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!is_array($dynamic_taxonomies)) $dynamic_taxonomies = array();
+    foreach ($dynamic_taxonomies as $slug => $info) {
+        $taxonomies[] = $slug;
+    }
+    
+    $all_terms = array();
+    foreach ($taxonomies as $taxonomy) {
+        $taxonomy_obj = get_taxonomy($taxonomy);
+        if (!$taxonomy_obj) continue;
+        $taxonomy_label = $taxonomy_obj->label;
+        $terms = get_terms(array('taxonomy' => $taxonomy, 'hide_empty' => false));
+        if (is_wp_error($terms) || empty($terms)) continue;
+        foreach ($terms as $term) {
+            $parent_name = '';
+            if ($term->parent > 0) {
+                $parent_term = get_term($term->parent, $taxonomy);
+                if ($parent_term && !is_wp_error($parent_term)) {
+                    $parent_name = $parent_term->name;
+                }
+            }
+            $all_terms[] = array(
+                'taxonomy' => $taxonomy_label,
+                'name' => $term->name,
+                'slug' => $term->slug,
+                'parent' => $parent_name,
+                'description' => $term->description,
+                'count' => $term->count,
+            );
+        }
+    }
+    
+    if (empty($all_terms)) return array('csv' => '', 'count' => 0);
+    
+    $headers = array('Taxonomia', 'Termo', 'Slug', 'Termo Pai', 'Descrição', 'Livros');
+    $output = fopen('php://temp', 'r+');
+    fprintf($output, "\xEF\xBB\xBF");
+    fputcsv($output, $headers, ';');
+    foreach ($all_terms as $term) {
+        fputcsv($output, array($term['taxonomy'], $term['name'], $term['slug'], $term['parent'], $term['description'], $term['count']), ';');
+    }
+    rewind($output);
+    $csv = stream_get_contents($output);
+    fclose($output);
+    return array('csv' => $csv, 'count' => count($all_terms));
+}
+
+function bm_export_readings_full() {
+    $users = get_users(array('role__in' => array('bm_student', 'bm_teacher'), 'number' => 999));
+    $all_readings = array();
+    
+    foreach ($users as $user) {
+        $reading_log = get_user_meta($user->ID, '_bm_reading_log', true);
+        if (!is_array($reading_log) || empty($reading_log)) continue;
+        
+        foreach ($reading_log as $log) {
+            $book_title = get_the_title($log['book_id']);
+            if (empty($book_title)) continue;
+            
+            $status_labels = array('approved' => __('Aprovada', 'book-manager'), 'pending' => __('Pendente', 'book-manager'), 'rejected' => __('Rejeitada', 'book-manager'));
+            $status = isset($status_labels[$log['status']]) ? $status_labels[$log['status']] : $log['status'];
+            
+            $all_readings[] = array(
+                'student_name' => $user->display_name,
+                'student_email' => $user->user_email,
+                'book_title' => $book_title,
+                'rating' => isset($log['rating']) ? $log['rating'] : 0,
+                'review' => isset($log['review']) ? $log['review'] : '',
+                'video_url' => isset($log['video_url']) ? $log['video_url'] : '',
+                'date' => isset($log['date']) ? $log['date'] : '',
+                'status' => $status,
+                'featured' => isset($log['featured']) && $log['featured'] ? 'Sim' : 'Não',
+            );
+        }
+    }
+    
+    if (empty($all_readings)) return array('csv' => '', 'count' => 0);
+    
+    $headers = array('Nome do aluno', 'E-mail do aluno', 'Título do livro', 'Nota', 'Resenha', 'Vídeo', 'Data', 'Status', 'Destaque');
+    $output = fopen('php://temp', 'r+');
+    fprintf($output, "\xEF\xBB\xBF");
+    fputcsv($output, $headers, ';');
+    foreach ($all_readings as $reading) {
+        $rating_display = $reading['rating'] > 0 ? str_repeat('★', $reading['rating']) . str_repeat('☆', 5 - $reading['rating']) : '';
+        fputcsv($output, array($reading['student_name'], $reading['student_email'], $reading['book_title'], $rating_display, $reading['review'], $reading['video_url'], $reading['date'], $reading['status'], $reading['featured']), ';');
+    }
+    rewind($output);
+    $csv = stream_get_contents($output);
+    fclose($output);
+    return array('csv' => $csv, 'count' => count($all_readings));
+}
+
+function bm_export_settings_full() {
+    $settings = array(
+        'plugin' => 'book-manager',
+        'version' => '8.1.1',
+        'exported_at' => current_time('mysql'),
+        'aviso_seguranca' => __('ATENÇÃO: As chaves de API (Google Books, Groq, YouTube) NÃO foram exportadas por segurança. Ao importar este arquivo, você precisará configurar novas chaves de API manualmente em Biblioteca → Configurações → APIs.', 'book-manager'),
+        'settings' => array(),
+    );
+    
+    $bm_settings = get_option('bm_settings', array());
+    if (!empty($bm_settings)) {
+        $settings['settings']['bm_settings'] = $bm_settings;
+    }
+    
+    $white_label = get_option('bm_white_label', array());
+    if (!empty($white_label)) {
+        $settings['settings']['bm_white_label'] = $white_label;
+    }
+    
+    $penalty_rules = get_option('bm_penalty_rules', array());
+    if (!empty($penalty_rules)) {
+        $settings['settings']['bm_penalty_rules'] = $penalty_rules;
+    }
+    
+    $api_settings = get_option('bm_api_settings', array());
+    if (!empty($api_settings)) {
+        $safe_api = array();
+        $safe_api['google_books'] = !empty($api_settings['google_books_key']) ? 'configurada' : 'não configurada';
+        $safe_api['groq'] = !empty($api_settings['groq_key']) ? 'configurada' : 'não configurada';
+        $safe_api['groq_active'] = isset($api_settings['groq_active']) ? $api_settings['groq_active'] : '0';
+        $safe_api['youtube'] = !empty($api_settings['youtube_key']) ? 'configurada' : 'não configurada';
+        $safe_api['chatbot_active'] = isset($api_settings['chatbot_active']) ? $api_settings['chatbot_active'] : '1';
+        if (!empty($api_settings['groq_persona'])) {
+            $safe_api['groq_persona'] = $api_settings['groq_persona'];
+        }
+        $settings['settings']['bm_api_settings'] = $safe_api;
+    }
+    
+    $dynamic_fields = get_option('bm_dynamic_fields', array());
+    if (!empty($dynamic_fields)) {
+        $settings['settings']['bm_dynamic_fields'] = $dynamic_fields;
+    }
+    
+    $user_dynamic_fields = get_option('bm_user_dynamic_fields', array());
+    if (!empty($user_dynamic_fields)) {
+        $settings['settings']['bm_user_dynamic_fields'] = $user_dynamic_fields;
+    }
+    
+    $dynamic_taxonomies = get_option('bm_dynamic_taxonomies', array());
+    if (!empty($dynamic_taxonomies)) {
+        $settings['settings']['bm_dynamic_taxonomies'] = $dynamic_taxonomies;
+    }
+    
+    $field_order = get_option('bm_field_order', array());
+    if (!empty($field_order)) {
+        $settings['settings']['bm_field_order'] = $field_order;
+    }
+    $user_field_order = get_option('bm_user_field_order', array());
+    if (!empty($user_field_order)) {
+        $settings['settings']['bm_user_field_order'] = $user_field_order;
+    }
+    
+    $field_visibility = get_option('bm_field_visibility', array());
+    if (!empty($field_visibility)) {
+        $settings['settings']['bm_field_visibility'] = $field_visibility;
+    }
+    $user_field_visibility = get_option('bm_user_field_visibility', array());
+    if (!empty($user_field_visibility)) {
+        $settings['settings']['bm_user_field_visibility'] = $user_field_visibility;
+    }
+    
+    $year_transition = get_option('bm_year_transition', array());
+    if (!empty($year_transition)) {
+        $settings['settings']['bm_year_transition'] = $year_transition;
+    }
+    
+    $recadastro = get_option('bm_recadastro_required', '0');
+    $settings['settings']['bm_recadastro_required'] = $recadastro;
+    
+    $json = json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    $count = count($settings['settings']);
+    
+    return array('csv' => $json, 'count' => $count);
+}
+
+function bm_handle_export_all() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    if (!isset($_POST['bm_export_all_submit']) || !isset($_POST['bm_export_all_nonce'])) return;
+    if (!wp_verify_nonce($_POST['bm_export_all_nonce'], 'bm_export_all_action')) return;
+    
+    $modules = isset($_POST['bm_export_modules']) ? array_map('sanitize_text_field', $_POST['bm_export_modules']) : array();
+    $format = isset($_POST['bm_export_format']) ? sanitize_text_field($_POST['bm_export_format']) : 'zip';
+    
+    if (empty($modules)) return;
+    
+    $module_map = array(
+        'books' => array('func' => 'bm_export_books_full', 'name' => 'livros', 'ext' => 'csv'),
+        'students' => array('func' => 'bm_export_students_full', 'name' => 'alunos', 'ext' => 'csv'),
+        'loans' => array('func' => 'bm_export_loans_full', 'name' => 'historico_circulacao', 'ext' => 'csv'),
+        'readings' => array('func' => 'bm_export_readings_full', 'name' => 'fichas_leitura', 'ext' => 'csv'),
+        'taxonomies' => array('func' => 'bm_export_taxonomies_full', 'name' => 'taxonomias', 'ext' => 'csv'),
+        'settings' => array('func' => 'bm_export_settings_full', 'name' => 'configuracoes_biblioteca', 'ext' => 'json'),
+    );
+    
+    if ($format === 'csv' && count($modules) === 1) {
+        $module = $modules[0];
+        if (!isset($module_map[$module])) return;
+        
+        $info = $module_map[$module];
+        $result = call_user_func($info['func']);
+        $content = $result['csv'];
+        $count = $result['count'];
+        
+        if (empty($content) || $count === 0) {
+            $error_messages = array(
+                'books' => __('Nenhum livro encontrado para exportar.', 'book-manager'),
+                'students' => __('Nenhum aluno encontrado para exportar.', 'book-manager'),
+                'loans' => __('Nenhum registro de circulação encontrado para exportar.', 'book-manager'),
+                'readings' => __('Nenhuma ficha de leitura encontrada para exportar.', 'book-manager'),
+                'taxonomies' => __('Nenhuma taxonomia encontrada para exportar.', 'book-manager'),
+                'settings' => __('Nenhuma configuração encontrada para exportar.', 'book-manager'),
+            );
+            $error_msg = isset($error_messages[$module]) ? $error_messages[$module] : __('Nenhum dado encontrado.', 'book-manager');
+            set_transient('bm_export_all_message', array('type' => 'error', 'text' => $error_msg), 60);
+            wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'export'), admin_url('edit.php')));
+            exit;
+        }
+        
+        $upload_dir = wp_upload_dir();
+        $filename = $info['name'] . '_' . date('Y-m-d_His') . '.' . $info['ext'];
+        $filepath = $upload_dir['path'] . '/' . $filename;
+        $fileurl = $upload_dir['url'] . '/' . $filename;
+        file_put_contents($filepath, $content);
+        
+        $success_messages = array(
+            'books' => sprintf(__('✅ %d livros exportados com sucesso!', 'book-manager'), $count),
+            'students' => sprintf(__('✅ %d alunos exportados com sucesso!', 'book-manager'), $count),
+            'loans' => sprintf(__('✅ %d registros de circulação exportados com sucesso!', 'book-manager'), $count),
+            'readings' => sprintf(__('✅ %d fichas de leitura exportadas com sucesso!', 'book-manager'), $count),
+            'taxonomies' => sprintf(__('✅ %d termos de taxonomias exportados com sucesso!', 'book-manager'), $count),
+            'settings' => sprintf(__('✅ Configurações exportadas com sucesso! (%d itens)', 'book-manager'), $count),
+        );
+        $message = isset($success_messages[$module]) ? $success_messages[$module] : __('Exportado com sucesso!', 'book-manager');
+        
+        if ($module === 'settings') {
+            $message .= '<br><small style="color:#f0ad4e;">⚠️ ' . __('As chaves de API NÃO foram incluídas. Você precisará configurá-las manualmente ao importar.', 'book-manager') . '</small>';
+        }
+        $message .= ' <a href="' . esc_url($fileurl) . '" class="button button-primary" style="margin-left:10px;">📥 ' . __('Baixar arquivo', 'book-manager') . '</a>';
+        set_transient('bm_export_all_message', array('type' => 'success', 'text' => $message), 60);
+        wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'export'), admin_url('edit.php')));
+        exit;
+    }
+    
+    $files = array();
+    $total_counts = array();
+    
+    foreach ($modules as $module) {
+        if (!isset($module_map[$module])) continue;
+        $info = $module_map[$module];
+        $result = call_user_func($info['func']);
+        $content = $result['csv'];
+        $count = $result['count'];
+        
+        if (empty($content) || $count === 0) continue;
+        
+        $filename = $info['name'] . '.' . $info['ext'];
+        $files[$filename] = $content;
+        $total_counts[$info['name']] = $count;
+    }
+    
+    if (empty($files)) {
+        set_transient('bm_export_all_message', array('type' => 'error', 'text' => __('Nenhum dado encontrado nos módulos selecionados.', 'book-manager')), 60);
+        wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'export'), admin_url('edit.php')));
+        exit;
+    }
+    
+    $upload_dir = wp_upload_dir();
+    $zip_filename = 'backup_biblioteca_' . date('Y-m-d_His') . '.zip';
+    $zip_filepath = $upload_dir['path'] . '/' . $zip_filename;
+    
+    $zip = new ZipArchive();
+    if ($zip->open($zip_filepath, ZipArchive::CREATE) !== true) {
+        set_transient('bm_export_all_message', array('type' => 'error', 'text' => __('Erro ao criar arquivo ZIP.', 'book-manager')), 60);
+        wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'export'), admin_url('edit.php')));
+        exit;
+    }
+    
+    foreach ($files as $filename => $content) {
+        $zip->addFromString($filename, $content);
+    }
+    $zip->close();
+    
+    $zip_fileurl = $upload_dir['url'] . '/' . $zip_filename;
+    
+    $count_parts = array();
+    foreach ($total_counts as $name => $count) {
+        $labels = array(
+            'livros' => __('livros', 'book-manager'),
+            'alunos' => __('alunos', 'book-manager'),
+            'historico_circulacao' => __('registros de circulação', 'book-manager'),
+            'fichas_leitura' => __('fichas de leitura', 'book-manager'),
+            'taxonomias' => __('termos de taxonomias', 'book-manager'),
+            'configuracoes_biblioteca' => __('configurações', 'book-manager'),
+        );
+        $label = isset($labels[$name]) ? $labels[$name] : $name;
+        $count_parts[] = $count . ' ' . $label;
+    }
+    
+    $message = '✅ ' . __('Backup exportado com sucesso!', 'book-manager') . ' ' . implode(', ', $count_parts) . '.';
+    $message .= '<br><small style="color:#f0ad4e;">⚠️ ' . __('As chaves de API NÃO foram incluídas no arquivo de configurações.', 'book-manager') . '</small>';
+    $message .= ' <a href="' . esc_url($zip_fileurl) . '" class="button button-primary" style="margin-left:10px;">📥 ' . __('Baixar arquivo ZIP', 'book-manager') . '</a>';
+    set_transient('bm_export_all_message', array('type' => 'success', 'text' => $message), 60);
+    wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'export'), admin_url('edit.php')));
+    exit;
+}
+add_action('admin_init', 'bm_handle_export_all', 20);
+
 function bm_handle_import_all() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     if (!isset($_POST['bm_import_submit']) || !isset($_POST['bm_import_all_nonce'])) return;
@@ -1567,6 +1686,139 @@ function bm_handle_import_all() {
     exit;
 }
 add_action('admin_init', 'bm_handle_import_all');
+
+function bm_execute_import() {
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
+    if (!isset($_POST['bm_import_execute_submit']) || !isset($_POST['bm_import_execute_nonce'])) return;
+    if (!wp_verify_nonce($_POST['bm_import_execute_nonce'], 'bm_import_execute_action')) return;
+    
+    $import_preview = get_transient('bm_import_preview');
+    if (!$import_preview) {
+        set_transient('bm_export_all_message', array('type' => 'error', 'text' => __('Nenhum dado para importar. Envie o arquivo novamente.', 'book-manager')), 60);
+        wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'import'), admin_url('edit.php')));
+        exit;
+    }
+    
+    $mode = isset($_POST['bm_import_mode']) ? sanitize_text_field($_POST['bm_import_mode']) : 'add';
+    $report = array();
+    
+    foreach ($import_preview as $module) {
+        $module_type = $module['module'];
+        $module_result = array(
+            'label' => $module['label'],
+            'imported' => array(),
+            'duplicates' => array(),
+            'errors' => array(),
+        );
+        
+        $content = isset($module['raw_content']) ? $module['raw_content'] : '';
+        
+        if (empty($content) && !empty($module['filepath'])) {
+            $content = file_get_contents($module['filepath']);
+        }
+        
+        if (empty($content)) {
+            $module_result['errors'][] = array('item' => $module['label'], 'reason' => __('Arquivo vazio ou não encontrado.', 'book-manager'));
+            $report[] = $module_result;
+            continue;
+        }
+        
+        $lines = explode("\n", trim($content));
+        $header_line = array_shift($lines);
+        $headers = str_getcsv($header_line, ';');
+        
+        foreach ($lines as $line_num => $line) {
+            if (empty(trim($line))) continue;
+            $data = str_getcsv($line, ';');
+            
+            switch ($module_type) {
+                case 'books':
+                    $title = isset($data[0]) ? sanitize_text_field($data[0]) : '';
+                    $author = isset($data[1]) ? sanitize_text_field($data[1]) : '';
+                    $publisher = isset($data[2]) ? sanitize_text_field($data[2]) : '';
+                    
+                    if (empty($title)) {
+                        $module_result['errors'][] = array('item' => __('Linha', 'book-manager') . ' ' . ($line_num + 2), 'reason' => __('Título vazio.', 'book-manager'));
+                        continue;
+                    }
+                    
+                    $existing_id = bm_find_duplicate_book($title, $author, $publisher);
+                    
+                    if ($existing_id && $mode === 'add') {
+                        $module_result['duplicates'][] = array('item' => $title . ($author ? ' — ' . $author : ''), 'reason' => __('Já existe no acervo.', 'book-manager'));
+                        continue;
+                    }
+                    
+                    $post_id = $existing_id ? $existing_id : wp_insert_post(array('post_type' => 'bm_book', 'post_title' => $title, 'post_status' => 'publish'));
+                    
+                    if ($post_id && !is_wp_error($post_id)) {
+                        if (!empty($data[1])) update_post_meta($post_id, '_bm_author', $author);
+                        if (!empty($data[2])) update_post_meta($post_id, '_bm_publisher', $publisher);
+                        if (!empty($data[3])) update_post_meta($post_id, '_bm_isbn', sanitize_text_field($data[3]));
+                        if (!empty($data[4])) update_post_meta($post_id, '_bm_location', sanitize_text_field($data[4]));
+                        if (!empty($data[5])) update_post_meta($post_id, '_bm_copies', absint($data[5]));
+                        $module_result['imported'][] = array('item' => $title . ($author ? ' — ' . $author : ''));
+                    } else {
+                        $module_result['errors'][] = array('item' => $title, 'reason' => __('Erro ao salvar.', 'book-manager'));
+                    }
+                    break;
+                    
+                case 'students':
+                    $student_name = isset($data[0]) ? sanitize_text_field($data[0]) : '';
+                    $student_email = isset($data[1]) ? sanitize_email($data[1]) : '';
+                    
+                    if (empty($student_name) || empty($student_email)) {
+                        $module_result['errors'][] = array('item' => $student_name ?: __('Linha', 'book-manager') . ' ' . ($line_num + 2), 'reason' => __('Nome ou e-mail vazio.', 'book-manager'));
+                        continue;
+                    }
+                    
+                    $existing_email = email_exists($student_email);
+                    
+                    if ($existing_email && $mode === 'add') {
+                        $module_result['duplicates'][] = array('item' => $student_name . ' (' . $student_email . ')', 'reason' => __('E-mail já cadastrado.', 'book-manager'));
+                        continue;
+                    }
+                    
+                    $user_id = $existing_email ? $existing_email : wp_insert_user(array(
+                        'user_login' => sanitize_user($student_email),
+                        'user_email' => $student_email,
+                        'display_name' => $student_name,
+                        'user_pass' => wp_generate_password(12, false),
+                        'role' => 'bm_student',
+                    ));
+                    
+                    if ($user_id && !is_wp_error($user_id)) {
+                        update_user_meta($user_id, 'bm_approval_status', 'approved');
+                        update_user_meta($user_id, '_bm_user_' . sanitize_key('Nome completo'), $student_name);
+                        update_user_meta($user_id, '_bm_user_' . sanitize_key('E-mail'), $student_email);
+                        $module_result['imported'][] = array('item' => $student_name . ' (' . $student_email . ')');
+                    } else {
+                        $error_msg = is_wp_error($user_id) ? $user_id->get_error_message() : __('Erro ao salvar.', 'book-manager');
+                        $module_result['errors'][] = array('item' => $student_name, 'reason' => $error_msg);
+                    }
+                    break;
+                    
+                case 'loans':
+                case 'readings':
+                case 'taxonomies':
+                    $module_result['errors'][] = array('item' => $module['label'], 'reason' => __('Importação deste módulo será implementada em breve.', 'book-manager'));
+                    break;
+                    
+                case 'settings':
+                    $module_result['errors'][] = array('item' => $module['label'], 'reason' => __('Use a importação individual de JSON para configurações.', 'book-manager'));
+                    break;
+            }
+        }
+        
+        $report[] = $module_result;
+    }
+    
+    set_transient('bm_import_report', $report, 300);
+    delete_transient('bm_import_preview');
+    wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'import'), admin_url('edit.php')));
+    exit;
+}
+add_action('admin_init', 'bm_execute_import');
 
 function bm_handle_import_single() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
@@ -1684,141 +1936,3 @@ function bm_handle_import_single() {
     exit;
 }
 add_action('admin_init', 'bm_handle_import_single');
-
-function bm_execute_import() {
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
-    if (!isset($_POST['bm_import_execute_submit']) || !isset($_POST['bm_import_execute_nonce'])) return;
-    if (!wp_verify_nonce($_POST['bm_import_execute_nonce'], 'bm_import_execute_action')) return;
-    
-    $import_preview = get_transient('bm_import_preview');
-    if (!$import_preview) {
-        set_transient('bm_export_all_message', array('type' => 'error', 'text' => __('Nenhum dado para importar. Envie o arquivo novamente.', 'book-manager')), 60);
-        wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'import'), admin_url('edit.php')));
-        exit;
-    }
-    
-    $mode = isset($_POST['bm_import_mode']) ? sanitize_text_field($_POST['bm_import_mode']) : 'add';
-    $report = array();
-    
-    foreach ($import_preview as $module) {
-        $module_type = $module['module'];
-        $module_result = array(
-            'label' => $module['label'],
-            'imported' => array(),
-            'duplicates' => array(),
-            'errors' => array(),
-        );
-        
-        $content = isset($module['raw_content']) ? $module['raw_content'] : '';
-        
-        if (empty($content) && !empty($module['filepath'])) {
-            $content = file_get_contents($module['filepath']);
-        }
-        
-        if (empty($content)) {
-            $module_result['errors'][] = array('item' => $module['label'], 'reason' => __('Arquivo vazio ou não encontrado.', 'book-manager'));
-            $report[] = $module_result;
-            continue;
-        }
-        
-        $lines = explode("\n", trim($content));
-        $header_line = array_shift($lines);
-        $headers = str_getcsv($header_line, ';');
-        
-        foreach ($lines as $line_num => $line) {
-            if (empty(trim($line))) continue;
-            $data = str_getcsv($line, ';');
-            
-            switch ($module_type) {
-                case 'books':
-                    $title = isset($data[0]) ? sanitize_text_field($data[0]) : '';
-                    $author = isset($data[1]) ? sanitize_text_field($data[1]) : '';
-                    $publisher = isset($data[2]) ? sanitize_text_field($data[2]) : '';
-                    
-                    if (empty($title)) {
-                        $module_result['errors'][] = array('item' => __('Linha', 'book-manager') . ' ' . ($line_num + 2), 'reason' => __('Título vazio.', 'book-manager'));
-                        continue;
-                    }
-                    
-                    $existing_id = bm_find_duplicate_book($title, $author, $publisher);
-                    
-                    if ($existing_id && $mode === 'add') {
-                        $module_result['duplicates'][] = array('item' => $title . ($author ? ' — ' . $author : ''), 'reason' => __('Já existe no acervo.', 'book-manager'));
-                        continue 2;
-                    }
-                    
-                    $post_id = $existing_id ? $existing_id : wp_insert_post(array('post_type' => 'bm_book', 'post_title' => $title, 'post_status' => 'publish'));
-                    
-                    if ($post_id && !is_wp_error($post_id)) {
-                        if (!empty($data[1])) update_post_meta($post_id, '_bm_author', $author);
-                        if (!empty($data[2])) update_post_meta($post_id, '_bm_publisher', $publisher);
-                        if (!empty($data[3])) update_post_meta($post_id, '_bm_isbn', sanitize_text_field($data[3]));
-                        if (!empty($data[4])) update_post_meta($post_id, '_bm_location', sanitize_text_field($data[4]));
-                        if (!empty($data[5])) update_post_meta($post_id, '_bm_copies', absint($data[5]));
-                        $module_result['imported'][] = array('item' => $title . ($author ? ' — ' . $author : ''));
-                    } else {
-                        $module_result['errors'][] = array('item' => $title, 'reason' => __('Erro ao salvar.', 'book-manager'));
-                    }
-                    break;
-                    
-                case 'students':
-                    $student_name = isset($data[0]) ? sanitize_text_field($data[0]) : '';
-                    $student_email = isset($data[1]) ? sanitize_email($data[1]) : '';
-                    
-                    if (empty($student_name) || empty($student_email)) {
-                        $module_result['errors'][] = array('item' => $student_name ?: __('Linha', 'book-manager') . ' ' . ($line_num + 2), 'reason' => __('Nome ou e-mail vazio.', 'book-manager'));
-                        continue;
-                    }
-                    
-                    $existing_email = email_exists($student_email);
-                    
-                    if ($existing_email && $mode === 'add') {
-                        $module_result['duplicates'][] = array('item' => $student_name . ' (' . $student_email . ')', 'reason' => __('E-mail já cadastrado.', 'book-manager'));
-                        continue;
-                    }
-                    
-                    $user_id = $existing_email ? $existing_email : wp_insert_user(array(
-                        'user_login' => sanitize_user($student_email),
-                        'user_email' => $student_email,
-                        'display_name' => $student_name,
-                        'user_pass' => wp_generate_password(12, false),
-                        'role' => 'bm_student',
-                    ));
-                    
-                    if ($user_id && !is_wp_error($user_id)) {
-                        update_user_meta($user_id, 'bm_approval_status', 'approved');
-                        update_user_meta($user_id, '_bm_user_' . sanitize_key('Nome completo'), $student_name);
-                        update_user_meta($user_id, '_bm_user_' . sanitize_key('E-mail'), $student_email);
-                        $module_result['imported'][] = array('item' => $student_name . ' (' . $student_email . ')');
-                    } else {
-                        $error_msg = is_wp_error($user_id) ? $user_id->get_error_message() : __('Erro ao salvar.', 'book-manager');
-                        $module_result['errors'][] = array('item' => $student_name, 'reason' => $error_msg);
-                    }
-                    break;
-                    
-                case 'loans':
-                case 'readings':
-                case 'taxonomies':
-                    $module_result['errors'][] = array('item' => $module['label'], 'reason' => __('Importação deste módulo será implementada em breve.', 'book-manager'));
-                    break;
-                    
-                case 'settings':
-                    $module_result['errors'][] = array('item' => $module['label'], 'reason' => __('Use a importação individual de JSON para configurações.', 'book-manager'));
-                    break;
-            }
-        }
-        
-        $report[] = $module_result;
-    }
-    
-    set_transient('bm_import_report', $report, 300);
-    delete_transient('bm_import_preview');
-    wp_redirect(add_query_arg(array('post_type' => 'bm_book', 'page' => 'bm_data_io', 'tab' => 'export_import_all', 'subtab' => 'import'), admin_url('edit.php')));
-    exit;
-}
-add_action('admin_init', 'bm_execute_import');
-
-function bm_add_data_io_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Importação/Exportação', 'book-manager'), __('Importação/Exportação', 'book-manager'), 'edit_bm_books', 'bm_data_io', 'bm_render_data_io_page');
-}
-add_action('admin_menu', 'bm_add_data_io_page');

@@ -1,50 +1,14 @@
 <?php
 /**
  * Book Manager — Módulo de Circulação
- * Reservas, empréstimos, devoluções, multas, WhatsApp, registro, aprovações
+ * Roles, autocadastro, reservas, empréstimos, estoque, WhatsApp
  */
 
 defined('ABSPATH') || exit;
 
 // ==========================================
-// FASE 15: AUDITORIA DE AÇÕES ADMINISTRATIVAS
-// ==========================================
-function bm_log_admin_action($action, $target_user_id) {
-    $user = wp_get_current_user();
-    $log = get_option('bm_admin_audit_log', array());
-    if (!is_array($log)) $log = array();
-    
-    $target_user = get_userdata($target_user_id);
-    
-    $log[] = array(
-        'action' => $action,
-        'admin_user' => $user ? $user->user_login : 'sistema',
-        'admin_id' => get_current_user_id(),
-        'target_user' => $target_user ? $target_user->display_name : '#' . $target_user_id,
-        'target_id' => $target_user_id,
-        'time' => current_time('mysql'),
-    );
-    
-    // Manter apenas últimos 100 registros
-    if (count($log) > 100) {
-        $log = array_slice($log, -100);
-    }
-    
-    update_option('bm_admin_audit_log', $log);
-}
-
-
-// ==========================================
 // FASE 9A: VERIFICAÇÃO DE PERMISSÃO PARA NOVAS ROLES
 // ==========================================
-function bm_librarian_can($action) {
-    if (current_user_can('manage_options')) return true;
-    if (!current_user_can('edit_bm_books')) return false;
-    $settings = bm_get_settings();
-    $permissions = isset($settings['librarian_permissions']) ? $settings['librarian_permissions'] : array();
-    return isset($permissions[$action]) && $permissions[$action] === '1';
-}
-
 function bm_user_can_manage_books() {
     return current_user_can('manage_options') || current_user_can('edit_bm_books') || current_user_can('edit_bm_book');
 }
@@ -413,7 +377,6 @@ function bm_add_user_dynamic_fields_metabox($user) {
     <?php
 }
 
-
 function bm_save_user_dynamic_fields($user_id) {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     
@@ -494,8 +457,9 @@ function bm_recadastro_form($user_id) {
     return ob_get_clean();
 }
 
-// FASE 18: Movido para página Alunos (aba Aprovar Cadastros)
-
+// ==========================================
+// FASE 9B: APROVAÇÃO DE CADASTROS
+// ==========================================
 function bm_render_approval_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     bm_render_approval_page_content();
@@ -590,8 +554,7 @@ function bm_reserve_book($book_id, $user_id, $reserved_for = null) {
     
     // Verificar atraso antes de reservar
     $loan_history = get_user_meta($target_user_id, '_bm_loan_history', true) ?: array();
-            // Se for reserva feita por Professor/Gestor/Admin para aluno, não conta no limite
-        $is_teacher_reserve = ($user_id != $target_user_id);
+    $is_teacher_reserve = ($user_id != $target_user_id);
     foreach ($loan_history as $loan) {
         if ($loan['status'] === 'active' && isset($loan['due_date']) && strtotime($loan['due_date']) < time()) {
             $overdue_title = get_the_title($loan['book_id']);
@@ -883,7 +846,6 @@ function bm_reserve_scripts() {
     }
     
     function bmConfirmAdvanceReserve(bookId, nonce) {
-
         modal.style.display = 'flex';
     }
     
@@ -1092,7 +1054,6 @@ function bm_confirm_loan($book_id, $user_id, $days = null) {
         return array('error' => sprintf(__('Limite de %d empréstimo(s) atingido. Devolva um livro antes de pegar outro.', 'book-manager'), $settings['max_loans_student']));
     }
     
-    // Verificar estoque disponível
     $stock = bm_get_stock_info($book_id);
     if ($stock['available'] <= 0) {
         return array('error' => __('Não há exemplares disponíveis para empréstimo.', 'book-manager'));
@@ -1149,7 +1110,6 @@ function bm_reject_reservation($book_id, $user_id) {
     
     if (!$found) return array('error' => __('Reserva não encontrada.', 'book-manager'));
     
-    // Recalcular posições
     $pos = 0;
     foreach ($reservations as &$r) {
         if ($r['status'] === 'waiting') {
@@ -1208,7 +1168,6 @@ function bm_return_book($book_id, $user_id) {
     
     bm_log_audit($book_id, "Devolvido pelo usuário #$user_id");
         
-    // Verificar atraso e aplicar penalidade
     $days_late = 0;
     foreach ($reservations as $r) {
         if ($r['user_id'] == $user_id && $r['status'] === 'returned' && isset($r['due_date'])) {
@@ -1295,7 +1254,6 @@ function bm_check_penalty_block($user_id) {
     
     $until = get_user_meta($user_id, '_bm_penalty_until', true);
     
-    // Se tem data fim e já passou, liberar automaticamente
     if (!empty($until) && strtotime($until) < time()) {
         update_user_meta($user_id, '_bm_penalty_active', '0');
         delete_user_meta($user_id, '_bm_penalty_until');
@@ -1328,10 +1286,8 @@ function bm_apply_penalty($user_id, $penalty) {
     $penalties[] = $entry;
     update_user_meta($user_id, '_bm_penalties', $penalties);
     
-    // Ativar bloqueio
     update_user_meta($user_id, '_bm_penalty_active', '1');
     
-    // Se for suspensão, definir data fim
     if ($penalty['type'] === 'suspension') {
         $days = intval($penalty['value']);
         $until = date('Y-m-d', strtotime('+' . $days . ' days'));
@@ -1382,8 +1338,6 @@ function bm_get_days_remaining($due_date) {
     $diff = $due - $now;
     return intval(ceil($diff / DAY_IN_SECONDS));
 }
-
-// FASE 18: Movido para Balcão de Atendimento (aba Empréstimos)
 
 function bm_render_loans_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
@@ -1454,10 +1408,8 @@ function bm_render_loans_page_content() {
             $is_archived = isset($r['loan_id']) && $r['loan_id'] !== '' && in_array($r['loan_id'], $archived_list);
             
             if ($show_archived) {
-                // Modo Arquivado: mostrar apenas os que estão na lista de arquivados
                 if (!$is_archived) continue;
             } else {
-                // Modo normal: pular arquivados e filtrar por status
                 if ($is_archived) continue;
                 if (!in_array($r['status'], array('waiting', 'active', 'returned', 'rejected', 'cancelled'))) continue;
             }
@@ -1470,8 +1422,6 @@ function bm_render_loans_page_content() {
         }
     }
 
-        
-    // Reservas antecipadas (bulk)
     $advance_reservations = array();
     foreach ($all_books as $book) {
         $bulk = get_post_meta($book->ID, '_bm_bulk_reservation', true);
@@ -1486,8 +1436,6 @@ function bm_render_loans_page_content() {
         }
     }
     
-
-
     usort($active_reservations, function($a, $b) {
         if ($a['status'] === 'active' && $b['status'] !== 'active') return -1;
         if ($a['status'] !== 'active' && $b['status'] === 'active') return 1;
@@ -1499,7 +1447,6 @@ function bm_render_loans_page_content() {
         return strtotime($b['date']) - strtotime($a['date']);
     });
 
-    // Filtrar por data (datepicker)
     $date_from = isset($_GET['bm_date_from']) && $_GET['bm_date_from'] !== '' ? sanitize_text_field($_GET['bm_date_from']) : '';
     $date_to = isset($_GET['bm_date_to']) && $_GET['bm_date_to'] !== '' ? sanitize_text_field($_GET['bm_date_to']) : '';
     if ($date_from !== '' || $date_to !== '') {
@@ -1521,7 +1468,6 @@ function bm_render_loans_page_content() {
     }
     
     ?>
-
         
         <?php if (empty($active_reservations) && empty($advance_reservations)): ?>
             <p><?php _e('Nenhum empréstimo ou reserva ativa.', 'book-manager'); ?></p>
@@ -1537,7 +1483,6 @@ function bm_render_loans_page_content() {
 
             <div style="margin-bottom:10px;">
                 <label><strong><?php _e('Status:', 'book-manager'); ?></strong></label>
-
                 <?php $current_status = isset($_GET['bm_status']) ? sanitize_text_field($_GET['bm_status']) : 'all'; ?>
                 <select id="bm-status-filter" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;margin-left:5px;">
                     <option value="all" <?php selected($current_status, 'all'); ?>><?php _e('Todos', 'book-manager'); ?></option>
@@ -1549,9 +1494,7 @@ function bm_render_loans_page_content() {
                     <option value="cancelled"><?php _e('Cancelado', 'book-manager'); ?></option>
                     <option value="rejected"><?php _e('Rejeitado', 'book-manager'); ?></option>
                     <option value="separated"><?php _e('📚 Separado', 'book-manager'); ?></option>
-
                     <option value="archived" <?php selected($current_status, 'archived'); ?>><?php _e('🗄️ Arquivado', 'book-manager'); ?></option>
-
                 </select>
             </div>
             <div style="margin-bottom:10px;display:none;" id="bm-archive-bulk-bar">
@@ -1620,9 +1563,6 @@ function bm_render_loans_page_content() {
                                 <?php endif; ?>
                                 <strong><a href="<?php echo admin_url('post.php?post=' . $r['book_id'] . '&action=edit'); ?>"><?php echo esc_html($r['book_title']); ?></a></strong>
                             </td>
-
-
-
                             <td><a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_student_detail&student_id=' . $r['user_id']); ?>"><?php echo esc_html($user_name); ?></a></td>
                             <td><span style="background:<?php echo $status_color; ?>;color:#fff;padding:2px 8px;border-radius:3px;font-size:12px;"><?php echo $status_label; ?></span></td>
                             <td><?php echo $position_display; ?></td>
@@ -1750,8 +1690,7 @@ function bm_render_loans_page_content() {
                 document.getElementById('bm-modal-ok').addEventListener('click', function() { document.body.removeChild(modal); callback(); });
                 document.getElementById('bm-modal-cancel').addEventListener('click', function() { document.body.removeChild(modal); });
             }
-            // Devolver via AJAX
-                        function bmReloadKeepingFilters() {
+            function bmReloadKeepingFilters() {
                 var statusFilter = document.getElementById('bm-status-filter').value;
                 var url = new URL(window.location.href);
                 if (statusFilter && statusFilter !== 'all') url.searchParams.set('bm_status', statusFilter);
@@ -1792,7 +1731,6 @@ function bm_render_loans_page_content() {
                 });
             });
             
-            // Confirmar via AJAX
             document.querySelectorAll('.bm-confirm-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var bookId = this.getAttribute('data-book');
@@ -1813,7 +1751,6 @@ function bm_render_loans_page_content() {
                                 statusCell.textContent = 'Emprestado';
                                 statusCell.style.background = '#0073aa';
                             }
-                            // Exibir botão de comprovante
                             var actionCell = row.querySelector('td:last-child');
                             if (actionCell && r.receipt_url) {
                                 var receiptBtn = document.createElement('a');
@@ -1837,9 +1774,6 @@ function bm_render_loans_page_content() {
                 });
             });
             
-                  
-            
-            // Desfazer via AJAX
             document.querySelectorAll('.bm-undo-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var bookId = this.getAttribute('data-book');
@@ -1869,8 +1803,6 @@ function bm_render_loans_page_content() {
                 });
             });
 
-
-                       // Separar reserva antecipada
             document.querySelectorAll('.bm-separate-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var bookId = this.getAttribute('data-book');
@@ -1901,7 +1833,6 @@ function bm_render_loans_page_content() {
                 });
             });
             
-            // Cancelar reserva antecipada
             document.querySelectorAll('.bm-cancel-advance-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var bookId = this.getAttribute('data-book');
@@ -1920,9 +1851,7 @@ function bm_render_loans_page_content() {
                     xhr.send('action=bm_cancel_advance&book_id=' + bookId + '&created_at=' + encodeURIComponent(createdAt) + '&nonce=' + bmNonce);
                 });
             });
-            
 
-            // Emprestar agendamento separado
             document.querySelectorAll('.bm-loan-advance-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var bookId = this.getAttribute('data-book');
@@ -1956,7 +1885,6 @@ function bm_render_loans_page_content() {
                 });
             });
 
-            // Rejeitar via AJAX
             document.querySelectorAll('.bm-reject-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var bookId = this.getAttribute('data-book');
@@ -2080,8 +2008,6 @@ function bm_render_loans_page_content() {
                 if (e.key === 'Enter') bmApplyFilters();
             });
 
-            
-            // Ao carregar a página, aplicar o filtro da URL (exceto Arquivado, que já vem filtrado pelo PHP)
             document.addEventListener('DOMContentLoaded', function() {
                 var urlParams = new URLSearchParams(window.location.search);
                 var urlStatus = urlParams.get('bm_status');
@@ -2096,7 +2022,6 @@ function bm_render_loans_page_content() {
             
             document.getElementById('bm-status-filter').addEventListener('change', function() {
                 var status = this.value;
-                // Se a página atual está no modo Arquivado, qualquer mudança de status precisa recarregar
                 var urlParams = new URLSearchParams(window.location.search);
                 var isArchivedMode = urlParams.get('bm_status') === 'archived';
                 if (status === 'archived' || isArchivedMode) {
@@ -2261,136 +2186,3 @@ function bm_ajax_track_whatsapp() {
     wp_die();
 }
 add_action('wp_ajax_bm_track_whatsapp', 'bm_ajax_track_whatsapp');
-
-// ==========================================
-// FASE 12I-T4: PROFESSOR VÊ DADOS DO ALUNO (LEITURA)
-// ==========================================
-function bm_teacher_view_student($student_id) {
-    if (!is_user_logged_in()) return '';
-    
-    $user = wp_get_current_user();
-    if (!in_array('bm_teacher', (array) $user->roles) && !in_array('bm_librarian', (array) $user->roles) && !current_user_can('manage_options')) return '';
-    
-    $student = get_userdata($student_id);
-    if (!$student || !in_array('bm_student', (array) $student->roles)) return '<p>' . __('Aluno não encontrado.', 'book-manager') . '</p>';
-    
-    ob_start();
-    ?>
-    <div style="background:#f9f9f9;padding:15px;border-radius:8px;margin:10px 0;border:1px solid #ddd;">
-        <h3 style="margin-top:0;">👤 <?php echo esc_html($student->display_name); ?></h3>
-        <?php
-        $user_fields = get_option('bm_user_dynamic_fields', array());
-        foreach ($user_fields as $field_name => $info):
-            $meta_key = '_bm_user_' . sanitize_key($field_name);
-            $value = get_user_meta($student_id, $meta_key, true);
-            if (!empty($value)):
-        ?>
-            <p style="margin:5px 0;"><strong><?php echo esc_html($field_name); ?>:</strong> <?php echo esc_html($value); ?></p>
-        <?php 
-            endif;
-        endforeach;
-        
-        $xp = bm_get_xp($student_id);
-        $badges = get_user_meta($student_id, '_bm_badges', true) ?: array();
-        ?>
-        <p style="margin:5px 0;"><strong>XP:</strong> <?php echo $xp; ?></p>
-        <?php if (!empty($badges)): ?>
-            <p style="margin:5px 0;"><strong>Medalhas:</strong> <?php echo count($badges); ?></p>
-        <?php endif; ?>
-    </div>
-    <?php
-    return ob_get_clean();
-}
-
-// ==========================================
-// FASE 32: ARQUIVAMENTO DE EMPRÉSTIMOS
-// ==========================================
-function bm_archive_loan($book_id, $loan_id, $user_id = 0, $date = '') {
-    if (empty($loan_id)) {
-        if ($user_id && $date) {
-            $loan_id = $book_id . '-' . $user_id . '-' . strtotime($date);
-        } else {
-            return array('error' => __('Registro inválido.', 'book-manager'));
-        }
-    }
-    $archived = get_post_meta($book_id, '_bm_archived', true);
-    if (!is_array($archived)) $archived = array();
-    if (!in_array($loan_id, $archived)) {
-        $archived[] = $loan_id;
-        update_post_meta($book_id, '_bm_archived', $archived);
-    }
-    return array('success' => true, 'message' => __('Registro arquivado.', 'book-manager'));
-}
-
-function bm_ajax_archive_loan() {
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
-    check_ajax_referer('bm_service_nonce', 'nonce');
-    $book_id = intval($_POST['book_id']);
-    $loan_id = sanitize_text_field($_POST['loan_id']);
-    $result = bm_archive_loan($book_id, $loan_id);
-    wp_die(json_encode($result));
-}
-add_action('wp_ajax_bm_archive_loan', 'bm_ajax_archive_loan');
-
-function bm_unarchive_loan($book_id, $loan_id) {
-    if (empty($loan_id)) return array('error' => __('Registro inválido.', 'book-manager'));
-    $archived = get_post_meta($book_id, '_bm_archived', true);
-    if (!is_array($archived)) $archived = array();
-    $archived = array_diff($archived, array($loan_id));
-    update_post_meta($book_id, '_bm_archived', array_values($archived));
-    return array('success' => true, 'message' => __('Registro desarquivado.', 'book-manager'));
-}
-
-function bm_ajax_unarchive_loan() {
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
-    check_ajax_referer('bm_service_nonce', 'nonce');
-    $book_id = intval($_POST['book_id']);
-    $loan_id = sanitize_text_field($_POST['loan_id']);
-    $result = bm_unarchive_loan($book_id, $loan_id);
-    wp_die(json_encode($result));
-}
-add_action('wp_ajax_bm_unarchive_loan', 'bm_ajax_unarchive_loan');
-
-// ==========================================
-// FASE 12J: EXPORTAÇÃO DE HISTÓRICO DO ALUNO
-// ==========================================
-function bm_handle_student_export() {
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
-    if (!isset($_POST['bm_export_student']) || !isset($_POST['bm_student_detail_nonce'])) return;
-    if (!wp_verify_nonce($_POST['bm_student_detail_nonce'], 'bm_student_detail_action')) return;
-    
-    $student_id = isset($_GET['student_id']) ? intval($_GET['student_id']) : 0;
-    $student = get_userdata($student_id);
-    if (!$student) return;
-    
-    $loan_history = get_user_meta($student_id, '_bm_loan_history', true) ?: array();
-    $reading_log = get_user_meta($student_id, '_bm_reading_log', true) ?: array();
-    
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="historico_' . sanitize_user($student->display_name) . '.csv"');
-    echo "\xEF\xBB\xBF";
-    $output = fopen('php://output', 'w');
-    fputcsv($output, array('Tipo', 'Livro', 'Data', 'Status', 'Detalhes'), ';');
-    
-    foreach ($loan_history as $loan) {
-        fputcsv($output, array(
-            'Empréstimo',
-            get_the_title($loan['book_id']),
-            $loan['loan_date'],
-            $loan['status'],
-            isset($loan['due_date']) ? 'Devolução: ' . $loan['due_date'] : '',
-        ), ';');
-    }
-    foreach ($reading_log as $log) {
-        fputcsv($output, array(
-            'Ficha de Leitura',
-            get_the_title($log['book_id']),
-            $log['date'],
-            $log['status'],
-            'Nota: ' . ($log['rating'] ?? '—'),
-        ), ';');
-    }
-    fclose($output);
-    exit;
-}
-add_action('admin_init', 'bm_handle_student_export');

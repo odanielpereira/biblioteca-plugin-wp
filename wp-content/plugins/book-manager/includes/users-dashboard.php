@@ -1,7 +1,7 @@
 <?php
 /**
  * Book Manager — Módulo de Dashboards
- * Painéis do Aluno, Professor e Gestor
+ * Dashboards do Aluno, Professor e Gestor
  */
 
 defined('ABSPATH') || exit;
@@ -204,7 +204,6 @@ function bm_student_dashboard_content() {
             <?php
         }
         ?>
-
         
         <div style="margin:10px 0;">
             <select id="bm-period-select" onchange="bmLoadPeriod()" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;">
@@ -216,7 +215,6 @@ function bm_student_dashboard_content() {
             <span id="bm-period-loading" style="display:none;margin-left:8px;color:#666;"><?php _e('Carregando...', 'book-manager'); ?></span>
         </div>
                 
-        <!-- Busca rápida de livros -->
         <div style="background:#f0f7ff;padding:15px;border-radius:8px;margin:15px 0;border-left:4px solid #2196f3;">
             <h3 style="margin:0 0 10px 0;">🔍 <?php _e('Buscar livro no acervo', 'book-manager'); ?></h3>
             <div style="display:flex;gap:10px;">
@@ -231,7 +229,8 @@ function bm_student_dashboard_content() {
         document.getElementById('bm-quick-search').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') bmQuickSearch();
         });
-       function bmQuickSearch() {
+        
+        function bmQuickSearch() {
             var query = document.getElementById('bm-quick-search').value.trim();
             if (!query) return;
             
@@ -268,7 +267,6 @@ function bm_student_dashboard_content() {
             xhr.send('action=bm_quick_search&query=' + encodeURIComponent(query));
         }
         </script>
-        
         
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin:20px 0;">
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
@@ -310,7 +308,7 @@ function bm_student_dashboard_content() {
         </div>
         <?php endif; ?>
 
-                <?php
+        <?php
         $user_dynamic_fields = get_option('bm_user_dynamic_fields', array());
         $has_user_data = false;
         foreach ($user_dynamic_fields as $field_name => $info) {
@@ -327,7 +325,6 @@ function bm_student_dashboard_content() {
         }
         if ($has_user_data) echo '</div>';
         ?>
-        
         
         <?php if ($settings['xp_enabled'] === '1' && !empty($badges)): ?>
             <h2><?php _e('Minhas Medalhas', 'book-manager'); ?></h2>
@@ -375,7 +372,6 @@ function bm_student_dashboard_content() {
                                 <?php endif; ?>
                             </td>
                         </tr>
-
                     <?php endforeach; ?>
                 </tbody>
             </table>
@@ -399,10 +395,7 @@ function bm_student_dashboard_content() {
             </table>
         <?php endif; ?>
         
-                
         <?php 
-        $profile_public = get_user_meta($user_id, '_bm_profile_public', true);
-
         // FASE 36.6: Exibir lista de leitura da turma do aluno
         $reading_lists = get_option('bm_reading_lists', array());
         $student_group = get_user_meta($user_id, '_bm_user_' . sanitize_key('Turma'), true);
@@ -437,6 +430,7 @@ function bm_student_dashboard_content() {
             </div>
         <?php endif; ?>
         <?php
+        $profile_public = get_user_meta($user_id, '_bm_profile_public', true);
         if (isset($_POST['bm_toggle_profile']) && wp_verify_nonce($_POST['bm_profile_nonce'], 'bm_profile_action')) {
             $new_status = $profile_public === '1' ? '0' : '1';
             update_user_meta($user_id, '_bm_profile_public', $new_status);
@@ -473,13 +467,12 @@ function bm_student_dashboard_content() {
                 </tbody>
             </table>
         <?php endif; ?>
-
                 
         <p style="margin-top:20px;">
             <a href="<?php echo site_url('/sugerir-livro'); ?>" style="color:#111;text-decoration:underline;">📚 <?php _e('Minhas Sugestões de Aquisição', 'book-manager'); ?></a>
         </p>
 
-                <p style="margin-top:5px;">
+        <p style="margin-top:5px;">
             <a href="<?php echo site_url('/perfil-do-leitor'); ?>" style="color:#111;text-decoration:underline;">👤 <?php _e('Meu Perfil de Leitor', 'book-manager'); ?></a>
         </p>
 
@@ -487,7 +480,7 @@ function bm_student_dashboard_content() {
             <a href="<?php echo site_url('/minhas-fichas'); ?>" style="color:#111;text-decoration:underline;">📝 <?php _e('Minhas Fichas', 'book-manager'); ?></a>
         </p>
 
-            <script>
+        <script>
     document.querySelectorAll('.bm-return-detail-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var self = this;
@@ -529,6 +522,43 @@ function bm_student_dashboard_content() {
 
         <?php if (empty($active_loans) && empty($user_reservations)): ?>
             <p><?php _e('Você não tem empréstimos ou reservas ativas.', 'book-manager'); ?></p>
+        <?php endif; ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+function bm_teacher_view_student($student_id) {
+    if (!is_user_logged_in()) return '';
+    
+    $user = wp_get_current_user();
+    if (!in_array('bm_teacher', (array) $user->roles) && !in_array('bm_librarian', (array) $user->roles) && !current_user_can('manage_options')) return '';
+    
+    $student = get_userdata($student_id);
+    if (!$student || !in_array('bm_student', (array) $student->roles)) return '<p>' . __('Aluno não encontrado.', 'book-manager') . '</p>';
+    
+    ob_start();
+    ?>
+    <div style="background:#f9f9f9;padding:15px;border-radius:8px;margin:10px 0;border:1px solid #ddd;">
+        <h3 style="margin-top:0;">👤 <?php echo esc_html($student->display_name); ?></h3>
+        <?php
+        $user_fields = get_option('bm_user_dynamic_fields', array());
+        foreach ($user_fields as $field_name => $info):
+            $meta_key = '_bm_user_' . sanitize_key($field_name);
+            $value = get_user_meta($student_id, $meta_key, true);
+            if (!empty($value)):
+        ?>
+            <p style="margin:5px 0;"><strong><?php echo esc_html($field_name); ?>:</strong> <?php echo esc_html($value); ?></p>
+        <?php 
+            endif;
+        endforeach;
+        
+        $xp = bm_get_xp($student_id);
+        $badges = get_user_meta($student_id, '_bm_badges', true) ?: array();
+        ?>
+        <p style="margin:5px 0;"><strong>XP:</strong> <?php echo $xp; ?></p>
+        <?php if (!empty($badges)): ?>
+            <p style="margin:5px 0;"><strong>Medalhas:</strong> <?php echo count($badges); ?></p>
         <?php endif; ?>
     </div>
     <?php
@@ -622,7 +652,7 @@ function bm_teacher_dashboard_content() {
                 <p style="margin:5px 0 0 0;color:#666;"><?php _e('Livros no acervo', 'book-manager'); ?></p>
             </div>
         </div>
-            <script>
+        <script>
     function bmLoadPeriodTeacher() {
         var period = document.getElementById('bm-period-select').value;
         var url = new URL(window.location.href);
@@ -637,7 +667,6 @@ function bm_teacher_dashboard_content() {
                     <tr>
                         <th><?php _e('Aluno', 'book-manager'); ?></th>
                         <th><?php _e('Livro', 'book-manager'); ?></th>
-                        <th></th>
                         <th><?php _e('Empréstimo', 'book-manager'); ?></th>
                         <th><?php _e('Devolução', 'book-manager'); ?></th>
                         <th><?php _e('Prazo', 'book-manager'); ?></th>
@@ -826,9 +855,7 @@ function bm_librarian_dashboard_content() {
         .bm-dash-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
         </style>        
 
-                
         <?php
-        // Aniversariantes do mês
         $current_month = date('m');
         $all_students = get_users(array('role' => 'bm_student', 'number' => 200));
         $birthdays = array();

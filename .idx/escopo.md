@@ -826,7 +826,7 @@ Todo dado exibido em HTML deve ser escapado no contexto correto.
 
 #### 18.4.2 Modularização (37.2)
 - **Descrição:** Dividir `admin.php` e `users.php` em módulos menores.
-- **Módulos propostos:** `admin-csv.php`, `admin-fields.php`, `admin-service.php`, `admin-settings.php`, `users-dashboard.php`, `users-circulacao.php`, `users-gamificacao.php`
+- **Módulos propostos:** `admin-csv.php`, `admin-fields.php`, `admin-service.php`, `admin-settings.php`, `users-dashboard.php`, `users-circulation.php`, `users-gamificacao.php`
 - **Carregamento:** `require_once` no `book-manager.php`
 - **Barreiras:** ❌ Não quebrar nenhuma funcionalidade existente. ❌ Manter hooks e ações nos mesmos ganchos.
 

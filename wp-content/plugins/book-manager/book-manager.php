@@ -269,8 +269,8 @@ function bm_reorder_submenus() {
         'bm_service_desk' => 'Balcão de Atendimento',
         'bm_students' => 'Alunos',
         'bm_reports' => 'Relatórios',
-        'bm_labels' => 'Etiquetas',
         'bm_taxonomias' => 'Taxonomias',
+        'bm_labels' => 'Etiquetas',
         'bm_data_io' => 'Importação/Exportação',
         'bm_settings' => 'Configurações',
     );
@@ -290,6 +290,7 @@ function bm_reorder_submenus() {
     $submenu[$parent] = $reordered;
 }
 add_action('admin_menu', 'bm_reorder_submenus', 1000);
+add_action('admin_menu', 'bm_add_taxonomies_page', 1001);
 
 function bm_hide_librarian_submenus() {
     if (current_user_can('manage_options')) return;
