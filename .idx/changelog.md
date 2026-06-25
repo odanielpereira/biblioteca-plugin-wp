@@ -1148,3 +1148,38 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 - **Ação:** Remoção do arquivo `includes/users.php` original.  
 - **Detalhes:** Após a migração completa de todas as funções para os novos módulos, o arquivo `users.php` foi removido da pasta do plugin, pois não era mais carregado pelo `book-manager.php` e seu conteúdo já estava integralmente em `users-circulacao.php`, `users-dashboard.php` e `users-gamificacao.php`.  
 - **Ferramenta:** exclusão manual
+
+**185 - Data:** 2026-06-23
+- **Ação:** Criação do endpoint JSON para relatórios dinâmicos.
+- **Detalhes:** Adicionada a função `bm_ajax_get_report_data()` em `includes/reports.php`. O endpoint recebe parâmetros via POST (`bm_report_type`, `bm_period`, `bm_date_start`, `bm_date_end`, `bm_subject`, `bm_subject_id`, `bm_group`, `bm_genre`, `bm_custom_columns`, `bm_custom_sort`), sanitiza todos os valores, verifica nonce (`bm_reports_nonce`) e capability (`edit_bm_books` ou `manage_options`), chama `bm_generate_report()` e retorna o array via `wp_send_json_success()` com metadados `_meta` (tipo, período, sujeito, data de geração). Nenhuma função existente foi alterada.
+- **Ferramenta:** `write_file`
+- **Arquivos modificados:** `includes/reports.php`
+
+**186 - Data:** 2026-06-23
+- **Ação:** Geração do HTML base do dashboard de relatórios via v0.app.
+- **Detalhes:** Utilizado o Prompt 2 (Modo Local) para gerar o layout Bento Grid com Tailwind CSS. O HTML gerado inclui: formulário com `id="bm-report-form"` e todos os campos com `name` e `id` preservados, toolbar com selects e inputs estilizados, 4 KPI cards com slots vazios (bordas coloridas: azul/verde/vermelho/âmbar), área de gráfico de barras com `data-component="bm-chart"`, tabela de dados com zebra-striping, e estados visuais (welcome, loading, empty, dados). Zero CDN, ícones SVG inline, classes Tailwind puras.
+- **Ferramenta:** v0.app (geraç��o externa)
+
+**187 - Data:** 2026-06-23
+- **Ação:** Criação do script de renderização dinâmica `reports-dashboard.js`.
+- **Detalhes:** Criado o arquivo `assets/js/reports-dashboard.js` (~480 linhas) com: intercepção do submit do formulário via `preventDefault()`, controle de exibição condicional dos campos (datas custom, seleção de aluno/turma, colunas do relatório configurável), chamada AJAX ao endpoint `bm_get_report_data`, renderização dos 8 tipos de relatório (overview, desempenho do aluno, leitura por turma, multas ativas, ranking por gênero, livros mais emprestados, tendência de leitura, relatório configurável), preenchimento dos KPI cards com `bmFillKPICard()`, renderização de gráfico de barras com `bmRenderBarChart()`, renderização de tabela com `bmRenderTable()`, controle de estados (welcome → loading → dados → empty), busca de aluno via AJAX, e exportação PDF via `window.open()`. O objeto `bmReports` é injetado via `wp_localize_script` com `ajaxUrl` e `nonce`.
+- **Ferramenta:** `write_file`
+- **Arquivos criados:** `assets/js/reports-dashboard.js`
+
+**188 - Data:** 2026-06-23
+- **Ação:** Criação do arquivo CSS Tailwind mínimo.
+- **Detalhes:** Criado o arquivo `assets/css/tailwind-custom.css` contendo todas as classes Tailwind utilizadas pelo HTML do v0 (display, flexbox, grid, width, height, margin, padding, background, border, border-radius, shadow, text, overflow, hover, transition, animate-pulse, divide, responsive). Gerado manualmente pois o Tailwind CLI não funcionou no ambiente Windows com PowerShell (problemas de permissão e cache do npm). Zero CDN — arquivo 100% local carregado via `wp_enqueue_style`.
+- **Ferramenta:** `write_file`
+- **Arquivos criados:** `assets/css/tailwind-custom.css`
+
+**189 - Data:** 2026-06-23
+- **Ação:** Substituição do HTML da página de relatórios pelo layout do v0.
+- **Detalhes:** Na função `bm_render_reports_page()` em `includes/admin-service.php`, substituído o formulário antigo (com `style` inline) pelo novo layout Bento Grid gerado pelo v0.app. Adicionados enqueues condicionais (`wp_enqueue_style` para `tailwind-custom.css` e `wp_enqueue_script` para `reports-dashboard.js` com `wp_localize_script` injetando `ajaxUrl` e `nonce`). Removida a renderização PHP `bm_render_report_html()` — os dados agora são carregados via AJAX. Removido o botão "Exportar CSV" (não implementado no novo layout). Corrigida duplicação de formulários aninhados que causava mau funcionamento.
+- **Ferramenta:** `write_file`
+- **Arquivos modificados:** `includes/admin-service.php`
+
+**190 - Data:** 2026-06-24
+- **Ação:** Diagnóstico e correção do erro 403 no AJAX de busca de aluno.
+- **Detalhes:** O `reports-dashboard.js` usava o mesmo nonce (`bmReports.nonce` = `bm_reports_nonce`) para a busca de aluno, mas o handler `bm_ajax_service_search_student` espera o nonce `bm_service_nonce`. Adicionado `serviceNonce` ao objeto `bmReports` no `wp_localize_script` em `admin-service.php`. Atualizada a função `bmSearchStudent()` em `reports-dashboard.js` para usar `bm.serviceNonce` na requisição. Corrigida também a duplicação do botão "Exportar PDF" que aparecia duas vezes no formulário.
+- **Ferramenta:** `write_file`
+- **Arquivos modificados:** `includes/admin-service.php`, `assets/js/reports-dashboard.js`

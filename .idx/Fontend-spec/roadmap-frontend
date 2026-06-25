@@ -1,0 +1,158 @@
+# Roadmap — Dashboard Power BI (Book Manager)
+
+**Objetivo:** Transformar `wp-admin/relatórios` em um dashboard com visual estilo Business Intelligence, 100% local, alimentado por JSON via AJAX.
+
+---
+
+## Fase 1 — Documentação e Contratos
+
+#### 1.1 — Atualizar `spec-frontend.md`
+*   **Descrição:** Adicionar Mapa de Visualizações e Catálogo de Funções JS obrigatórias.
+*   **Tarefas:**
+    1.  [x] Adicionar seção "Mapa de Componentes por Tipo de Relatório" (tabela 8 tipos × componentes).
+    2.  [x] Adicionar seção "Catálogo de Funções JS" com assinaturas e contratos.
+    3.  [x] Adicionar seção "Contrato de Dados" (chaves JSON esperadas por cada componente).
+*   **Critério de saída:** Qualquer desenvolvedor lê o spec e sabe exatamente qual componente renderiza para cada tipo de relatório.
+
+#### 1.2 — Criar `mapa-visualizacoes.md`
+*   **Descrição:** Documento com wireframes ASCII e especificação visual de cada componente.
+*   **Tarefas:**
+    1.  [x] Wireframe ASCII do layout Bento Grid completo.
+    2.  [x] Especificação visual de cada componente (KPI Card, Bar Chart, Pie/Donut Chart, Line Chart, Ranking Top 3, Alertas de Inativos, Tabela).
+    3.  [x] Tabela de slots HTML (`data-section`) mapeados para cada componente.
+    4.  [x] Legenda de cores e ícones (medalhas, variação positiva/negativa, status).
+*   **Critério de saída:** O HTML e CSS podem ser gerados a partir deste documento sem ambiguidades.
+
+#### 1.3 — Criar `dicionario-componentes.md`
+*   **Descrição:** Referência técnica de todos os `data-*` attributes, classes CSS e funções JS.
+*   **Tarefas:**
+    1.  [x] Listar todos os `data-section` e `data-component` utilizados no HTML.
+    2.  [x] Listar classes CSS customizadas (além das Tailwind) e seu propósito.
+    3.  [x] Listar funções JS públicas com parâmetros e retornos.
+    4.  [x] Documentar objeto `bmReports` e suas propriedades injetadas via `wp_localize_script`.
+*   **Critério de saída:** O time de frontend consulta este dicionário para entender qualquer seletor ou função.
+
+#### 1.4 — Atualizar `roadmap-dashboard.md` (este documento)
+*   **Descrição:** Refinar tarefas das Fases 2 e 3 com base na documentação produzida.
+*   **Tarefas:**
+    1.  [x] Revisar e detalhar tarefas da Fase 2 (Frontend) após Fase 1 concluída.
+    2.  [x] Revisar e detalhar tarefas da Fase 3 (PHP) após Fase 1 concluída.
+*   **Critério de saída:** Roadmap reflete o estado atual e as decisões tomadas na Fase 1.
+
+---
+
+## Fase 2 — Frontend (HTML, CSS, JavaScript)
+
+#### 2.1 — Expandir HTML com slots para visualizações ausentes
+*   **Descrição:** Adicionar contêineres para gráfico de pizza/donut, linha, ranking e alertas no HTML da página de relatórios.
+*   **Arquivo:** `includes/admin-service.php` (função `bm_render_reports_page`)
+*   **Tarefas:**
+    1.  [x] Adicionar `data-section="pie-chart"` com container SVG e legenda.
+    2.  [x] Adicionar `data-section="line-chart"` com container SVG.
+    3.  [x] Adicionar `data-section="top-readers"` com 3 slots para medalhas (ouro/prata/bronze).
+    4.  [x] Adicionar `data-section="inactive-alerts"` com lista de alunos inativos.
+    5.  [x] Remover botão `#bm-export-pdf` duplicado.
+    6.  [x] Remover scripts inline de busca de aluno (conflito com `reports-dashboard.js`).
+    7.  [x] Remover script inline do PDF (conflito com `reports-dashboard.js`).
+*   **Critério de saída:** Todos os slots HTML existem no DOM com `data-section` únicos. Zero scripts inline. Zero IDs duplicados.
+
+#### 2.2 — Expandir CSS com estilos de BI
+*   **Descrição:** Adicionar classes para gráficos SVG, indicadores de variação e ranking.
+*   **Arquivo:** `assets/css/tailwind-custom.css`
+*   **Tarefas:**
+    1.  [x] Adicionar classes para anéis de pizza/donut (SVG stroke-dasharray).
+    2.  [x] Adicionar classes para linha do tempo (SVG polyline).
+    3.  [x] Adicionar `.text-positive` (verde) e `.text-negative` (vermelho) para variação.
+    4.  [x] Adicionar `.badge-gold`, `.badge-silver`, `.badge-bronze` para ranking.
+    5.  [x] Adicionar `.tooltip` para hover em gráficos.
+    6.  [x] Adicionar `.animate-slide-in` para transições de cards.
+*   **Critério de saída:** Todos os componentes visuais têm estilos definidos e testados no navegador.
+
+#### 2.3 — Implementar utilitários de BI no JavaScript
+*   **Descrição:** Adicionar funções de análise de dados ao motor de renderização.
+*   **Arquivo:** `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [x] Implementar `calculateVariance(current, previous)` — retorna objeto `{ value, isPositive, formatted }`.
+    2.  [x] Implementar `rankEntities(data, key, limit)` — ordena array por chave e retorna Top N.
+    3.  [x] Implementar `formatPercent(value)` — formata número como porcentagem.
+    4.  [x] Adicionar guard clause no início: verificar `bm.ajaxUrl` e abortar com erro visível se ausente.
+*   **Critério de saída:** Funções testadas via console com dados mock. `calculateVariance(100, 80)` retorna `{ value: 25, isPositive: true, formatted: '+25%' }`.
+
+#### 2.4 — Implementar renderizadores de gráficos SVG
+*   **Descrição:** Criar funções que geram gráficos SVG inline a partir de dados JSON.
+*   **Arquivo:** `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [x] Implementar `bmRenderPieChart(data, title)` — SVG donut chart com fatias coloridas e legenda.
+    2.  [x] Implementar `bmRenderLineChart(data, title)` — SVG line chart com pontos e tooltips.
+    3.  [x] Implementar `bmRenderTopReaders(data)` — 3 cards com medalhas, nome, livros lidos e barras.
+    4.  [x] Implementar `bmRenderInactiveAlerts(data)` — lista de alunos com 0 leituras e ícone de alerta.
+*   **Critério de saída:** Cada função gera SVG/HTML válido quando chamada com dados mock no console. Gráfico de pizza exibe fatias proporcionais. Linha conecta pontos corretamente.
+
+#### 2.5 — Refatorar renderizadores existentes com BI
+*   **Descrição:** Atualizar funções atuais para usar variação percentual e ranking.
+*   **Arquivo:** `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [x] `bmFillKPICard()` — adicionar parâmetro `variance` e exibir com cor condicional (verde/vermelho).
+    2.  [x] `bmFillKPICard()` — usar seletores por classe em vez de índice de tag.
+    3.  [x] `bmRenderBarChart()` — adicionar tooltip no hover e animação de largura.
+    4.  [x] `bmRenderOverview()` — chamar `bmRenderInactiveAlerts()` se houver alunos inativos.
+    5.  [x] `bmRenderGenreRanking()` — usar `bmRenderPieChart()` em vez de barras.
+    6.  [x] `bmRenderReadingTrend()` — usar `bmRenderLineChart()` em vez de barras.
+    7.  [x] `bmRenderStudentPerformance()` — chamar `bmRenderTopReaders()` se for visão geral de alunos.
+*   **Critério de saída:** Todos os 8 tipos de relatório renderizam com componentes visuais de BI. Variação percentual visível nos KPIs.
+
+#### 2.6 — Testar frontend com dados mock
+*   **Descrição:** Validar cada tipo de relatório com JSON mockado antes de conectar ao PHP.
+*   **Tarefas:**
+    1.  [x] Criar objeto `MOCK_DATA` com amostras para os 8 tipos de relatório.
+    2.  [x] Testar `overview` → 4 KPIs com variação, alertas de inativos.
+    3.  [x] Testar `student_performance` → KPIs, tabela de livros, gráfico de linha.
+    4.  [x] Testar `class_reading` → KPIs, tabela, ranking Top 3.
+    5.  [x] Testar `active_penalties` → KPIs, tabela.
+    6.  [x] Testar `genre_ranking` → gráfico de pizza/donut.
+    7.  [x] Testar `top_books` → tabela com ranking.
+    8.  [x] Testar `reading_trend` → gráfico de linha.
+    9.  [x] Testar `custom` → tabela dinâmica.
+*   **Critério de saída:** Todos os 8 tipos exibem visualizações corretas com dados mock. Zero erros no console. Animação e tooltips funcionais.
+
+---
+
+## Fase 3 — Integração e Correções PHP
+
+#### 3.1 — Corrigir HTML da página de relatórios
+*   **Descrição:** Aplicar as alterações do frontend no arquivo PHP de serviço.
+*   **Arquivo:** `includes/admin-service.php`
+*   **Tarefas:**
+    1.  [ ] Remover botão `#bm-export-pdf` duplicado (linha extra).
+    2.  [ ] Remover script inline de busca de aluno.
+    3.  [ ] Remover script inline de exportação PDF.
+    4.  [ ] Confirmar que `wp_localize_script` injeta `serviceNonce` e `ajaxUrl`.
+    5.  [ ] Adicionar novos slots HTML (`data-section`) conforme Fase 2.1.
+*   **Critério de saída:** Página carrega sem erros PHP. IDs únicos no DOM. Nenhum listener duplicado.
+
+#### 3.2 — Verificar contratos de dados nos endpoints
+*   **Descrição:** Garantir que cada endpoint PHP retorna as chaves JSON que o frontend espera.
+*   **Arquivo:** `includes/reports.php`
+*   **Tarefas:**
+    1.  [ ] Verificar `bm_report_overview()` — confirmar chaves `total_loans`, `total_returns`, `total_overdue`, `total_reservations`, `inactive_students`.
+    2.  [ ] Verificar `bm_report_genre_ranking()` — confirmar chave `genres` para pizza chart.
+    3.  [ ] Verificar `bm_report_reading_trend()` — confirmar chave `months` para line chart.
+    4.  [ ] Verificar `bm_report_all_students_performance()` — confirmar ranking para Top 3.
+    5.  [ ] Adicionar chave `inactive_students` ao relatório `overview` (alunos com 0 empréstimos no período).
+*   **Critério de saída:** `console.log(response.data)` mostra todas as chaves esperadas pelo frontend para cada tipo de relatório.
+
+#### 3.3 — Testar fluxo completo com dados reais
+*   **Descrição:** Validar todos os 8 tipos de relatório com dados do banco WordPress.
+*   **Tarefas:**
+    1.  [ ] Testar `overview` → KPIs preenchidos, variação calculada, inativos listados.
+    2.  [ ] Testar `student_performance` (todos) → ranking Top 3, tabela.
+    3.  [ ] Testar `student_performance` (individual) → KPIs, tabela de livros.
+    4.  [ ] Testar `class_reading` → média, ranking, inativos.
+    5.  [ ] Testar `active_penalties` → tabela de multas.
+    6.  [ ] Testar `genre_ranking` → pizza/donut chart.
+    7.  [ ] Testar `top_books` → tabela ranqueada.
+    8.  [ ] Testar `reading_trend` → gráfico de linha.
+    9.  [ ] Testar `custom` → colunas dinâmicas.
+    10. [ ] Testar exportação PDF com filtros ativos.
+    11. [ ] Testar busca de aluno com novo nonce (`serviceNonce`).
+*   **Critério de saída:** Zero erros no console. Todos os gráficos renderizam com dados reais. Exportação PDF funcional. Nonce válido em todas as requisições AJAX.

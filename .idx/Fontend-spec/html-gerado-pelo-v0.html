@@ -1,0 +1,206 @@
+recebi isso:
+
+<form id="bm-report-form" class="bg-white border border-gray-200 p-4 rounded-lg mb-6 flex flex-wrap gap-4 items-end">
+
+  <div>
+    <label class="block text-xs font-bold text-gray-600 mb-1">Tipo de Relatório</label>
+    <select name="bm_report_type" class="w-48 px-3 py-2 border border-gray-300 rounded-md text-sm">
+      <option value="overview" selected>Visão Geral</option>
+      <option value="student_performance">Desempenho do Aluno</option>
+      <option value="class_reading">Leitura por Turma</option>
+      <option value="active_penalties">Multas Ativas</option>
+      <option value="genre_ranking">Ranking por Gênero</option>
+      <option value="top_books">Livros Mais Emprestados</option>
+      <option value="reading_trend">Tendência de Leitura</option>
+      <option value="custom">Relatório Configurável</option>
+    </select>
+  </div>
+
+  <div>
+    <label class="block text-xs font-bold text-gray-600 mb-1">Período</label>
+    <select name="bm_period" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
+      <option value="week">Última Semana</option>
+      <option value="month" selected>Último Mês</option>
+      <option value="bimester">Último Bimestre</option>
+      <option value="semester">Último Semestre</option>
+      <option value="year">Último Ano</option>
+      <option value="custom">Personalizado</option>
+    </select>
+  </div>
+
+  <div id="bm-custom-dates" class="hidden flex gap-2 items-end">
+    <div>
+      <label class="block text-xs font-bold text-gray-600 mb-1">De</label>
+      <input type="date" name="bm_date_start" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
+    </div>
+    <div>
+      <label class="block text-xs font-bold text-gray-600 mb-1">Até</label>
+      <input type="date" name="bm_date_end" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
+    </div>
+  </div>
+
+  <div>
+    <label class="block text-xs font-bold text-gray-600 mb-1">Sujeito</label>
+    <select name="bm_subject" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
+      <option value="all" selected>Todos</option>
+      <option value="student">Aluno Específico</option>
+      <option value="class">Turma</option>
+    </select>
+  </div>
+
+  <div id="bm-subject-options">
+    <div id="bm-student-select" class="hidden">
+      <label class="block text-xs font-bold text-gray-600 mb-1">Aluno</label>
+      <input type="text" id="bm-student-search-input" placeholder="Digite o nome..." class="w-48 px-3 py-2 border border-gray-300 rounded-md text-sm">
+      <div id="bm-student-search-results" class="max-h-32 overflow-y-auto mt-1"></div>
+      <input type="hidden" name="bm_subject_id" id="bm-subject-id">
+    </div>
+    <div id="bm-class-select" class="hidden">
+      <label class="block text-xs font-bold text-gray-600 mb-1">Turma</label>
+      <input type="text" name="bm_group" placeholder="Ex: 1º Ano" class="w-28 px-3 py-2 border border-gray-300 rounded-md text-sm">
+    </div>
+  </div>
+
+  <div id="bm-custom-options" class="hidden w-full mt-2 p-3 bg-gray-50 rounded-md">
+    <label class="text-sm font-bold text-gray-700">Colunas:</label>
+    <div class="flex flex-wrap gap-4 mt-2">
+      <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="name" checked> Nome</label>
+      <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="group"> Turma</label>
+      <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="books_read" checked> Livros Lidos</label>
+      <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="reviews"> Resenhas</label>
+      <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="videos"> Vídeos</label>
+      <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="xp"> XP</label>
+      <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="badges"> Medalhas</label>
+      <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="penalties"> Multas</label>
+    </div>
+    <div class="mt-3">
+      <label class="text-sm font-bold text-gray-700">Ordenar por:</label>
+      <select name="bm_custom_sort" class="ml-2 px-3 py-2 border border-gray-300 rounded-md text-sm">
+        <option value="name">Nome</option>
+        <option value="xp">XP</option>
+        <option value="books_read">Livros Lidos</option>
+      </select>
+    </div>
+  </div>
+
+  <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors">Gerar Relatório</button>
+
+  <button type="button" id="bm-export-pdf" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium text-sm transition-colors">Exportar PDF</button>
+
+</form>
+
+<div id="bm-report-result" class="space-y-6">
+
+  <div id="bm-welcome" class="text-center py-12 text-gray-400">
+    Selecione os filtros e clique em Gerar Relatório
+  </div>
+
+  <div id="bm-loading" class="hidden text-center py-8">
+    <span class="animate-pulse text-gray-500">Carregando...</span>
+  </div>
+
+  <div id="bm-empty" class="hidden text-center py-8">
+    <svg class="w-12 h-12 mx-auto text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M3 8l9-5 9 5v8l-9 5-9-5V8z" stroke-linecap="round" stroke-linejoin="round"></path>
+      <path d="M3 8l9 5 9-5" stroke-linecap="round" stroke-linejoin="round"></path>
+      <path d="M12 13v8" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+    <p class="mt-2 text-gray-500">Nenhum dado encontrado para este período.</p>
+  </div>
+
+  <div data-section="report-title" class="hidden">
+    <h2 class="text-xl font-bold text-gray-900"></h2>
+    <p class="text-sm text-gray-500"></p>
+  </div>
+
+  <div data-section="kpi-cards" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-blue-500 hover:shadow-md transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider"></p>
+          <p class="text-2xl font-bold text-gray-900 mt-1"></p>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+          <svg class="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"></circle>
+          </svg>
+        </div>
+      </div>
+      <div class="mt-3 flex items-center gap-1">
+        <span class="text-xs font-medium text-green-600"></span>
+        <span class="text-xs text-gray-400"></span>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-emerald-500 hover:shadow-md transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider"></p>
+          <p class="text-2xl font-bold text-gray-900 mt-1"></p>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
+          <svg class="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"></circle>
+          </svg>
+        </div>
+      </div>
+      <div class="mt-3 flex items-center gap-1">
+        <span class="text-xs font-medium text-green-600"></span>
+        <span class="text-xs text-gray-400"></span>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-red-500 hover:shadow-md transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider"></p>
+          <p class="text-2xl font-bold text-gray-900 mt-1"></p>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+          <svg class="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"></circle>
+          </svg>
+        </div>
+      </div>
+      <div class="mt-3 flex items-center gap-1">
+        <span class="text-xs font-medium text-green-600"></span>
+        <span class="text-xs text-gray-400"></span>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-amber-500 hover:shadow-md transition-shadow">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wider"></p>
+          <p class="text-2xl font-bold text-gray-900 mt-1"></p>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
+          <svg class="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"></circle>
+          </svg>
+        </div>
+      </div>
+      <div class="mt-3 flex items-center gap-1">
+        <span class="text-xs font-medium text-green-600"></span>
+        <span class="text-xs text-gray-400"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <div data-section="bar-chart" data-component="bm-chart" class="hidden bg-white rounded-xl p-5 shadow-sm">
+    <h3 class="text-base font-semibold text-gray-800 mb-4"></h3>
+    <div id="bm-chart-container" class="space-y-3 max-w-xl"></div>
+  </div>
+
+  <div data-section="data-table" class="hidden bg-white rounded-xl shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr></tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100"></tbody>
+    </table>
+  </div>
+
+</div>
