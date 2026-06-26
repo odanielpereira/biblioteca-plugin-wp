@@ -1562,7 +1562,7 @@ function bm_render_reports_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     
     // Enqueues condicionais
-    wp_enqueue_style('bm-tailwind', plugin_dir_url(__FILE__) . '../assets/css/tailwind-custom.css', array(), '1.0');
+    wp_enqueue_style('bm-tailwind', plugin_dir_url(__FILE__) . '../assets/css/tailwind.min.css', array(), '1.0');
     wp_enqueue_script('bm-reports-dashboard', plugin_dir_url(__FILE__) . '../assets/js/reports-dashboard.js', array(), '1.0', true);
     wp_localize_script('bm-reports-dashboard', 'bmReports', array(
         'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -1675,6 +1675,7 @@ function bm_render_reports_page() {
         </form>
 
         <div id="bm-report-result" class="space-y-6">
+            <div id="bm-dashboard" class="hidden"></div>
             <div id="bm-welcome" class="text-center py-12 text-gray-400">
                 <?php _e('Selecione os filtros e clique em Gerar Relatório', 'book-manager'); ?>
             </div>

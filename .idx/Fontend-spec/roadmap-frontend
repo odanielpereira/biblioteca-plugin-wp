@@ -161,60 +161,78 @@
 
 ## Fase 4 — Experiência Visual e Dashboard Interativo
 
+#### 4.0 — Instalação do Tailwind CSS completo
+*   **Descrição:** Substituir o CSS manual por Tailwind CSS v3.4.19 compilado localmente.
+*   **Arquivos:** `assets/css/tailwind.min.css`, `includes/admin-service.php`, `tailwind.config.js`, `input.css`
+*   **Tarefas:**
+    1.  [x] Instalar Tailwind CSS globalmente via `npm install -g tailwindcss@3.4.19`.
+    2.  [x] Criar arquivo de entrada `input.css` com diretivas `@tailwind base/components/utilities`.
+    3.  [x] Criar `tailwind.config.js` com `content` apontando para `./includes/**/*.php` e `./assets/js/**/*.js`.
+    4.  [x] Compilar CSS final com `tailwindcss -i ./input.css -o ./assets/css/tailwind.min.css --minify`.
+    5.  [x] Alterar `admin-service.php` para carregar `tailwind.min.css` em vez de `tailwind-custom.css`.
+*   **Critério de saída:** O dashboard tem acesso a todas as classes do Tailwind. Arquivo 100% local, sem CDN.
+
 #### 4.1 — Refatorar Visão Geral como Dashboard Central
 *   **Descrição:** Substituir a atual "Visão Geral" (apenas 4 KPIs e um gráfico) por um painel rico com todas as seções do wireframe final.
-*   **Arquivos:** `includes/admin-service.php` (HTML), `assets/js/reports-dashboard.js`, `assets/css/tailwind-custom.css`
+*   **Arquivos:** `includes/admin-service.php` (HTML), `assets/js/reports-dashboard.js`, `assets/css/tailwind.min.css`
 *   **Tarefas:**
-    1.  [ ] Criar novo HTML base para a Visão Geral com grid de 4 colunas e seções definidas.
-    2.  [ ] Implementar função JS `bmCreateKPICard(label, value, variance, sparklineData, period, drillTarget)`.
-    3.  [ ] Adicionar 10 cards KPI na primeira linha (empréstimos, devoluções, atrasos, reservas, média, taxa devolução, tempo médio, giro, multas, resenhas, vídeos, participação).
-    4.  [ ] Adicionar cards de destaque (Aluno do Período, Livro do Período, Aluno Revelação) com fotos e links de drill-down.
-    5.  [ ] Adicionar cards de gráfico (Tendência de Leitura, Gêneros Mais Lidos) com toggles [Barras│Linha│Pizza] independentes.
-    6.  [ ] Adicionar cards de ranking com toggle [1│3│5│10] (Top Leitores, Top Resenhadores, Top Video-Resenhadores, Livros Mais Emprestados, Livros Mais Resenhados, Livros com Mais Vídeos, Autor Mais Lido, Ranking de Turmas).
-    7.  [ ] Adicionar cards de alerta/status (Alunos Inativos, Alertas de Atraso, Livros com Fila de Espera, Livros Nunca Emprestados).
-    8.  [ ] Adicionar cards de utilidades (Últimos Livros Cadastrados, Sugestões de Aquisição, Atividade Recente, Meta de Leitura, Sazonalidade, Leitura por Série).
-    9.  [ ] Implementar drill-down em todos os cards com link "Ver relatório completo".
-    10. [ ] Testar cada card com dados reais.
-*   **Critério de saída:** A Visão Geral exibe todas as seções do wireframe, cada card tem seu próprio seletor de período e toggles, e os links de drill-down levam ao relatório correspondente com os filtros aplicados.
+    1.  [x] Criar novo HTML base para a Visão Geral com grid de 4 colunas e seções definidas.
+    2.  [x] Implementar função JS `bmCreateKPICard(label, value, variance, period, drillTarget)`.
+    3.  [x] Adicionar 12 cards KPI em 3 linhas (empréstimos, devoluções, atrasos, reservas, média, taxa devolução, tempo médio, giro, multas, resenhas, vídeos, participação).
+    4.  [x] Adicionar cards de destaque (Aluno do Período, Livro do Período) — Aluno Revelação não implementado por falta de dados no PHP.
+    5.  [x] Adicionar cards de gráfico (Tendência de Leitura, Gêneros Mais Lidos) com toggles [Barras│Linha│Pizza] independentes.
+    6.  [x] Adicionar cards de ranking com toggle [1│3│5│10] e mini barras de progresso (Top Leitores, Top Resenhadores, Top Video-Resenhadores, Livros Mais Emprestados, Autor Mais Lido, Ranking de Turmas).
+    7.  [x] Adicionar cards de alerta/status (Alunos Inativos, Atrasos +7 dias, Livros com Fila de Espera, Livros Nunca Emprestados).
+    8.  [x] Adicionar cards de utilidades (Sugestões de Aquisição, Atividade Recente, Meta de Leitura).
+    9.  [x] Implementar drill-down inline (relatório abre abaixo do dashboard sem recarregar a página) com botão "← Voltar para Visão Geral".
+    10. [x] Testar Visão Geral com dados reais — todos os cards renderizam.
+*   **Critério de saída:** A Visão Geral exibe múltiplas seções com cards, cada card tem seu próprio seletor de período e toggles, e o drill-down inline funciona.
 
 #### 4.2 — Novos endpoints PHP para dados faltantes
 *   **Descrição:** Criar funções PHP que alimentam os novos cards da Visão Geral.
 *   **Arquivos:** `includes/reports.php`
 *   **Tarefas:**
-    1.  [ ] Criar `bm_report_top_reviewers($since, $until, $limit)` — agrupa resenhas por aluno.
-    2.  [ ] Criar `bm_report_top_video_reviewers($since, $until, $limit)` — agrupa vídeo-resenhas por aluno.
-    3.  [ ] Criar `bm_report_most_reviewed_books($since, $until, $limit)` — agrupa resenhas por livro.
-    4.  [ ] Criar `bm_report_most_video_reviewed_books($since, $until, $limit)` — agrupa vídeo-resenhas por livro.
-    5.  [ ] Criar `bm_report_never_borrowed_books()` — livros sem nenhum empréstimo registrado.
-    6.  [ ] Criar `bm_report_recent_activity($limit)` — últimas ações de circulação.
-    7.  [ ] Criar `bm_report_author_ranking($since, $until, $limit)` — agrupa `top_books` por autor.
-    8.  [ ] Adaptar `bm_ajax_get_report_data()` para aceitar parâmetro `limit` e `top_type`.
-    9.  [ ] Testar todos os novos endpoints via console (F12) com `fetch()`.
-*   **Critério de saída:** Todos os endpoints retornam JSON com os contratos necessários para os cards da Visão Geral.
+    1.  [x] Criar `bm_report_dashboard_overview($since, $until)` — endpoint único que agrega todos os dados da Visão Geral.
+    2.  [x] Criar `bm_report_most_reviewed_books($since, $until, $limit)` — agrupa resenhas por livro.
+    3.  [x] Criar `bm_report_most_video_reviewed_books($since, $until, $limit)` — agrupa vídeo-resenhas por livro.
+    4.  [x] Criar `bm_report_never_borrowed_books()` — livros sem nenhum empréstimo registrado.
+    5.  [x] Criar `bm_report_recent_activity($limit)` — últimas ações de circulação.
+    6.  [ ] Criar `bm_report_top_reviewers($since, $until, $limit)` — agrupa resenhas por aluno.
+    7.  [ ] Criar `bm_report_top_video_reviewers($since, $until, $limit)` — agrupa vídeo-resenhas por aluno.
+    8.  [ ] Criar `bm_report_author_ranking($since, $until, $limit)` — função separada para autor (atualmente é calculado dentro da dashboard).
+    9.  [ ] Adaptar `bm_ajax_get_report_data()` para aceitar parâmetro `limit` e `top_type`.
+*   **Critério de saída:** O endpoint `overview` retorna todos os dados necessários para os 30+ cards da Visão Geral.
 
 #### 4.3 — Componente de card reutilizável (JavaScript)
-*   **Descrição:** Criar função `bmCreateCard()` que gera o HTML, popula dados e adiciona os listeners de toggle e drill-down automaticamente.
+*   **Descrição:** Criar funções modulares para cada tipo de card, com listeners de toggle e drill-down.
 *   **Arquivos:** `assets/js/reports-dashboard.js`
 *   **Tarefas:**
-    1.  [ ] Definir estrutura base do card: título, valor principal, variação, seletor de período, botões de toggle, área de gráfico/lista, link de drill-down.
-    2.  [ ] Implementar `bmCreateCard(container, config)` — renderiza o card e armazena referências.
-    3.  [ ] Implementar `bmUpdateCard(cardInstance, newData)` — atualiza valores e gráfico sem recriar o card.
-    4.  [ ] Adicionar lógica de toggle de período independente (ao mudar o `<select>`, chama o endpoint com o novo período).
-    5.  [ ] Adicionar lógica de toggle de visualização (ao clicar em [Barras│Linha│Pizza], troca o gráfico).
-    6.  [ ] Adicionar lógica de toggle [1│3│5│10] para rankings (atualiza o `limit` e refaz a chamada).
-    7.  [ ] Adicionar lógica de drill-down (ao clicar no link, navega para `page=bm_reports&type=X&period=Y&subject=Z`).
-*   **Critério de saída:** Qualquer card pode ser criado com `bmCreateCard()`, atualizado com `bmUpdateCard()`, e responde a toggles e drill-down sem recarregar a página.
+    1.  [x] Criar `bmCreateKPICard()` — card de indicador com valor, variação e seletor de período.
+    2.  [x] Criar `bmCreateHighlightCard()` — card de destaque (Aluno, Livro, Revelação).
+    3.  [x] Criar `bmCreateChartCard()` — card com gráfico e toggles [Barras│Linha│Pizza].
+    4.  [x] Criar `bmCreateRankingCard()` — card de ranking com toggle [1│3│5│10] e mini barras.
+    5.  [x] Criar `bmCreateAlertCard()` — card de alerta com lista de nomes.
+    6.  [x] Criar `bmCreateUtilityCard()` — card de utilidades (sugestões, atividade, nunca emprestados).
+    7.  [x] Criar `bmDrillToReportInline()` — drill-down que abre seção abaixo do dashboard.
+    8.  [x] Implementar `bmRenderBarChartInContainer()`, `bmRenderPieChartInContainer()`, `bmRenderLineChartInContainer()` — renderizadores inline para os cards.
+    9.  [ ] Unificar todas as funções em um único `bmCreateCard(container, config)` genérico.
+    10. [ ] Implementar `bmUpdateCard(cardInstance, newData)` para atualização sem recriar.
+*   **Critério de saída:** Cards renderizam com dados reais, toggles e drill-down funcionam.
 
 #### 4.4 — Testes e ajustes finos
 *   **Descrição:** Validar todos os cards da Visão Geral com dados reais e corrigir problemas visuais.
 *   **Tarefas:**
-    1.  [ ] Testar cada KPI card com diferentes períodos.
-    2.  [ ] Testar cada card de ranking com toggles 1/3/5/10.
-    3.  [ ] Testar cada card de gráfico com toggles Barras/Linha/Pizza.
-    4.  [ ] Testar drill-down de cada card — verificar se abre o relatório correto com filtros aplicados.
-    5.  [ ] Testar responsividade (desktop, tablet, mobile).
-    6.  [ ] Corrigir bugs visuais e de carregamento.
-*   **Critério de saída:** Todos os 30+ cards funcionam com dados reais, toggles respondem corretamente, drill-down abre o relatório certo.
+    1.  [x] Testar Visão Geral — todos os cards renderizam com dados reais.
+    2.  [x] Testar drill-down inline — seção abre abaixo do dashboard com botão "Voltar".
+    3.  [x] Testar toggles de gráfico (Barras/Linha/Pizza) nos cards.
+    4.  [x] Testar toggles de ranking (1/3/5/10) nos cards.
+    5.  [x] Testar mini barras de progresso nos rankings.
+    6.  [ ] Testar cada card KPI com diferentes períodos.
+    7.  [ ] Testar relatórios individuais (desempenho, turma, multas, configurável).
+    8.  [ ] Testar responsividade (desktop, tablet, mobile).
+    9.  [ ] Testar exportação PDF com dados reais.
+    10. [ ] Corrigir bugs visuais e de carregamento.
+*   **Critério de saída:** O dashboard funciona com dados reais, toggles respondem, drill-down funciona.
 
 ---
 
@@ -232,7 +250,7 @@
 
 #### 5.2 — Redimensionamento de cards
 *   **Descrição:** Permitir que o gestor redimensione cards individualmente para ocupar 1, 2, 3 ou 4 colunas.
-*   **Arquivos:** `assets/js/reports-dashboard.js`, `assets/css/tailwind-custom.css`
+*   **Arquivos:** `assets/js/reports-dashboard.js`, `assets/css/tailwind.min.css`
 *   **Tarefas:**
     1.  [ ] Adicionar cantos de redimensionamento (`resize: both` CSS) ou handle inferior-direito nos cards.
     2.  [ ] Implementar lógica para ajustar a classe de coluna do card ao redimensionar (col-span-1 a col-span-4).

@@ -276,6 +276,19 @@
 /* ==========================================
    ANIMAÇÕES
    ========================================== */
+
+/* ==========================================
+   CARDS CLICÁVEIS (DASHBOARD)
+   ========================================== */
+.bm-card-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.bm-card-clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
 @keyframes bm-slide-in {
   from {
     opacity: 0;

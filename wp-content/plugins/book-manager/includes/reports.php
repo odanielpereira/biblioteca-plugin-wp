@@ -50,7 +50,7 @@ function bm_generate_report($args = array()) {
     
     switch ($args['type']) {
         case 'overview':
-            return bm_report_overview($since, $until);
+            return bm_report_dashboard_overview($since, $until);
         case 'student_performance':
             if ($args['subject_id'] > 0) {
                 return bm_report_student_performance($args['subject_id'], $since, $until);
@@ -116,7 +116,6 @@ function bm_report_overview($since, $until) {
         }
     }
     
-    // Buscar alunos inativos
     $inactive_students = array();
     $all_students = get_users(array('role' => 'bm_student', 'number' => 200));
     foreach ($all_students as $student) {
@@ -126,7 +125,6 @@ function bm_report_overview($since, $until) {
         }
     }
     
-    // Calcular período anterior para variação percentual
     $period_length = $until - $since;
     $prev_since = $since - $period_length;
     $prev_until = $since;
@@ -160,6 +158,259 @@ function bm_report_overview($since, $until) {
         'period_start' => date('d/m/Y', $since),
         'period_end' => date('d/m/Y', $until),
     );
+}
+
+function bm_report_dashboard_overview($since, $until) {
+function bm_report_most_reviewed_books($since, $until, $limit = 5) {
+    $all_students = get_users(array('role' => 'bm_student', 'number' => 200));
+    $book_review_counts = array();
+    
+    foreach ($all_students as $student) {
+        $reading_log = get_user_meta($student->ID, '_bm_reading_log', true) ?: array();
+        foreach ($reading_log as $log) {
+            $log_time = isset($log['date']) ? strtotime($log['date']) : 0;
+            if ($log_time >= $since && $log_time <= $until && !empty($log['review'])) {
+                $book_id = $log['book_id'];
+                if (!isset($book_review_counts[$book_id])) $book_review_counts[$book_id] = 0;
+                $book_review_counts[$book_id]++;
+            }
+        }
+    }
+    
+    arsort($book_review_counts);
+    $result = array();
+    $count = 0;
+    foreach ($book_review_counts as $book_id => $reviews) {
+        if ($count >= $limit) break;
+        $book = get_post($book_id);
+        if ($book) {
+            $result[] = array(
+                'name' => $book->post_title,
+                'reviews' => $reviews,
+            );
+            $count++;
+        }
+    }
+    return $result;
+}
+
+function bm_report_most_video_reviewed_books($since, $until, $limit = 5) {
+function bm_report_never_borrowed_books() {
+    function bm_report_recent_activity($limit = 5) {
+    $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'publish'));
+    $recent = array();
+    
+    foreach ($all_books as $book) {
+        $reservations = get_post_meta($book->ID, '_bm_reservations', true) ?: array();
+        foreach (array_reverse($reservations) as $r) {
+            if (count($recent) >= $limit) break 2;
+            $user_name = '';
+            if (!empty($r['user_id'])) {
+                $user = get_userdata($r['user_id']);
+                $user_name = $user ? $user->display_name : '#' . $r['user_id'];
+            }
+            $action = '';
+            if ($r['status'] === 'returned') $action = '📥 ' . $user_name . ' devolveu ' . $book->post_title;
+            elseif ($r['status'] === 'active' && !empty($r['loan_date'])) $action = '📤 ' . $user_name . ' pegou ' . $book->post_title;
+            elseif ($r['status'] === 'waiting') $action = '📋 ' . $user_name . ' reservou ' . $book->post_title;
+            if ($action) $recent[] = $action;
+        }
+    }
+    return $recent;
+}
+    $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'publish'));
+    $never_borrowed = array();
+    
+    foreach ($all_books as $book) {
+        $reservations = get_post_meta($book->ID, '_bm_reservations', true) ?: array();
+        $has_loans = false;
+        foreach ($reservations as $r) {
+            if ($r['status'] === 'active' || $r['status'] === 'returned') {
+                $has_loans = true;
+                break;
+            }
+        }
+        if (!$has_loans) {
+            $never_borrowed[] = $book->post_title;
+        }
+    }
+    return $never_borrowed;
+}
+    $all_students = get_users(array('role' => 'bm_student', 'number' => 200));
+    $book_video_counts = array();
+    
+    foreach ($all_students as $student) {
+        $reading_log = get_user_meta($student->ID, '_bm_reading_log', true) ?: array();
+        foreach ($reading_log as $log) {
+            $log_time = isset($log['date']) ? strtotime($log['date']) : 0;
+            if ($log_time >= $since && $log_time <= $until && !empty($log['video_url'])) {
+                $book_id = $log['book_id'];
+                if (!isset($book_video_counts[$book_id])) $book_video_counts[$book_id] = 0;
+                $book_video_counts[$book_id]++;
+            }
+        }
+    }
+    
+    arsort($book_video_counts);
+    $result = array();
+    $count = 0;
+    foreach ($book_video_counts as $book_id => $videos) {
+        if ($count >= $limit) break;
+        $book = get_post($book_id);
+        if ($book) {
+            $result[] = array(
+                'name' => $book->post_title,
+                'videos' => $videos,
+            );
+            $count++;
+        }
+    }
+    return $result;
+}
+    // KPIs básicos
+    $overview = bm_report_overview($since, $until);
+    
+    // Desempenho dos alunos
+    $performance = bm_report_all_students_performance($since, $until);
+    
+    // Ranking por gênero
+    $genre_ranking = bm_report_genre_ranking($since, $until);
+    
+    // Livros mais emprestados
+    $top_books = bm_report_top_books($since, $until);
+    
+    // Tendência de leitura
+    $reading_trend = bm_report_reading_trend('', $since, $until);
+    
+    // Top resenhadores (calculado a partir do performance)
+    $top_reviewers = array();
+    if (!empty($performance['students'])) {
+        $reviewers = $performance['students'];
+        usort($reviewers, function($a, $b) { return ($b['reviews'] ?? 0) - ($a['reviews'] ?? 0); });
+        foreach ($reviewers as $r) {
+            if (($r['reviews'] ?? 0) > 0) {
+                $top_reviewers[] = array('name' => $r['name'], 'reviews' => $r['reviews']);
+            }
+        }
+    }
+    
+    // Top video-resenhadores
+    $top_video_reviewers = array();
+    if (!empty($performance['students'])) {
+        $video_reviewers = $performance['students'];
+        usort($video_reviewers, function($a, $b) { return ($b['videos'] ?? 0) - ($a['videos'] ?? 0); });
+        foreach ($video_reviewers as $r) {
+            if (($r['videos'] ?? 0) > 0) {
+                $top_video_reviewers[] = array('name' => $r['name'], 'videos' => $r['videos']);
+            }
+        }
+    }
+    
+    // Top autores (agrupado de top_books)
+    $top_authors = array();
+    if (!empty($top_books['books'])) {
+        $author_counts = array();
+        foreach ($top_books['books'] as $book) {
+            $author = $book['author'] ?: __('Desconhecido', 'book-manager');
+            if (!isset($author_counts[$author])) $author_counts[$author] = 0;
+            $author_counts[$author] += $book['loans'];
+        }
+        arsort($author_counts);
+        foreach ($author_counts as $author => $loans) {
+            $top_authors[] = array('name' => $author, 'loans' => $loans);
+        }
+    }
+    
+    // Livros mais resenhados e com vídeos
+    $most_reviewed_books = bm_report_most_reviewed_books($since, $until, 5);
+    $most_video_books = bm_report_most_video_reviewed_books($since, $until, 5);
+    $never_borrowed = bm_report_never_borrowed_books();
+    $recent_activity = bm_report_recent_activity(5);
+    $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'publish'));
+    $all_students = get_users(array('role' => 'bm_student', 'number' => 200));
+    
+    // Livros com fila de espera
+    $books_with_queue = array();
+    foreach ($all_books as $book) {
+        $reservations = get_post_meta($book->ID, '_bm_reservations', true) ?: array();
+        $waiting = 0;
+        foreach ($reservations as $r) {
+            if ($r['status'] === 'waiting') $waiting++;
+        }
+        if ($waiting >= 2) {
+            $books_with_queue[] = $book->post_title . ' (' . $waiting . ')';
+        }
+    }
+    
+    // Alunos com atraso +7 dias
+    $overdue_students = array();
+    foreach ($all_students as $student) {
+        $loan_history = get_user_meta($student->ID, '_bm_loan_history', true) ?: array();
+        foreach ($loan_history as $loan) {
+            if ($loan['status'] === 'active' && isset($loan['due_date'])) {
+                $due_time = strtotime($loan['due_date']);
+                $days_late = floor((current_time('timestamp') - $due_time) / DAY_IN_SECONDS);
+                if ($days_late >= 7) {
+                    $book_title = get_the_title($loan['book_id']);
+                    $overdue_students[] = $student->display_name . ' — ' . $book_title . ' (' . $days_late . 'd)';
+                    break;
+                }
+            }
+        }
+    }
+    
+    // Ranking de turmas
+    $class_ranking = array();
+    $groups = array();
+    foreach ($all_students as $student) {
+        $group = get_user_meta($student->ID, '_bm_user_' . sanitize_key('Turma'), true);
+        if ($group && !in_array($group, $groups)) $groups[] = $group;
+    }
+    foreach ($groups as $group) {
+        $class_data = bm_report_class_reading($group, $since, $until);
+        if (!isset($class_data['error'])) {
+            $class_ranking[] = array('name' => $group, 'average' => $class_data['average']);
+        }
+    }
+    usort($class_ranking, function($a, $b) { return ($b['average'] ?? 0) - ($a['average'] ?? 0); });
+    
+    // Sugestões de aquisição
+    $suggestions = get_option('bm_acquisition_suggestions', array());
+    $acquisition_count = count($suggestions);
+    
+    // Meta de leitura
+    $reading_goal = array(
+        'current' => $performance['total_books'] ?? 0,
+        'target' => 500,
+    );
+    
+    
+    return array_merge($overview, array(
+        'students' => $performance['students'] ?? array(),
+        'total_students' => $performance['total_students'] ?? 0,
+        'total_books' => $performance['total_books'] ?? 0,
+        'total_reviews' => $performance['total_reviews'] ?? 0,
+        'total_videos' => $performance['total_videos'] ?? 0,
+        'total_penalties' => $performance['total_penalties'] ?? 0,
+        'genres' => $genre_ranking['genres'] ?? array(),
+        'books' => $top_books['books'] ?? array(),
+        'months' => $reading_trend['months'] ?? array(),
+        'top_reviewers' => $top_reviewers,
+        'top_video_reviewers' => $top_video_reviewers,
+        'top_authors' => $top_authors,
+        'most_reviewed_books' => $most_reviewed_books,
+        'most_video_books' => $most_video_books,
+        'never_borrowed' => $never_borrowed,
+        'books_with_queue' => $books_with_queue,
+        'overdue_students' => $overdue_students,
+        'class_ranking' => $class_ranking,
+        'acquisition_suggestions_count' => $acquisition_count,
+        'reading_goal' => $reading_goal,
+        'recent_activity' => $recent_activity,
+        'recent_books' => array(),
+        'top_book' => !empty($top_books['books']) ? $top_books['books'][0] : null,
+        'revelation_student' => null,
+    ));
 }
 
 function bm_report_all_students_performance($since, $until) {
