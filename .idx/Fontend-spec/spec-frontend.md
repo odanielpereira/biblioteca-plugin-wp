@@ -285,3 +285,111 @@ Cada tipo de relatório retorna um JSON com chaves específicas. O JavaScript es
 3. Para calcular a variação percentual nos KPIs, o PHP deve incluir as chaves com sufixo `_prev` (ex: `total_loans_prev`).
 4. A chave `inactive_students` é um array simples de nomes. O JS converte para a lista de alertas.
 5. A chave `students` no `student_performance` e `class_reading` é ordenada do maior para o menor (por `books_read`). O JS usa os 3 primeiros para o Ranking Top 3.
+
+# Spec Final de Frontend — Dashboard de Relatórios (Book Manager)
+
+## 1. Stack Tecnológica
+*   **Engine (Backend):** PHP 8.x (WordPress API).
+*   **Interface (Frontend):** Tailwind CSS (via arquivo local `tailwind-custom.css`), Grid Layout (estilo Bento).
+*   **Comunicação:** AJAX (JSON Bridge) via `admin-ajax.php`.
+*   **Componentes:** Cards de indicadores, Tabelas responsivas, Gráficos SVG inline (Barras, Pizza/Donut, Linha).
+*   **Interatividade (Fase 5):** Drag-and-drop (HTML5 API nativa), resize de cards (CSS + JS), personalização salva por usuário.
+
+## 2. Arquitetura da Interface
+A página de relatórios possui dois modos:
+
+### 2.1 Visão Geral (Dashboard Central)
+A tela inicial (`type=overview`) exibe um painel rico com múltiplos cards dispostos em grid de 4 colunas (1 em mobile, 2 em tablet, 4 em desktop). Cada card é independente:
+
+| Linha | Conteúdo | Cards |
+|-------|----------|-------|
+| 1 | KPIs principais | Empréstimos, Devoluções, Em Atraso, Reservas |
+| 2 | KPIs secundários | Média por Aluno, Taxa de Devolução, Tempo Médio de Leitura, Giro do Acervo |
+| 3 | KPIs de engajamento | Multas Ativas, Total de Resenhas, Vídeo-Resenhas, Taxa de Participação |
+| 4 | Destaques | Aluno do Período, Livro do Período, Aluno Revelação |
+| 5 | Gráficos | Tendência de Leitura, Gêneros Mais Lidos |
+| 6 | Rankings de alunos | Top Leitores, Top Resenhadores, Top Video-Resenhadores, Ranking de Turmas |
+| 7 | Rankings de livros | Livros Mais Emprestados, Livros Mais Resenhados, Livros com Mais Vídeos, Autor Mais Lido |
+| 8 | Alertas e status | Alunos Inativos, Alertas de Atraso (+7 dias), Livros com Fila de Espera, Livros Nunca Emprestados |
+| 9 | Acervo e utilidades | Últimos Livros Cadastrados, Sugestões de Aquisição, Atividade Recente |
+| 10 | Análises gráficas | Sazonalidade (calendário), Leitura por Série/Ano |
+| 11 | Meta | Meta de Leitura (barra de progresso) |
+
+### 2.2 Relatórios Individuais (Drill-down)
+Os demais tipos de relatório (`student_performance`, `class_reading`, `genre_ranking`, `top_books`, `reading_trend`, `active_penalties`, `custom`) são acessados via:
+- Dropdown de tipo na toolbar (navegação direta).
+- **Drill-down:** clique no link "Ver relatório completo" de qualquer card da Visão Geral, que abre o relatório correspondente com período e sujeito já aplicados.
+
+## 3. Comportamento dos Cards (Visão Geral)
+Cada card da Visão Geral é um componente autônomo com as seguintes capacidades:
+
+### 3.1 Seletor de Período Independente
+Cards que exibem dados temporais possuem um `<select>` interno com opções: Semana, Mês, Bimestre, Semestre, Ano. Ao alterar, apenas aquele card é recarregado via AJAX com o novo período.
+
+### 3.2 Toggle de Visualização
+Cards de gráfico (Tendência, Gêneros, Sazonalidade) possuem botões `[Barras | Linha | Pizza]`. Ao clicar, o gráfico é redimensionado no mesmo container sem recarregar a página.
+
+### 3.3 Toggle de Quantidade
+Cards de ranking (Top Leitores, Top Livros, etc.) possuem botões `[1 | 3 | 5 | 10]`. Ao clicar, o número de itens exibidos muda e uma nova requisição AJAX é feita com o `limit` correspondente.
+
+### 3.4 Drill-down
+Todo card que representa uma entidade específica (aluno, livro, turma) ou um indicador agregado possui um link "Ver relatório completo" que navega para `page=bm_reports` com os parâmetros `bm_report_type`, `bm_period`, `bm_subject` e `bm_subject_id` preenchidos, abrindo o relatório detalhado correspondente.
+
+### 3.5 Atualização Assíncrona
+Nenhum card recarrega a página inteira. Toda mudança de período, toggle ou drill-down usa `fetch()` para obter novos dados do endpoint `bm_get_report_data` e atualiza apenas o card afetado.
+
+## 4. Novos Endpoints e Contratos de Dados
+### 4.1 Endpoints existentes (já em `reports.php`)
+- `bm_report_overview`, `bm_report_all_students_performance`, `bm_report_student_performance`, `bm_report_class_reading`, `bm_report_active_penalties`, `bm_report_genre_ranking`, `bm_report_top_books`, `bm_report_reading_trend`, `bm_report_custom`.
+
+### 4.2 Novos endpoints (Fase 4.2)
+| Função PHP | Retorno | Uso no Card |
+|------------|---------|-------------|
+| `bm_report_top_reviewers` | `[{name, reviews}]` | Top Resenhadores |
+| `bm_report_top_video_reviewers` | `[{name, videos}]` | Top Video-Resenhadores |
+| `bm_report_most_reviewed_books` | `[{title, author, reviews}]` | Livros Mais Resenhados |
+| `bm_report_most_video_reviewed_books` | `[{title, author, videos}]` | Livros com Mais Vídeos |
+| `bm_report_never_borrowed_books` | `[{title, author}]` | Livros Nunca Emprestados |
+| `bm_report_recent_activity` | `[{action, user, book, date}]` | Atividade Recente |
+| `bm_report_author_ranking` | `[{author, loans}]` | Autor Mais Lido |
+
+### 4.3 Parâmetros adicionais no endpoint principal
+`bm_ajax_get_report_data` aceitará:
+- `limit` (int): quantidade de itens para rankings (1, 3, 5, 10).
+- `top_type` (string): tipo de ranking (`reviewers`, `video_reviewers`, `reviewed_books`, `video_reviewed_books`, `authors`).
+
+## 5. Requisitos de Drag-and-Drop e Resize (Fase 5)
+### 5.1 Drag-and-Drop
+- API nativa HTML5 (`draggable`, `dragstart`, `dragover`, `drop`). Sem bibliotecas externas.
+- Cada card possui uma alça de arraste (ícone no canto superior).
+- Placeholder visual indica a nova posição durante o arrasto.
+- A ordem é salva em `user_meta` (`_bm_dashboard_order`) via AJAX após cada movimento.
+- Ao carregar a página, a ordem salva é aplicada. Se não houver ordem salva, usa o layout padrão.
+
+### 5.2 Resize
+- Cada card possui um handle no canto inferior direito.
+- Redimensionamento usa `resize: both` CSS ou lógica JS com `mousedown/mousemove/mouseup`.
+- Larguras válidas: 1, 2, 3 ou 4 colunas (classes `col-span-1` a `col-span-4`).
+- A largura é salva em `user_meta` (`_bm_dashboard_sizes`) via AJAX após cada redimensionamento.
+- Ao carregar a página, as larguras salvas são aplicadas.
+
+### 5.3 Reset de Layout
+- Botão "Restaurar layout padrão" no topo da Visão Geral.
+- Remove `_bm_dashboard_order` e `_bm_dashboard_sizes` do usuário e recarrega.
+
+## 6. Barreiras Técnicas e Regras de Negócio
+*   **Segurança:** Toda requisição AJAX valida `nonce` (`bm_reports_nonce` ou `bm_service_nonce`) e `current_user_can('edit_bm_books')`.
+*   **Performance:** Cache via `bm_get_cached` (3600s) para endpoints pesados. Paginação implícita nos rankings (limite configurável).
+*   **Exportação:** O botão "Exportar PDF" da Visão Geral espelha os filtros ativos do relatório de Visão Geral.
+*   **Zero CDN:** Todos os assets (CSS, JS, SVGs) são locais. Nenhuma dependência externa.
+*   **Responsividade:** Grid adaptável: 4 colunas (desktop ≥1024px), 2 colunas (tablet ≥640px), 1 coluna (mobile).
+*   **HTML5 Drag and Drop:** API nativa do navegador, sem jQuery UI ou SortableJS externo.
+
+## 7. Mapa de Componentes por Tipo de Relatório
+*(Mantido da versão anterior, válido para relatórios individuais)*
+
+## 8. Catálogo de Funções JavaScript
+*(Mantido da versão anterior, com acréscimo de `bmCreateCard`, `bmUpdateCard`, drag-and-drop handlers)*
+
+## 9. Contrato de Dados
+*(Mantido da versão anterior, com acréscimo dos novos endpoints da seção 4)*

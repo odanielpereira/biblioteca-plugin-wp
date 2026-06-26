@@ -123,36 +123,128 @@
 *   **Descrição:** Aplicar as alterações do frontend no arquivo PHP de serviço.
 *   **Arquivo:** `includes/admin-service.php`
 *   **Tarefas:**
-    1.  [ ] Remover botão `#bm-export-pdf` duplicado (linha extra).
-    2.  [ ] Remover script inline de busca de aluno.
-    3.  [ ] Remover script inline de exportação PDF.
-    4.  [ ] Confirmar que `wp_localize_script` injeta `serviceNonce` e `ajaxUrl`.
-    5.  [ ] Adicionar novos slots HTML (`data-section`) conforme Fase 2.1.
+    1.  [x] Remover botão `#bm-export-pdf` duplicado (linha extra).
+    2.  [x] Remover script inline de busca de aluno.
+    3.  [x] Remover script inline de exportação PDF.
+    4.  [x] Confirmar que `wp_localize_script` injeta `serviceNonce` e `ajaxUrl`.
+    5.  [x] Adicionar novos slots HTML (`data-section`) conforme Fase 2.1.
 *   **Critério de saída:** Página carrega sem erros PHP. IDs únicos no DOM. Nenhum listener duplicado.
 
 #### 3.2 — Verificar contratos de dados nos endpoints
 *   **Descrição:** Garantir que cada endpoint PHP retorna as chaves JSON que o frontend espera.
 *   **Arquivo:** `includes/reports.php`
 *   **Tarefas:**
-    1.  [ ] Verificar `bm_report_overview()` — confirmar chaves `total_loans`, `total_returns`, `total_overdue`, `total_reservations`, `inactive_students`.
-    2.  [ ] Verificar `bm_report_genre_ranking()` — confirmar chave `genres` para pizza chart.
-    3.  [ ] Verificar `bm_report_reading_trend()` — confirmar chave `months` para line chart.
-    4.  [ ] Verificar `bm_report_all_students_performance()` — confirmar ranking para Top 3.
-    5.  [ ] Adicionar chave `inactive_students` ao relatório `overview` (alunos com 0 empréstimos no período).
+    1.  [x] Verificar `bm_report_overview()` — confirmar chaves `total_loans`, `total_returns`, `total_overdue`, `total_reservations`, `inactive_students`.
+    2.  [x] Verificar `bm_report_genre_ranking()` — confirmar chave `genres` para pizza chart.
+    3.  [x] Verificar `bm_report_reading_trend()` — confirmar chave `months` para line chart.
+    4.  [x] Verificar `bm_report_all_students_performance()` — confirmar ranking para Top 3.
+    5.  [x] Adicionar chave `inactive_students` ao relatório `overview` (alunos com 0 empréstimos no período).
 *   **Critério de saída:** `console.log(response.data)` mostra todas as chaves esperadas pelo frontend para cada tipo de relatório.
 
 #### 3.3 — Testar fluxo completo com dados reais
 *   **Descrição:** Validar todos os 8 tipos de relatório com dados do banco WordPress.
 *   **Tarefas:**
-    1.  [ ] Testar `overview` → KPIs preenchidos, variação calculada, inativos listados.
-    2.  [ ] Testar `student_performance` (todos) → ranking Top 3, tabela.
-    3.  [ ] Testar `student_performance` (individual) → KPIs, tabela de livros.
-    4.  [ ] Testar `class_reading` → média, ranking, inativos.
-    5.  [ ] Testar `active_penalties` → tabela de multas.
-    6.  [ ] Testar `genre_ranking` → pizza/donut chart.
-    7.  [ ] Testar `top_books` → tabela ranqueada.
-    8.  [ ] Testar `reading_trend` → gráfico de linha.
-    9.  [ ] Testar `custom` → colunas dinâmicas.
-    10. [ ] Testar exportação PDF com filtros ativos.
-    11. [ ] Testar busca de aluno com novo nonce (`serviceNonce`).
+    1.  [x] Testar `overview` → KPIs preenchidos, variação calculada, inativos listados.
+    2.  [x] Testar `student_performance` (todos) → ranking Top 3, tabela.
+    3.  [x] Testar `student_performance` (individual) → KPIs, tabela de livros.
+    4.  [x] Testar `class_reading` → média, ranking, inativos.
+    5.  [x] Testar `active_penalties` → tabela de multas.
+    6.  [x] Testar `genre_ranking` → pizza/donut chart.
+    7.  [x] Testar `top_books` → tabela ranqueada.
+    8.  [x] Testar `reading_trend` → gráfico de linha.
+    9.  [x] Testar `custom` → colunas dinâmicas.
+    10. [x] Testar exportação PDF com filtros ativos.
+    11. [x] Testar busca de aluno com novo nonce (`serviceNonce`).
 *   **Critério de saída:** Zero erros no console. Todos os gráficos renderizam com dados reais. Exportação PDF funcional. Nonce válido em todas as requisições AJAX.
+
+# Roadmap — Dashboard Power BI (Book Manager)
+
+## Fase 4 — Experiência Visual e Dashboard Interativo
+
+#### 4.1 — Refatorar Visão Geral como Dashboard Central
+*   **Descrição:** Substituir a atual "Visão Geral" (apenas 4 KPIs e um gráfico) por um painel rico com todas as seções do wireframe final.
+*   **Arquivos:** `includes/admin-service.php` (HTML), `assets/js/reports-dashboard.js`, `assets/css/tailwind-custom.css`
+*   **Tarefas:**
+    1.  [ ] Criar novo HTML base para a Visão Geral com grid de 4 colunas e seções definidas.
+    2.  [ ] Implementar função JS `bmCreateKPICard(label, value, variance, sparklineData, period, drillTarget)`.
+    3.  [ ] Adicionar 10 cards KPI na primeira linha (empréstimos, devoluções, atrasos, reservas, média, taxa devolução, tempo médio, giro, multas, resenhas, vídeos, participação).
+    4.  [ ] Adicionar cards de destaque (Aluno do Período, Livro do Período, Aluno Revelação) com fotos e links de drill-down.
+    5.  [ ] Adicionar cards de gráfico (Tendência de Leitura, Gêneros Mais Lidos) com toggles [Barras│Linha│Pizza] independentes.
+    6.  [ ] Adicionar cards de ranking com toggle [1│3│5│10] (Top Leitores, Top Resenhadores, Top Video-Resenhadores, Livros Mais Emprestados, Livros Mais Resenhados, Livros com Mais Vídeos, Autor Mais Lido, Ranking de Turmas).
+    7.  [ ] Adicionar cards de alerta/status (Alunos Inativos, Alertas de Atraso, Livros com Fila de Espera, Livros Nunca Emprestados).
+    8.  [ ] Adicionar cards de utilidades (Últimos Livros Cadastrados, Sugestões de Aquisição, Atividade Recente, Meta de Leitura, Sazonalidade, Leitura por Série).
+    9.  [ ] Implementar drill-down em todos os cards com link "Ver relatório completo".
+    10. [ ] Testar cada card com dados reais.
+*   **Critério de saída:** A Visão Geral exibe todas as seções do wireframe, cada card tem seu próprio seletor de período e toggles, e os links de drill-down levam ao relatório correspondente com os filtros aplicados.
+
+#### 4.2 — Novos endpoints PHP para dados faltantes
+*   **Descrição:** Criar funções PHP que alimentam os novos cards da Visão Geral.
+*   **Arquivos:** `includes/reports.php`
+*   **Tarefas:**
+    1.  [ ] Criar `bm_report_top_reviewers($since, $until, $limit)` — agrupa resenhas por aluno.
+    2.  [ ] Criar `bm_report_top_video_reviewers($since, $until, $limit)` — agrupa vídeo-resenhas por aluno.
+    3.  [ ] Criar `bm_report_most_reviewed_books($since, $until, $limit)` — agrupa resenhas por livro.
+    4.  [ ] Criar `bm_report_most_video_reviewed_books($since, $until, $limit)` — agrupa vídeo-resenhas por livro.
+    5.  [ ] Criar `bm_report_never_borrowed_books()` — livros sem nenhum empréstimo registrado.
+    6.  [ ] Criar `bm_report_recent_activity($limit)` — últimas ações de circulação.
+    7.  [ ] Criar `bm_report_author_ranking($since, $until, $limit)` — agrupa `top_books` por autor.
+    8.  [ ] Adaptar `bm_ajax_get_report_data()` para aceitar parâmetro `limit` e `top_type`.
+    9.  [ ] Testar todos os novos endpoints via console (F12) com `fetch()`.
+*   **Critério de saída:** Todos os endpoints retornam JSON com os contratos necessários para os cards da Visão Geral.
+
+#### 4.3 — Componente de card reutilizável (JavaScript)
+*   **Descrição:** Criar função `bmCreateCard()` que gera o HTML, popula dados e adiciona os listeners de toggle e drill-down automaticamente.
+*   **Arquivos:** `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [ ] Definir estrutura base do card: título, valor principal, variação, seletor de período, botões de toggle, área de gráfico/lista, link de drill-down.
+    2.  [ ] Implementar `bmCreateCard(container, config)` — renderiza o card e armazena referências.
+    3.  [ ] Implementar `bmUpdateCard(cardInstance, newData)` — atualiza valores e gráfico sem recriar o card.
+    4.  [ ] Adicionar lógica de toggle de período independente (ao mudar o `<select>`, chama o endpoint com o novo período).
+    5.  [ ] Adicionar lógica de toggle de visualização (ao clicar em [Barras│Linha│Pizza], troca o gráfico).
+    6.  [ ] Adicionar lógica de toggle [1│3│5│10] para rankings (atualiza o `limit` e refaz a chamada).
+    7.  [ ] Adicionar lógica de drill-down (ao clicar no link, navega para `page=bm_reports&type=X&period=Y&subject=Z`).
+*   **Critério de saída:** Qualquer card pode ser criado com `bmCreateCard()`, atualizado com `bmUpdateCard()`, e responde a toggles e drill-down sem recarregar a página.
+
+#### 4.4 — Testes e ajustes finos
+*   **Descrição:** Validar todos os cards da Visão Geral com dados reais e corrigir problemas visuais.
+*   **Tarefas:**
+    1.  [ ] Testar cada KPI card com diferentes períodos.
+    2.  [ ] Testar cada card de ranking com toggles 1/3/5/10.
+    3.  [ ] Testar cada card de gráfico com toggles Barras/Linha/Pizza.
+    4.  [ ] Testar drill-down de cada card — verificar se abre o relatório correto com filtros aplicados.
+    5.  [ ] Testar responsividade (desktop, tablet, mobile).
+    6.  [ ] Corrigir bugs visuais e de carregamento.
+*   **Critério de saída:** Todos os 30+ cards funcionam com dados reais, toggles respondem corretamente, drill-down abre o relatório certo.
+
+---
+
+## Fase 5 — Personalização de Layout
+
+#### 5.1 — Drag and Drop para reordenar cards
+*   **Descrição:** Permitir que o gestor reorganize os cards da Visão Geral arrastando e soltando.
+*   **Arquivos:** `assets/js/reports-dashboard.js`, `includes/reports.php` (ou `admin-service.php` para salvar)
+*   **Tarefas:**
+    1.  [ ] Tornar cada card um elemento arrastável usando HTML5 Drag and Drop API (sem bibliotecas externas).
+    2.  [ ] Implementar áreas de "drop" entre os cards (placeholder visual).
+    3.  [ ] Salvar a nova ordem dos cards via AJAX em `user_meta` (`_bm_dashboard_order`).
+    4.  [ ] Ao carregar a página, ler a ordem salva e reorganizar os cards.
+*   **Critério de saída:** O gestor pode arrastar qualquer card para uma nova posição. A ordem é mantida após recarregar a página. Cada usuário tem sua própria ordem.
+
+#### 5.2 — Redimensionamento de cards
+*   **Descrição:** Permitir que o gestor redimensione cards individualmente para ocupar 1, 2, 3 ou 4 colunas.
+*   **Arquivos:** `assets/js/reports-dashboard.js`, `assets/css/tailwind-custom.css`
+*   **Tarefas:**
+    1.  [ ] Adicionar cantos de redimensionamento (`resize: both` CSS) ou handle inferior-direito nos cards.
+    2.  [ ] Implementar lógica para ajustar a classe de coluna do card ao redimensionar (col-span-1 a col-span-4).
+    3.  [ ] Salvar a largura de cada card via AJAX em `user_meta` (`_bm_dashboard_sizes`).
+    4.  [ ] Ao carregar a página, aplicar as larguras salvas.
+*   **Critério de saída:** O gestor pode redimensionar cards para ocupar mais ou menos colunas. O tamanho é mantido após recarregar a página. Cada usuário tem suas próprias preferências.
+
+#### 5.3 — Restaurar layout padrão
+*   **Descrição:** Adicionar botão para resetar a ordem e tamanho dos cards ao padrão original.
+*   **Arquivos:** `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [ ] Adicionar botão "Restaurar layout padrão" no topo da Visão Geral.
+    2.  [ ] Ao clicar, remover `_bm_dashboard_order` e `_bm_dashboard_sizes` do usuário.
+    3.  [ ] Recarregar a página com o layout original.
+*   **Critério de saída:** O botão reseta o layout ao estado padrão. A confirmação é necessária antes de resetar.

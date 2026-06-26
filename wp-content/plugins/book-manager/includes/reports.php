@@ -83,6 +83,7 @@ function bm_report_overview($since, $until) {
     $total_returns = 0;
     $total_overdue = 0;
     $total_reservations = 0;
+    $student_loan_counts = array();
     
     foreach ($all_books as $book) {
         $reservations = get_post_meta($book->ID, '_bm_reservations', true) ?: array();
@@ -93,6 +94,9 @@ function bm_report_overview($since, $until) {
             if ($r['status'] === 'active') {
                 if ($loan_time === 0 || ($loan_time >= $since && $loan_time <= $until)) {
                     $total_loans++;
+                    if (!empty($r['user_id'])) {
+                        $student_loan_counts[$r['user_id']] = ($student_loan_counts[$r['user_id']] ?? 0) + 1;
+                    }
                 }
                 if (isset($r['due_date']) && strtotime($r['due_date']) < current_time('timestamp')) {
                     $total_overdue++;
@@ -101,10 +105,45 @@ function bm_report_overview($since, $until) {
             if ($r['status'] === 'returned') {
                 if ($return_time === 0 || ($return_time >= $since && $return_time <= $until)) {
                     $total_returns++;
+                    if (!empty($r['user_id'])) {
+                        $student_loan_counts[$r['user_id']] = ($student_loan_counts[$r['user_id']] ?? 0) + 1;
+                    }
                 }
             }
             if ($r['status'] === 'waiting') {
                 $total_reservations++;
+            }
+        }
+    }
+    
+    // Buscar alunos inativos
+    $inactive_students = array();
+    $all_students = get_users(array('role' => 'bm_student', 'number' => 200));
+    foreach ($all_students as $student) {
+        $count = $student_loan_counts[$student->ID] ?? 0;
+        if ($count === 0) {
+            $inactive_students[] = $student->display_name;
+        }
+    }
+    
+    // Calcular período anterior para variação percentual
+    $period_length = $until - $since;
+    $prev_since = $since - $period_length;
+    $prev_until = $since;
+    $prev_total_loans = 0;
+    $prev_total_returns = 0;
+    
+    foreach ($all_books as $book) {
+        $reservations = get_post_meta($book->ID, '_bm_reservations', true) ?: array();
+        foreach ($reservations as $r) {
+            $loan_time = isset($r['loan_date']) ? strtotime($r['loan_date']) : 0;
+            $return_time = isset($r['returned_date']) ? strtotime($r['returned_date']) : 0;
+            
+            if ($r['status'] === 'active' && $loan_time >= $prev_since && $loan_time <= $prev_until) {
+                $prev_total_loans++;
+            }
+            if ($r['status'] === 'returned' && $return_time >= $prev_since && $return_time <= $prev_until) {
+                $prev_total_returns++;
             }
         }
     }
@@ -115,6 +154,9 @@ function bm_report_overview($since, $until) {
         'total_returns' => $total_returns,
         'total_overdue' => $total_overdue,
         'total_reservations' => $total_reservations,
+        'total_loans_prev' => $prev_total_loans,
+        'total_returns_prev' => $prev_total_returns,
+        'inactive_students' => $inactive_students,
         'period_start' => date('d/m/Y', $since),
         'period_end' => date('d/m/Y', $until),
     );
@@ -174,6 +216,14 @@ function bm_report_all_students_performance($since, $until) {
     
     usort($all_data, function($a, $b) { return $b['books_read'] - $a['books_read']; });
     
+    // Alunos inativos
+    $inactive_students = array();
+    foreach ($all_data as $s) {
+        if ($s['books_read'] === 0) {
+            $inactive_students[] = $s['name'];
+        }
+    }
+    
     return array(
         'title' => __('Desempenho de Todos os Alunos', 'book-manager'),
         'total_students' => count($students),
@@ -182,6 +232,7 @@ function bm_report_all_students_performance($since, $until) {
         'total_videos' => $total_videos,
         'total_penalties' => $total_penalties,
         'students' => $all_data,
+        'inactive_students' => $inactive_students,
         'period_start' => date('d/m/Y', $since),
         'period_end' => date('d/m/Y', $until),
     );
@@ -1036,3 +1087,40 @@ function bm_ajax_export_report_pdf() {
     exit;
 }
 add_action('wp_ajax_bm_export_report_pdf', 'bm_ajax_export_report_pdf');
+
+
+// ==========================================
+// TAREFA 1: ENDPOINT JSON PARA RELATÓRIOS DINÂMICOS
+// ==========================================
+function bm_ajax_get_report_data() {
+    check_ajax_referer('bm_reports_nonce', 'nonce');
+    
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => __('Sem permissão.', 'book-manager')));
+    }
+    
+    $args = array(
+        'type'       => isset($_POST['bm_report_type']) ? sanitize_text_field($_POST['bm_report_type']) : 'overview',
+        'period'     => isset($_POST['bm_period']) ? sanitize_text_field($_POST['bm_period']) : 'month',
+        'date_start' => isset($_POST['bm_date_start']) ? sanitize_text_field($_POST['bm_date_start']) : '',
+        'date_end'   => isset($_POST['bm_date_end']) ? sanitize_text_field($_POST['bm_date_end']) : '',
+        'subject'    => isset($_POST['bm_subject']) ? sanitize_text_field($_POST['bm_subject']) : 'all',
+        'subject_id' => isset($_POST['bm_subject_id']) ? intval($_POST['bm_subject_id']) : 0,
+        'group'      => isset($_POST['bm_group']) ? sanitize_text_field($_POST['bm_group']) : '',
+        'genre'      => isset($_POST['bm_genre']) ? sanitize_text_field($_POST['bm_genre']) : '',
+        'custom_columns' => isset($_POST['bm_custom_columns']) ? array_map('sanitize_text_field', $_POST['bm_custom_columns']) : array('name', 'books_read'),
+        'custom_sort' => isset($_POST['bm_custom_sort']) ? sanitize_text_field($_POST['bm_custom_sort']) : 'name',
+    );
+    
+    $report = bm_generate_report($args);
+    
+    $report['_meta'] = array(
+        'type'       => $args['type'],
+        'period'     => $args['period'],
+        'subject'    => $args['subject'],
+        'generated_at' => current_time('mysql'),
+    );
+    
+    wp_send_json_success($report);
+}
+add_action('wp_ajax_bm_get_report_data', 'bm_ajax_get_report_data');

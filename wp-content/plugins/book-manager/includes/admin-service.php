@@ -1561,6 +1561,15 @@ add_action('admin_menu', 'bm_add_reports_page');
 function bm_render_reports_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     
+    // Enqueues condicionais
+    wp_enqueue_style('bm-tailwind', plugin_dir_url(__FILE__) . '../assets/css/tailwind-custom.css', array(), '1.0');
+    wp_enqueue_script('bm-reports-dashboard', plugin_dir_url(__FILE__) . '../assets/js/reports-dashboard.js', array(), '1.0', true);
+    wp_localize_script('bm-reports-dashboard', 'bmReports', array(
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'nonce'   => wp_create_nonce('bm_reports_nonce'),
+        'serviceNonce' => wp_create_nonce('bm_service_nonce'),
+    ));
+    
     $type = isset($_GET['bm_report_type']) ? sanitize_text_field($_GET['bm_report_type']) : 'overview';
     $period = isset($_GET['bm_period']) ? sanitize_text_field($_GET['bm_period']) : 'month';
     $date_start = isset($_GET['bm_date_start']) ? sanitize_text_field($_GET['bm_date_start']) : '';
@@ -1576,187 +1585,199 @@ function bm_render_reports_page() {
     <div class="wrap">
         <h1><?php _e('Relatórios', 'book-manager'); ?></h1>
         
-        <form method="get" style="background:#fff;padding:15px;border:1px solid #ddd;border-radius:6px;margin-bottom:20px;">
+        <form id="bm-report-form" class="bg-white border border-gray-200 p-4 rounded-lg mb-6 flex flex-wrap gap-4 items-end">
             <input type="hidden" name="post_type" value="bm_book">
             <input type="hidden" name="page" value="bm_reports">
             
-            <div style="display:flex;gap:15px;flex-wrap:wrap;align-items:end;">
-                <div>
-                    <label><strong><?php _e('Tipo de Relatório', 'book-manager'); ?></strong></label>
-                    <select name="bm_report_type" style="width:200px;">
-                        <option value="overview" <?php selected($type, 'overview'); ?>><?php _e('Visão Geral', 'book-manager'); ?></option>
-                        <option value="student_performance" <?php selected($type, 'student_performance'); ?>><?php _e('Desempenho do Aluno', 'book-manager'); ?></option>
-                        <option value="class_reading" <?php selected($type, 'class_reading'); ?>><?php _e('Leitura por Turma', 'book-manager'); ?></option>
-                        <option value="active_penalties" <?php selected($type, 'active_penalties'); ?>><?php _e('Multas Ativas', 'book-manager'); ?></option>
-                        <option value="genre_ranking" <?php selected($type, 'genre_ranking'); ?>><?php _e('Ranking por Gênero', 'book-manager'); ?></option>
-                        <option value="top_books" <?php selected($type, 'top_books'); ?>><?php _e('Livros Mais Emprestados', 'book-manager'); ?></option>
-                        <option value="reading_trend" <?php selected($type, 'reading_trend'); ?>><?php _e('Tendência de Leitura', 'book-manager'); ?></option>
-                        <option value="custom" <?php selected($type, 'custom'); ?>><?php _e('Relatório Configurável', 'book-manager'); ?></option>
-                    </select>
-                </div>
-                
-                <div>
-                    <label><strong><?php _e('Período', 'book-manager'); ?></strong></label>
-                    <select name="bm_period" style="width:150px;">
-                        <option value="week" <?php selected($period, 'week'); ?>><?php _e('Última Semana', 'book-manager'); ?></option>
-                        <option value="month" <?php selected($period, 'month'); ?>><?php _e('Último Mês', 'book-manager'); ?></option>
-                        <option value="bimester" <?php selected($period, 'bimester'); ?>><?php _e('Último Bimestre', 'book-manager'); ?></option>
-                        <option value="semester" <?php selected($period, 'semester'); ?>><?php _e('Último Semestre', 'book-manager'); ?></option>
-                        <option value="year" <?php selected($period, 'year'); ?>><?php _e('Último Ano', 'book-manager'); ?></option>
-                        <option value="custom" <?php selected($period, 'custom'); ?>><?php _e('Personalizado', 'book-manager'); ?></option>
-                    </select>
-                </div>
-                
-                <div id="bm-custom-dates" style="display:<?php echo $period === 'custom' ? 'flex' : 'none'; ?>;gap:10px;">
-                    <div>
-                        <label><strong><?php _e('De', 'book-manager'); ?></strong></label>
-                        <input type="date" name="bm_date_start" value="<?php echo esc_attr($date_start); ?>" style="width:140px;" />
-                    </div>
-                    <div>
-                        <label><strong><?php _e('Até', 'book-manager'); ?></strong></label>
-                        <input type="date" name="bm_date_end" value="<?php echo esc_attr($date_end); ?>" style="width:140px;" />
-                    </div>
-                </div>
-                
-                <div>
-                    <label><strong><?php _e('Sujeito', 'book-manager'); ?></strong></label>
-                    <select name="bm_subject" style="width:150px;">
-                        <option value="all" <?php selected($subject, 'all'); ?>><?php _e('Todos', 'book-manager'); ?></option>
-                        <option value="student" <?php selected($subject, 'student'); ?>><?php _e('Aluno Específico', 'book-manager'); ?></option>
-                        <option value="class" <?php selected($subject, 'class'); ?>><?php _e('Turma', 'book-manager'); ?></option>
-                    </select>
-                </div>
-                
-                <div id="bm-subject-options" style="display:flex;gap:10px;">
-                    <div id="bm-student-select" style="display:<?php echo $subject === 'student' ? 'block' : 'none'; ?>;">
-                        <label><strong><?php _e('Buscar Aluno', 'book-manager'); ?></strong></label>
-                        <input type="text" id="bm-student-search-input" placeholder="<?php _e('Digite o nome...', 'book-manager'); ?>" style="width:200px;" />
-                        <div id="bm-student-search-results" style="max-height:150px;overflow-y:auto;margin-top:4px;"></div>
-                        <input type="hidden" name="bm_subject_id" id="bm-subject-id" value="<?php echo $subject_id ?: ''; ?>" />
-                    </div>
-                    <div id="bm-class-select" style="display:<?php echo $subject === 'class' ? 'block' : 'none'; ?>;">
-                        <label><strong><?php _e('Turma', 'book-manager'); ?></strong></label>
-                        <input type="text" name="bm_group" value="<?php echo esc_attr($group); ?>" style="width:120px;" placeholder="Ex: 1º Ano" />
-                    </div>
-                </div>
-                
-                <div id="bm-custom-options" style="display:<?php echo $type === 'custom' ? 'block' : 'none'; ?>;width:100%;margin-top:10px;padding:10px;background:#f9f9f9;border-radius:4px;">
-                    <strong><?php _e('Colunas:', 'book-manager'); ?></strong>
-                    <label style="margin-left:10px;"><input type="checkbox" name="bm_custom_columns[]" value="name" checked> <?php _e('Nome', 'book-manager'); ?></label>
-                    <label style="margin-left:10px;"><input type="checkbox" name="bm_custom_columns[]" value="group"> <?php _e('Turma', 'book-manager'); ?></label>
-                    <label style="margin-left:10px;"><input type="checkbox" name="bm_custom_columns[]" value="books_read" checked> <?php _e('Livros Lidos', 'book-manager'); ?></label>
-                    <label style="margin-left:10px;"><input type="checkbox" name="bm_custom_columns[]" value="reviews"> <?php _e('Resenhas', 'book-manager'); ?></label>
-                    <label style="margin-left:10px;"><input type="checkbox" name="bm_custom_columns[]" value="videos"> <?php _e('Vídeos', 'book-manager'); ?></label>
-                    <label style="margin-left:10px;"><input type="checkbox" name="bm_custom_columns[]" value="xp"> <?php _e('XP', 'book-manager'); ?></label>
-                    <label style="margin-left:10px;"><input type="checkbox" name="bm_custom_columns[]" value="badges"> <?php _e('Medalhas', 'book-manager'); ?></label>
-                    <label style="margin-left:10px;"><input type="checkbox" name="bm_custom_columns[]" value="penalties"> <?php _e('Multas', 'book-manager'); ?></label>
-                    <br>
-                    <strong><?php _e('Ordenar por:', 'book-manager'); ?></strong>
-                    <select name="bm_custom_sort" style="margin-left:10px;width:150px;">
-                        <option value="name"><?php _e('Nome', 'book-manager'); ?></option>
-                        <option value="xp"><?php _e('XP', 'book-manager'); ?></option>
-                        <option value="books_read"><?php _e('Livros Lidos', 'book-manager'); ?></option>
-                    </select>
-                </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Tipo de Relatório', 'book-manager'); ?></label>
+                <select name="bm_report_type" class="w-48 px-3 py-2 border border-gray-300 rounded-md text-sm">
+                    <option value="overview" <?php selected($type, 'overview'); ?>><?php _e('Visão Geral', 'book-manager'); ?></option>
+                    <option value="student_performance" <?php selected($type, 'student_performance'); ?>><?php _e('Desempenho do Aluno', 'book-manager'); ?></option>
+                    <option value="class_reading" <?php selected($type, 'class_reading'); ?>><?php _e('Leitura por Turma', 'book-manager'); ?></option>
+                    <option value="active_penalties" <?php selected($type, 'active_penalties'); ?>><?php _e('Multas Ativas', 'book-manager'); ?></option>
+                    <option value="genre_ranking" <?php selected($type, 'genre_ranking'); ?>><?php _e('Ranking por Gênero', 'book-manager'); ?></option>
+                    <option value="top_books" <?php selected($type, 'top_books'); ?>><?php _e('Livros Mais Emprestados', 'book-manager'); ?></option>
+                    <option value="reading_trend" <?php selected($type, 'reading_trend'); ?>><?php _e('Tendência de Leitura', 'book-manager'); ?></option>
+                    <option value="custom" <?php selected($type, 'custom'); ?>><?php _e('Relatório Configurável', 'book-manager'); ?></option>
+                </select>
+            </div>
 
+            <div>
+                <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Período', 'book-manager'); ?></label>
+                <select name="bm_period" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
+                    <option value="week" <?php selected($period, 'week'); ?>><?php _e('Última Semana', 'book-manager'); ?></option>
+                    <option value="month" <?php selected($period, 'month'); ?>><?php _e('Último Mês', 'book-manager'); ?></option>
+                    <option value="bimester" <?php selected($period, 'bimester'); ?>><?php _e('Último Bimestre', 'book-manager'); ?></option>
+                    <option value="semester" <?php selected($period, 'semester'); ?>><?php _e('Último Semestre', 'book-manager'); ?></option>
+                    <option value="year" <?php selected($period, 'year'); ?>><?php _e('Último Ano', 'book-manager'); ?></option>
+                    <option value="custom" <?php selected($period, 'custom'); ?>><?php _e('Personalizado', 'book-manager'); ?></option>
+                </select>
+            </div>
+
+            <div id="bm-custom-dates" class="<?php echo $period === 'custom' ? 'flex' : 'hidden'; ?> gap-2 items-end">
                 <div>
-                    <button type="submit" class="button button-primary"><?php _e('Gerar Relatório', 'book-manager'); ?></button>
+                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('De', 'book-manager'); ?></label>
+                    <input type="date" name="bm_date_start" value="<?php echo esc_attr($date_start); ?>" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Até', 'book-manager'); ?></label>
+                    <input type="date" name="bm_date_end" value="<?php echo esc_attr($date_end); ?>" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
                 </div>
             </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Sujeito', 'book-manager'); ?></label>
+                <select name="bm_subject" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
+                    <option value="all" <?php selected($subject, 'all'); ?>><?php _e('Todos', 'book-manager'); ?></option>
+                    <option value="student" <?php selected($subject, 'student'); ?>><?php _e('Aluno Específico', 'book-manager'); ?></option>
+                    <option value="class" <?php selected($subject, 'class'); ?>><?php _e('Turma', 'book-manager'); ?></option>
+                </select>
+            </div>
+
+            <div id="bm-subject-options">
+                <div id="bm-student-select" class="<?php echo $subject === 'student' ? '' : 'hidden'; ?>">
+                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Aluno', 'book-manager'); ?></label>
+                    <input type="text" id="bm-student-search-input" placeholder="<?php _e('Digite o nome...', 'book-manager'); ?>" class="w-48 px-3 py-2 border border-gray-300 rounded-md text-sm">
+                    <div id="bm-student-search-results" class="max-h-32 overflow-y-auto mt-1"></div>
+                    <input type="hidden" name="bm_subject_id" id="bm-subject-id" value="<?php echo $subject_id ?: ''; ?>">
+                </div>
+                <div id="bm-class-select" class="<?php echo $subject === 'class' ? '' : 'hidden'; ?>">
+                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Turma', 'book-manager'); ?></label>
+                    <input type="text" name="bm_group" value="<?php echo esc_attr($group); ?>" placeholder="Ex: 1º Ano" class="w-28 px-3 py-2 border border-gray-300 rounded-md text-sm">
+                </div>
+            </div>
+
+            <div id="bm-custom-options" class="<?php echo $type === 'custom' ? '' : 'hidden'; ?> w-full mt-2 p-3 bg-gray-50 rounded-md">
+                <label class="text-sm font-bold text-gray-700"><?php _e('Colunas:', 'book-manager'); ?></label>
+                <div class="flex flex-wrap gap-4 mt-2">
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="name" <?php checked(in_array('name', $custom_columns)); ?>> <?php _e('Nome', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="group" <?php checked(in_array('group', $custom_columns)); ?>> <?php _e('Turma', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="books_read" <?php checked(in_array('books_read', $custom_columns)); ?>> <?php _e('Livros Lidos', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="reviews" <?php checked(in_array('reviews', $custom_columns)); ?>> <?php _e('Resenhas', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="videos" <?php checked(in_array('videos', $custom_columns)); ?>> <?php _e('Vídeos', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="xp" <?php checked(in_array('xp', $custom_columns)); ?>> <?php _e('XP', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="badges" <?php checked(in_array('badges', $custom_columns)); ?>> <?php _e('Medalhas', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="penalties" <?php checked(in_array('penalties', $custom_columns)); ?>> <?php _e('Multas', 'book-manager'); ?></label>
+                </div>
+                <div class="mt-3">
+                    <label class="text-sm font-bold text-gray-700"><?php _e('Ordenar por:', 'book-manager'); ?></label>
+                    <select name="bm_custom_sort" class="ml-2 px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        <option value="name" <?php selected($custom_sort, 'name'); ?>><?php _e('Nome', 'book-manager'); ?></option>
+                        <option value="xp" <?php selected($custom_sort, 'xp'); ?>><?php _e('XP', 'book-manager'); ?></option>
+                        <option value="books_read" <?php selected($custom_sort, 'books_read'); ?>><?php _e('Livros Lidos', 'book-manager'); ?></option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"><?php _e('Gerar Relatório', 'book-manager'); ?></button>
+            <button type="button" id="bm-export-pdf" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium text-sm transition-colors"><?php _e('Exportar PDF', 'book-manager'); ?></button>
         </form>
-        
-        <div id="bm-report-result">
-            <?php if (isset($_GET['bm_report_type'])): 
-                $args = array(
-                    'type' => $type,
-                    'period' => $period,
-                    'date_start' => $date_start,
-                    'date_end' => $date_end,
-                    'subject' => $subject,
-                    'subject_id' => $subject === 'student' ? $subject_id : 0,
-                    'group' => $subject === 'class' ? $group : '',
-                    'genre' => $genre,
-                    'discipline' => $discipline,
-                    'custom_columns' => $custom_columns,
-                    'custom_sort' => $custom_sort,
-                );
-                $report = bm_generate_report($args);
-                echo bm_render_report_html($report);
-            endif; ?>
-        </div>
-        
-        <div style="margin-top:15px;display:flex;gap:10px;">
-            <button type="button" class="button" id="bm-export-pdf">📄 <?php _e('Exportar PDF', 'book-manager'); ?></button>
-            <button type="button" class="button" id="bm-export-csv">📥 <?php _e('Exportar CSV', 'book-manager'); ?></button>
+
+        <div id="bm-report-result" class="space-y-6">
+            <div id="bm-welcome" class="text-center py-12 text-gray-400">
+                <?php _e('Selecione os filtros e clique em Gerar Relatório', 'book-manager'); ?>
+            </div>
+            <div id="bm-loading" class="hidden text-center py-8">
+                <span class="animate-pulse text-gray-500"><?php _e('Carregando...', 'book-manager'); ?></span>
+            </div>
+            <div id="bm-empty" class="hidden text-center py-8">
+                <svg class="w-12 h-12 mx-auto text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M3 8l9-5 9 5v8l-9 5-9-5V8z" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M3 8l9 5 9-5" stroke-linecap="round" stroke-linejoin="round"></path>
+                    <path d="M12 13v8" stroke-linecap="round" stroke-linejoin="round"></path>
+                </svg>
+                <p class="mt-2 text-gray-500"><?php _e('Nenhum dado encontrado para este período.', 'book-manager'); ?></p>
+            </div>
+
+            <div data-section="report-title" class="hidden">
+                <h2 class="text-xl font-bold text-gray-900"></h2>
+                <p class="text-sm text-gray-500"></p>
+            </div>
+
+            <div data-section="kpi-cards" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-blue-500 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between"><div><p class="text-xs font-medium text-gray-500 uppercase tracking-wider"></p><p class="text-2xl font-bold text-gray-900 mt-1"></p></div><div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center"><svg class="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle></svg></div></div>
+                    <div class="mt-3 flex items-center gap-1"><span class="text-xs font-medium text-green-600"></span><span class="text-xs text-gray-400"></span></div>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-emerald-500 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between"><div><p class="text-xs font-medium text-gray-500 uppercase tracking-wider"></p><p class="text-2xl font-bold text-gray-900 mt-1"></p></div><div class="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center"><svg class="w-5 h-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle></svg></div></div>
+                    <div class="mt-3 flex items-center gap-1"><span class="text-xs font-medium text-green-600"></span><span class="text-xs text-gray-400"></span></div>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-red-500 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between"><div><p class="text-xs font-medium text-gray-500 uppercase tracking-wider"></p><p class="text-2xl font-bold text-gray-900 mt-1"></p></div><div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center"><svg class="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle></svg></div></div>
+                    <div class="mt-3 flex items-center gap-1"><span class="text-xs font-medium text-green-600"></span><span class="text-xs text-gray-400"></span></div>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-amber-500 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between"><div><p class="text-xs font-medium text-gray-500 uppercase tracking-wider"></p><p class="text-2xl font-bold text-gray-900 mt-1"></p></div><div class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center"><svg class="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle></svg></div></div>
+                    <div class="mt-3 flex items-center gap-1"><span class="text-xs font-medium text-green-600"></span><span class="text-xs text-gray-400"></span></div>
+                </div>
+            </div>
+
+            <div data-section="bar-chart" data-component="bm-chart" class="hidden bg-white rounded-xl p-5 shadow-sm">
+                <h3 class="text-base font-semibold text-gray-800 mb-4"></h3>
+                <div id="bm-chart-container" class="space-y-3 max-w-xl"></div>
+            </div>
+            <div data-section="pie-chart" class="hidden bg-white rounded-xl p-5 shadow-sm">
+                <h3 class="text-base font-semibold text-gray-800 mb-4"></h3>
+                <div class="flex flex-wrap items-start gap-6">
+                    <div id="bm-pie-container" class="w-48 h-48"></div>
+                    <div id="bm-pie-legend" class="flex-1 min-w-[200px] space-y-2"></div>
+                </div>
+            </div>
+            <div data-section="line-chart" class="hidden bg-white rounded-xl p-5 shadow-sm">
+                <h3 class="text-base font-semibold text-gray-800 mb-4"></h3>
+                <div id="bm-line-container" class="w-full h-64"></div>
+            </div>
+            <div data-section="top-readers" class="hidden">
+                <h3 class="text-base font-semibold text-gray-800 mb-4">Top 3 Leitores</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div id="bm-reader-gold" class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-yellow-400">
+                        <div class="text-center">
+                            <span class="text-3xl">🥇</span>
+                            <p class="text-lg font-bold text-gray-900 mt-1"></p>
+                            <p class="text-sm text-gray-500"></p>
+                            <div class="mt-2 bg-gray-100 rounded-full h-3 overflow-hidden">
+                                <div class="bg-yellow-400 h-full rounded-full" style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="bm-reader-silver" class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-gray-300">
+                        <div class="text-center">
+                            <span class="text-3xl">🥈</span>
+                            <p class="text-lg font-bold text-gray-900 mt-1"></p>
+                            <p class="text-sm text-gray-500"></p>
+                            <div class="mt-2 bg-gray-100 rounded-full h-3 overflow-hidden">
+                                <div class="bg-gray-400 h-full rounded-full" style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="bm-reader-bronze" class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-orange-400">
+                        <div class="text-center">
+                            <span class="text-3xl">🥉</span>
+                            <p class="text-lg font-bold text-gray-900 mt-1"></p>
+                            <p class="text-sm text-gray-500"></p>
+                            <div class="mt-2 bg-gray-100 rounded-full h-3 overflow-hidden">
+                                <div class="bg-orange-400 h-full rounded-full" style="width:0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div data-section="inactive-alerts" class="hidden bg-red-50 rounded-xl p-5 shadow-sm border-l-4 border-red-500">
+                <h3 class="text-base font-semibold text-red-800 mb-2">⚠️ Alunos sem leitura no período</h3>
+                <div id="bm-inactive-list" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <div data-section="data-table" class="hidden bg-white rounded-xl shadow-sm overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 border-b border-gray-200"><tr></tr></thead>
+                    <tbody class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
         </div>
     </div>
-        <script>
-    document.getElementById('bm-student-search-input').addEventListener('keyup', function() {
-        var query = this.value.trim();
-        if (query.length < 2) return;
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        xhr.onload = function() {
-            var r = JSON.parse(xhr.responseText);
-            var html = '';
-            if (r.found) {
-                document.getElementById('bm-subject-id').value = r.student.id;
-                html = '<div class="bm-student-result-item" data-student-id="' + r.student.id + '" data-student-name="' + r.student.name + '" style="padding:6px;background:#e8f5e9;border-radius:4px;cursor:pointer;margin:2px 0;">' + r.student.name + ' (' + r.student.email + ')</div>';
-            } else if (r.multiple) {
-                r.students.forEach(function(s) {
-                    html += '<div class="bm-student-result-item" data-student-id="' + s.id + '" data-student-name="' + s.name + '" style="padding:6px;background:#f5f5f5;border-radius:4px;cursor:pointer;margin:2px 0;">' + s.name + ' (' + s.email + ')</div>';
-                });
-            } else {
-                html = '<p style="color:#999;font-size:12px;"><?php _e('Nenhum aluno encontrado.', 'book-manager'); ?></p>';
-            }
-            document.getElementById('bm-student-search-results').innerHTML = html;
-            
-            document.querySelectorAll('.bm-student-result-item').forEach(function(item) {
-                item.addEventListener('click', function() {
-                    document.getElementById('bm-subject-id').value = this.getAttribute('data-student-id');
-                    document.getElementById('bm-student-search-results').innerHTML = '<strong>' + this.getAttribute('data-student-name') + '</strong> selecionado';
-                });
-            });
-        };
-        xhr.send('action=bm_service_search_student&query=' + encodeURIComponent(query) + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
-    });
-    </script>
-    
-    <script>
-    function bmExportPDF() {
-        var url = '<?php echo admin_url("admin-ajax.php"); ?>?action=bm_export_report_pdf';
-        var params = new URLSearchParams(window.location.search);
-        url += '&type=' + (params.get('bm_report_type') || 'overview');
-        url += '&period=' + (params.get('bm_period') || 'month');
-        url += '&date_start=' + (params.get('bm_date_start') || '');
-        url += '&date_end=' + (params.get('bm_date_end') || '');
-        url += '&subject_id=' + (params.get('bm_subject_id') || '0');
-        url += '&group=' + (params.get('bm_group') || '');
-        window.open(url, '_blank');
-    }
-
-    document.querySelector('select[name="bm_period"]').addEventListener('change', function() {
-        var customDates = document.getElementById('bm-custom-dates');
-        customDates.style.display = this.value === 'custom' ? 'flex' : 'none';
-    });
-    
-    document.querySelector('select[name="bm_subject"]').addEventListener('change', function() {
-        var studentSelect = document.getElementById('bm-student-select');
-        var classSelect = document.getElementById('bm-class-select');
-        studentSelect.style.display = this.value === 'student' ? 'block' : 'none';
-        classSelect.style.display = this.value === 'class' ? 'block' : 'none';
-    });
-    
-    document.querySelector('select[name="bm_report_type"]').addEventListener('change', function() {
-        var customOptions = document.getElementById('bm-custom-options');
-        if (customOptions) {
-            customOptions.style.display = this.value === 'custom' ? 'block' : 'none';
-        }
-    });
-
-    document.getElementById('bm-export-pdf').addEventListener('click', bmExportPDF);
-    </script>
+        
     <?php
 }
 
