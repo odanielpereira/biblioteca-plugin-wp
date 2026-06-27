@@ -1,6 +1,7 @@
 /**
  * Book Manager — Reports Dashboard
- * Fase 6 COMPLETA: Sparklines, Radar/Perfil, Timeline, Meta, Drill-down, Grid de capas, Refinamento visual, Títulos de seção
+ * Renderização dinâmica + AJAX bridge para relatórios
+ * Fase 6 COMPLETA: Sparklines, Radar/Perfil, Timeline, Meta, Drill-down, Grid de capas, Refinamento visual, Drag-and-drop por seção
  */
 (function() {
     const bm = window.bmReports || {};
@@ -205,80 +206,83 @@
         dashboard.classList.remove('hidden');
         var period = (data._meta && data._meta.period) ? data._meta.period : 'month';
 
-        bmRenderDashboardKPIs(data);
+        // KPI Sections
+        var secKpiMain = bmCreateSection('Indicadores Principais');
+        bmRenderDashboardKPIsRow1(data, secKpiMain);
+        dashboard.appendChild(secKpiMain);
 
-        var destHeader = document.createElement('h2');
-        destHeader.className = 'text-sm font-bold text-gray-700 uppercase tracking-wide mb-3';
-        destHeader.textContent = 'Destaques do Período';
-        dashboard.appendChild(destHeader);
+        var secKpiSec = bmCreateSection('Indicadores Secundários');
+        bmRenderDashboardKPIsRow2(data, secKpiSec);
+        dashboard.appendChild(secKpiSec);
+
+        var secEngagement = bmCreateSection('Engajamento');
+        bmRenderDashboardKPIsRow3(data, secEngagement);
+        dashboard.appendChild(secEngagement);
+
+        // Highlight Section
+        var secDest = bmCreateSection('Destaques do Período');
         var row4 = document.createElement('div');
         row4.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6';
         if (data.students && data.students.length > 0) row4.appendChild(bmCreateHighlightCard('student', data.students[0], period));
         if (data.top_book) row4.appendChild(bmCreateHighlightCard('book', data.top_book, period));
         row4.appendChild(bmCreateHighlightCard('revelation', data.revelation_student, period));
-        dashboard.appendChild(row4);
+        secDest.appendChild(row4);
+        dashboard.appendChild(secDest);
 
-        var grafHeader = document.createElement('h2');
-        grafHeader.className = 'text-sm font-bold text-gray-700 uppercase tracking-wide mb-3';
-        grafHeader.textContent = 'Gráficos';
-        dashboard.appendChild(grafHeader);
+        // Charts Section
+        var secGraf = bmCreateSection('Gráficos');
         var row5 = document.createElement('div');
         row5.className = 'grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6';
         if (data.months && Object.keys(data.months).length > 0) row5.appendChild(bmCreateChartCard('Tendência de Leitura', data.months, 'line', period, 'reading_trend'));
         if (data.genres && Object.keys(data.genres).length > 0) row5.appendChild(bmCreateChartCard('Gêneros Mais Lidos', data.genres, 'pizza', period, 'genre_ranking'));
-        dashboard.appendChild(row5);
+        secGraf.appendChild(row5);
+        dashboard.appendChild(secGraf);
 
-        var rank1Header = document.createElement('h2');
-        rank1Header.className = 'text-sm font-bold text-gray-700 uppercase tracking-wide mb-3';
-        rank1Header.textContent = 'Rankings — Alunos';
-        dashboard.appendChild(rank1Header);
+        // Rankings — Students
+        var secRank1 = bmCreateSection('Rankings — Alunos');
         var row6 = document.createElement('div');
         row6.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6';
         if (data.students && data.students.length > 0) row6.appendChild(bmCreateRankingCard('Top Leitores', data.students, period, 'student_performance', 5));
         if (data.top_reviewers && data.top_reviewers.length > 0) row6.appendChild(bmCreateRankingCard('Top Resenhadores', data.top_reviewers, period, 'student_performance', 5));
         if (data.top_video_reviewers && data.top_video_reviewers.length > 0) row6.appendChild(bmCreateRankingCard('Top Vídeo-Resen.', data.top_video_reviewers, period, 'student_performance', 5));
         if (data.class_ranking && data.class_ranking.length > 0) row6.appendChild(bmCreateRankingCard('Ranking de Turmas', data.class_ranking, period, 'class_reading', 5));
-        dashboard.appendChild(row6);
+        secRank1.appendChild(row6);
+        dashboard.appendChild(secRank1);
 
-        var rank2Header = document.createElement('h2');
-        rank2Header.className = 'text-sm font-bold text-gray-700 uppercase tracking-wide mb-3';
-        rank2Header.textContent = 'Rankings — Livros';
-        dashboard.appendChild(rank2Header);
+        // Rankings — Books
+        var secRank2 = bmCreateSection('Rankings — Livros');
         var row7 = document.createElement('div');
         row7.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6';
         if (data.books && data.books.length > 0) row7.appendChild(bmCreateRankingCard('Livros +Emprestados', data.books.map(function(b) { return { name: b.title, loans: b.loans }; }), period, 'top_books', 5));
         row7.appendChild(bmCreateRankingCard('Livros +Resenhados', (data.most_reviewed_books && data.most_reviewed_books.length > 0) ? data.most_reviewed_books : [], period, 'top_books', 5));
         row7.appendChild(bmCreateRankingCard('Livros +Vídeos', (data.most_video_books && data.most_video_books.length > 0) ? data.most_video_books : [], period, 'top_books', 5));
         if (data.top_authors && data.top_authors.length > 0) row7.appendChild(bmCreateRankingCard('Autor +Lido', data.top_authors, period, 'top_books', 5));
-        dashboard.appendChild(row7);
+        secRank2.appendChild(row7);
+        dashboard.appendChild(secRank2);
 
-        var alertHeader = document.createElement('h2');
-        alertHeader.className = 'text-sm font-bold text-gray-700 uppercase tracking-wide mb-3';
-        alertHeader.textContent = 'Alertas';
-        dashboard.appendChild(alertHeader);
+        // Alerts Section
+        var secAlert = bmCreateSection('Alertas');
         var row8 = document.createElement('div');
         row8.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6';
         if (data.inactive_students && data.inactive_students.length > 0) row8.appendChild(bmCreateAlertCard('Alunos sem leitura', data.inactive_students, period, 'student_performance'));
         row8.appendChild(bmCreateAlertCard('Atrasos +7 dias', (data.overdue_students && data.overdue_students.length > 0) ? data.overdue_students : [], period, 'active_penalties'));
         row8.appendChild(bmCreateAlertCard('Livros com fila', (data.books_with_queue && data.books_with_queue.length > 0) ? data.books_with_queue : [], period, 'top_books'));
-        dashboard.appendChild(row8);
+        secAlert.appendChild(row8);
+        dashboard.appendChild(secAlert);
 
-        var utilHeader = document.createElement('h2');
-        utilHeader.className = 'text-sm font-bold text-gray-700 uppercase tracking-wide mb-3';
-        utilHeader.textContent = 'Utilidades';
-        dashboard.appendChild(utilHeader);
+        // Utilities Section
+        var secUtil = bmCreateSection('Utilidades');
         var row9 = document.createElement('div');
         row9.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6';
         row9.appendChild(bmCreateUtilityCard('Últimos Cadastrados', (data.recent_books && data.recent_books.length > 0) ? data.recent_books : [], period, 'top_books', '🆕'));
         if (data.acquisition_suggestions_count !== undefined) row9.appendChild(bmCreateUtilityCard('Sugestões de Aquisição', data.acquisition_suggestions_count + ' pendentes', period, 'custom', '📚'));
         if (data.recent_activity && data.recent_activity.length > 0) row9.appendChild(bmCreateUtilityCard('Atividade Recente', data.recent_activity, period, '', '📋'));
         if (data.never_borrowed && data.never_borrowed.length > 0) row9.appendChild(bmCreateUtilityCard('Nunca Emprestados', data.never_borrowed.slice(0, 5).map(function(b) { return typeof b === 'string' ? b : (b.title || b); }), period, 'top_books', '🟡'));
-        dashboard.appendChild(row9);
+        secUtil.appendChild(row9);
+        dashboard.appendChild(secUtil);
 
-        var metaHeader = document.createElement('h2');
-        metaHeader.className = 'text-sm font-bold text-gray-700 uppercase tracking-wide mb-3';
-        metaHeader.textContent = 'Meta & Perfil';
-        dashboard.appendChild(metaHeader);
+        // Meta & Profile Section
+        var secMeta = bmCreateSection('Meta & Perfil');
         var row10 = document.createElement('div');
         row10.className = 'grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6';
         if (data.reading_goal) {
@@ -288,89 +292,49 @@
             var marksHTML = '<div class="flex justify-between text-xs text-gray-400 mt-1"><span>0</span><span>' + Math.round(data.reading_goal.target * 0.25) + '</span><span>' + Math.round(data.reading_goal.target * 0.5) + '</span><span>' + Math.round(data.reading_goal.target * 0.75) + '</span><span>' + data.reading_goal.target + '</span></div>';
             goalCard.innerHTML = '<h3 class="text-base font-semibold text-gray-800 mb-2">🎯 Meta de Leitura</h3>' +
                 '<div class="flex items-end gap-2 mb-3"><span class="text-3xl font-bold text-gray-900">' + data.reading_goal.current + '</span><span class="text-sm text-gray-500 mb-1">de ' + data.reading_goal.target + ' livros</span><span class="ml-auto text-2xl font-bold text-green-600">' + pct + '%</span></div>' +
-                '<div class="h-4 rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600" style="width:' + pct + '%; transition: width 1s ease;"></div></div>' + marksHTML;
+                '<div class="h-4 rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600" style="width:' + pct + '%; transition: width 1s ease;"></div></div>' +
+                marksHTML;
             row10.appendChild(goalCard);
         }
         var topStudent = (data.students && data.students.length > 0) ? data.students[0] : null;
         row10.appendChild(bmCreateProfileCard(topStudent, period));
-        dashboard.appendChild(row10);
+        secMeta.appendChild(row10);
+        dashboard.appendChild(secMeta);
 
-        setTimeout(function() {
-            var dash = document.getElementById('bm-dashboard');
-            if (!dash) return;
-            var dragCard = null;
-            var placeholder = document.createElement('div');
-            placeholder.className = 'border-2 border-dashed border-blue-400 rounded-xl bg-blue-50 h-24';
-            placeholder.style.display = 'none';
-            dash.appendChild(placeholder);
-            dash.querySelectorAll('.bm-card-clickable').forEach(function(card) {
-                card.setAttribute('draggable', 'true');
-                card.addEventListener('dragstart', function(e) {
-                    dragCard = this; this.style.opacity = '0.5'; e.dataTransfer.effectAllowed = 'move';
-                    setTimeout(function() { placeholder.style.display = 'block'; }, 0);
-                });
-                card.addEventListener('dragend', function() {
-                    this.style.opacity = '1'; placeholder.style.display = 'none'; dragCard = null;
-                    dash.querySelectorAll('.bm-card-clickable').forEach(function(c) { c.style.transform = ''; });
-                });
-                card.addEventListener('dragover', function(e) {
-                    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
-                    var rect = this.getBoundingClientRect();
-                    var midY = rect.top + rect.height / 2;
-                    if (e.clientY < midY) { this.parentNode.insertBefore(placeholder, this); }
-                    else { this.parentNode.insertBefore(placeholder, this.nextSibling); }
-                });
-            });
-            dash.addEventListener('dragover', function(e) { e.preventDefault(); });
-            dash.addEventListener('drop', function(e) {
-                e.preventDefault();
-                if (dragCard && placeholder.style.display !== 'none') {
-                    placeholder.parentNode.insertBefore(dragCard, placeholder);
-                    placeholder.style.display = 'none';
-                }
-            });
-        }, 500);
+        bmEnableSectionDrag();
     }
 
-    function bmRenderDashboardKPIs(data) {
-        var dashboard = document.getElementById('bm-dashboard');
-        if (!dashboard) return;
-
-        var kpiTitle1 = document.createElement('h2');
-        kpiTitle1.className = 'text-sm font-bold text-gray-700 uppercase tracking-wide mb-3';
-        kpiTitle1.textContent = 'Indicadores Principais';
-        dashboard.appendChild(kpiTitle1);
+    // Helper to render KPI Row 1 (Indicadores Principais)
+    function bmRenderDashboardKPIsRow1(data, section) {
         var row1 = document.createElement('div');
         row1.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6';
         row1.appendChild(bmCreateKPICard('EMPRÉSTIMOS', data.total_loans, data.total_loans_prev ? calculateVariance(data.total_loans, data.total_loans_prev) : null, data.period || 'month', 'overview', data.period, 'all', '', data.spark_loans));
         row1.appendChild(bmCreateKPICard('DEVOLUÇÕES', data.total_returns, data.total_returns_prev ? calculateVariance(data.total_returns, data.total_returns_prev) : null, data.period || 'month', 'overview', data.period, 'all', '', data.spark_returns));
         row1.appendChild(bmCreateKPICard('EM ATRASO', data.total_overdue, null, data.period || 'month', 'active_penalties', data.period, 'all', '', data.spark_overdue));
         row1.appendChild(bmCreateKPICard('RESERVAS PENDENTES', data.total_reservations, null, data.period || 'month', 'overview', data.period, 'all', '', data.spark_reservations));
-        dashboard.appendChild(row1);
+        section.appendChild(row1);
+    }
 
-        var kpiTitle2 = document.createElement('h2');
-        kpiTitle2.className = 'text-sm font-bold text-gray-700 uppercase tracking-wide mb-3';
-        kpiTitle2.textContent = 'Indicadores Secundários';
-        dashboard.appendChild(kpiTitle2);
+    // Helper to render KPI Row 2 (Indicadores Secundários)
+    function bmRenderDashboardKPIsRow2(data, section) {
         var row2 = document.createElement('div');
         row2.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6';
         row2.appendChild(bmCreateKPICard('MÉDIA POR ALUNO', data.average || '0', null, data.period || 'month', 'class_reading', data.period, 'all', '', data.spark_average));
         row2.appendChild(bmCreateKPICard('TAXA DE DEVOLUÇÃO', data.return_rate || '0%', null, data.period || 'month', 'overview', data.period, 'all', '', data.spark_return_rate));
         row2.appendChild(bmCreateKPICard('TEMPO MÉDIO LEITURA', data.avg_days || '0 dias', null, data.period || 'month', 'top_books', data.period, 'all', '', data.spark_avg_days));
         row2.appendChild(bmCreateKPICard('GIRO DO ACERVO', data.turnover || '0', null, data.period || 'month', 'overview', data.period, 'all', '', data.spark_turnover));
-        dashboard.appendChild(row2);
+        section.appendChild(row2);
+    }
 
-        var kpiTitle3 = document.createElement('h2');
-        kpiTitle3.className = 'text-sm font-bold text-gray-700 uppercase tracking-wide mb-3';
-        kpiTitle3.textContent = 'Engajamento';
-        dashboard.appendChild(kpiTitle3);
+    // Helper to render KPI Row 3 (Engajamento)
+    function bmRenderDashboardKPIsRow3(data, section) {
         var row3 = document.createElement('div');
         row3.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6';
         row3.appendChild(bmCreateKPICard('MULTAS ATIVAS', data.total_penalties || '0', null, data.period || 'month', 'active_penalties', data.period, 'all', '', data.spark_penalties));
         row3.appendChild(bmCreateKPICard('TOTAL RESENHAS', data.total_reviews || '0', null, data.period || 'month', 'student_performance', data.period, 'all', '', data.spark_reviews));
         row3.appendChild(bmCreateKPICard('VÍDEO-RESENHAS', data.total_videos || '0', null, data.period || 'month', 'student_performance', data.period, 'all', '', data.spark_videos));
         row3.appendChild(bmCreateKPICard('TAXA PARTICIPAÇÃO', data.participation_rate || '0%', null, data.period || 'month', 'student_performance', data.period, 'all', '', data.spark_participation));
-        dashboard.appendChild(row3);
+        section.appendChild(row3);
     }
 
     function bmRenderStudentPerformance(data) {
@@ -1017,6 +981,79 @@
         entries.forEach(function(entry, i) { var px = padding.left + stepX * i, py = padding.top + chartH - ((entry[1] - minVal) / range) * chartH; pathD += (i === 0 ? 'M' : 'L') + px + ' ' + py + ' '; svg += '<circle cx="' + px + '" cy="' + py + '" r="3" class="bm-line-point" />'; var label = entry[0]; if (label.length > 3) label = label.substring(5); svg += '<text x="' + px + '" y="' + (height - 6) + '" text-anchor="middle" class="bm-line-axis-text">' + label + '</text>'; });
         svg += '<path d="' + pathD + '" class="bm-line-path" /></svg>';
         container.innerHTML = svg;
+    }
+
+    // ==========================================
+    // DRAG-AND-DROP POR SEÇÃO (6.8)
+    // ==========================================
+    function bmCreateSection(title) {
+        var section = document.createElement('section');
+        section.className = 'bm-dashboard-section';
+        section.setAttribute('draggable', 'true');
+
+        var head = document.createElement('div');
+        head.className = 'flex items-center gap-2 mb-3 cursor-grab active:cursor-grabbing';
+        head.innerHTML = '<span class="text-gray-300 hover:text-gray-500 text-lg leading-none select-none">⠿</span>' +
+                         '<h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">' + title + '</h2>';
+
+        section.appendChild(head);
+
+        // Drag Events
+        section.addEventListener('dragstart', function(e) {
+            section.classList.add('opacity-40');
+            e.dataTransfer.setData('text/plain', title);
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        section.addEventListener('dragend', function() {
+            section.classList.remove('opacity-40');
+        });
+
+        return section;
+    }
+
+    function bmEnableSectionDrag() {
+        var dashboard = document.getElementById('bm-dashboard');
+        if (!dashboard) return;
+
+        dashboard.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            var dragging = dashboard.querySelector('.bm-dashboard-section.opacity-40');
+            if (!dragging) return;
+
+            var target = e.target.closest('.bm-dashboard-section');
+            if (target && target !== dragging) {
+                var rect = target.getBoundingClientRect();
+                var midY = rect.top + rect.height / 2;
+                if (e.clientY < midY) {
+                    dashboard.insertBefore(dragging, target);
+                } else {
+                    dashboard.insertBefore(dragging, target.nextSibling);
+                }
+            }
+        });
+
+        dashboard.addEventListener('drop', function(e) {
+            e.preventDefault();
+            bmSaveSectionOrder();
+        });
+    }
+
+    function bmSaveSectionOrder() {
+        var dashboard = document.getElementById('bm-dashboard');
+        if (!dashboard) return;
+
+        var sections = dashboard.querySelectorAll('.bm-dashboard-section');
+        var order = [];
+        sections.forEach(function(sec) {
+            var titleEl = sec.querySelector('h2');
+            if (titleEl) order.push(titleEl.textContent);
+        });
+
+        var params = new URLSearchParams();
+        params.append('action', 'bm_save_dashboard_order');
+        params.append('nonce', bm.nonce);
+        params.append('order', JSON.stringify(order));
+        fetch(bm.ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
     }
 
     window.bmRenderPieChart = bmRenderPieChart;

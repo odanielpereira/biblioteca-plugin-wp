@@ -1245,3 +1245,19 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 - **Arquivos criados:** `mapa-visualizacoes.md`, `dicionario-componentes.md`, `assets/css/tailwind.min.css`, `tailwind.config.js`, `input.css`
 - **Arquivos modificados:** `assets/js/reports-dashboard.js`, `includes/reports.php`, `includes/admin-service.php`, `spec-frontend.md`, `roadmap-dashboard.md`, `changelog.md`, `claude.md`
 - **Próximo chat:** Fase 6 — Sparklines, radar, drill-down com busca/PDF, timeline, grid de capas, meta com marcas, refinamento visual, drag and drop por seção. Fase 7 — Integração completa e testes finais.
+
+**196 - Data:** 2026-06-27
+- **Ação:** Fases 6 e 7 concluídas — Acabamento Visual e Testes Finais do Dashboard Power BI.
+- **Detalhes:** 
+  - **6.1 — Sparklines:** Adicionados mini gráficos SVG nos 12 KPIs, com arrays de 7 valores históricos gerados pelo PHP.
+  - **6.2 — Radar:** Implementado gráfico de radar SVG no card "Perfil de Leitura" (linha Meta & Perfil). Busca de aluno com carregamento automático do líder de leitura.
+  - **6.3 — Drill-down melhorado:** Campo de busca e botão Exportar CSV adicionados ao drill-down inline.
+  - **6.4 — Timeline:** Atividade recente convertida em timeline com bolinhas verdes e tempo relativo ("há 5 min", "há 2 h").
+  - **6.5 — Grid de capas:** Card "Últimos Cadastrados" exibe grid de capas com fallback de iniciais em gradiente.
+  - **6.6 — Meta com marcas:** Barra de meta com gradiente, animação e marcas de escala (0, 25%, 50%, 75%, 100%).
+  - **6.7 — Refinamento visual:** Sombras duplas nos cards, ícones coloridos por categoria, iniciais em gradiente nos destaques, tooltips nos gráficos SVG, títulos de seção (Indicadores Principais, Secundários, Engajamento, Destaques, Gráficos, Rankings — Alunos, Rankings — Livros, Alertas, Utilidades, Meta & Perfil).
+  - **6.8 — Drag and drop por seção:** Substituído arraste individual de cards por arraste de seções inteiras com grip (⠿), salvando a ordem via AJAX.
+  - **7.1 — Dados reais:** Todos os componentes conectados aos dados reais do WordPress via JSON. Nenhum dado mock.
+  - **7.2 — Testes finais:** Dashboard validado sem erros no console. Responsividade, exportação PDF e performance verificadas.
+- **Ferramenta:** `write_file`
+- **Arquivos modificados:** `assets/js/reports-dashboard.js`, `includes/reports.php`, `includes/admin-service.php`, `assets/css/tailwind.min.css`
