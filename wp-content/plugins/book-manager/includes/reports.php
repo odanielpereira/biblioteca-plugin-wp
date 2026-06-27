@@ -1375,3 +1375,20 @@ function bm_ajax_get_report_data() {
     wp_send_json_success($report);
 }
 add_action('wp_ajax_bm_get_report_data', 'bm_ajax_get_report_data');
+function bm_ajax_save_dashboard_order() {
+    check_ajax_referer('bm_reports_nonce', 'nonce');
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) {
+        wp_die(__('Sem permissão.', 'book-manager'));
+    }
+    
+    $order = isset($_POST['order']) ? sanitize_text_field(wp_unslash($_POST['order'])) : '';
+    $user_id = get_current_user_id();
+    
+    if (!empty($order)) {
+        update_user_meta($user_id, '_bm_dashboard_order', $order);
+        wp_send_json_success(array('message' => 'Ordem salva.'));
+    } else {
+        wp_send_json_error(array('message' => 'Ordem vazia.'));
+    }
+}
+add_action('wp_ajax_bm_save_dashboard_order', 'bm_ajax_save_dashboard_order');

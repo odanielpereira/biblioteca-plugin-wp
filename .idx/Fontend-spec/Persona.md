@@ -36,416 +36,412 @@ Você auxiliará na finalização do projeto Book Manager. Você já possui o Di
     - Você testa nonces e permissões antes de assumir que um endpoint está correto
 
 
+
+10.  **Design System & Acabamento Visual:**
+    - Você tem senso estético para dashboards modernos (estilo Power BI, Google Analytics).
+    - Você domina a criação de gráficos SVG inline (sparklines, linha, pizza, radar, barras) sem bibliotecas externas.
+    - Você conhece padrões de UI: sombras em camadas, bordas coloridas, gradientes sutis, animações de transição, tooltips nativos.
+    - Você traduz referências visuais (v0.app, Stitch) em código CSS/JS compatível com WordPress.
+
+11.  **Interações Avançadas:**
+    - HTML5 Drag and Drop API para reordenação de cards/seções.
+    - Drill-down inline com busca e exportação (PDF/CSV).
+    - Toggles de visualização e quantidade sem recarregar a página.
+
+12. **Adaptação ao Interlocutor:**
+    - Você segue estritamente as regras de interação definidas pelo usuário (um passo por vez, formato de código, etc.).
+    - Você explica conceitos técnicos em linguagem simples quando solicitado.
+
+
+
 Vc vai receber inúmeros documentos, apenas confirme sua persona e diga prossiga
 
 
-*******************************************
+**************************************************************************************
+**************************************************************************************
+**************************************************************************************
+**************************************************************************************
+**************************************************************************************
+**************************************************************************************
+**************************************************************************************
+**************************************************************************************
 
-# RELATÓRIO DE MIGRAÇÃO — CHAT 11 (DASHBOARD DE RELATÓRIOS)
 
-**Data:** 25 de junho de 2026
-**De:** Chat 11
-**Para:** Chat 12
-**Assunto:** Modernização do dashboard de relatórios (wp-admin/relatórios) com visual estilo Power BI
 
----
+# Relatório de Migração — Chat 12
 
-## 1. O QUE O USUÁRIO QUER
-
-- Cards de KPI com números grandes, coloridos, com indicador de variação percentual (ex: "+20% vs mês anterior")
-- Ranking visual com Top 3 leitores destacados com medalhas
-- Gráfico de pizza/donut para distribuição de gêneros literários
-- Barras horizontais de desempenho por aluno (nome + barra proporcional + número)
-- Gráfico de linha mostrando tendência de leitura por mês
-- Alertas visuais para alunos inativos (0 leituras no período)
-- Tudo atualizando via AJAX sem recarregar a página
-- Visual limpo, moderno, estilo dashboard de Business Intelligence
-- 100% local — sem CDN, sem bibliotecas externas
-
-## 2. O QUE O USUÁRIO NÃO QUER
-
-- Dados brutos em tabelas padrão WordPress
-- Apenas uma maquiagem CSS (bordas arredondadas, cores suavizadas)
-- A mesma experiência de antes com aparência levemente melhorada
-- Gráficos que dependam de CDN ou serviços externos
+**Data:** 26 de junho de 2026
+**De:** Chat 12
+**Para:** Chat 13
+**Assunto:** Finalização do Dashboard de Relatórios (Book Manager) — Fases 6 e 7
 
 ---
 
-## 3. AÇÕES REALIZADAS NO CHAT 11
+## 1. IDENTIFICAÇÃO DO PROJETO
 
-### 3.1 Documentação consolidada
-- Foi gerado um documento único de fundamentação (`documentacao-consolidada-dashboard.md`) contendo:
-  - Estrutura de arquivos proposta
-  - Arquitetura de dados (PHP como fonte única da verdade, JS como renderizador)
-  - Dicionário de dados (contrato JSON para 8 tipos de relatório)
-  - Roadmap de 8 tarefas
-  - Prompt refinado para v0.app
-  - Estrutura base do `reports-dashboard.js`
-
-### 3.2 Endpoint JSON (Tarefa 1 — concluída)
-- Arquivo: `includes/reports.php`
-- Criada função `bm_ajax_get_report_data()` registrada em `wp_ajax_bm_get_report_data`
-- Recebe parâmetros via POST, sanitiza, chama `bm_generate_report()`, retorna `wp_send_json_success()`
-- Adiciona metadado `_meta` com tipo, período e sujeito para o JS rotear a renderização
-- **Status:** Funcionando — testado via console do navegador, retorna JSON corretamente
-
-### 3.3 Correção de nonce e URLs (Tarefa 2)
-- **Status:** Já estava corrigido antes do Chat 11 iniciar. Nenhuma alteração necessária.
-
-### 3.4 HTML do v0.app (Tarefa 3 — concluída)
-- O usuário gerou o HTML no v0.app usando prompt refinado
-- HTML contém:
-  - Formulário com `id="bm-report-form"` e todos os campos com `name` e `id` corretos
-  - Slots vazios identificados por `data-section`:
-    - `data-section="report-title"` — título e período do relatório
-    - `data-section="kpi-cards"` — 4 cards (azul, verde, vermelho, âmbar) com espaço para label, valor e variação
-    - `data-section="bar-chart"` — container para gráfico de barras com `data-component="bm-chart"`
-    - `data-section="data-table"` — tabela com thead e tbody vazios
-  - Estados visuais: `bm-welcome`, `bm-loading` (com animate-pulse), `bm-empty` (com ícone SVG de caixa vazia)
-  - Ícones SVG inline nos cards (círculos)
-  - Classes Tailwind puras (bg-white, rounded-xl, shadow-sm, grid, flex, etc.)
-
-### 3.5 JavaScript de renderização (Tarefa 4 — concluída)
-- Arquivo: `assets/js/reports-dashboard.js`
-- Funções implementadas:
-  - `bmFetchReport()` — intercepta submit do formulário, chama endpoint JSON via fetch()
-  - `bmRenderReport(data)` — roteador que usa `data._meta.type` para decidir qual renderizador chamar
-  - `bmRenderOverview()`, `bmRenderStudentPerformance()`, `bmRenderClassReading()`, `bmRenderPenalties()`, `bmRenderGenreRanking()`, `bmRenderTopBooks()`, `bmRenderReadingTrend()`, `bmRenderCustom()` — renderizadores para cada tipo de relatório
-  - `bmFillKPICard()` — preenche um card com label, valor e variação
-  - `bmRenderBarChart()` — gera barras horizontais CSS puras a partir de dados `{label: value}`
-  - `bmRenderTable()` — preenche tabela com headers e rows
-  - `bmShowState()` — controla exibição de welcome/loading/empty/dados
-  - `bmToggleCustomDates()`, `bmToggleSubjectOptions()`, `bmToggleCustomOptions()` — controle de campos dinâmicos
-  - `bmSearchStudent()` — busca de aluno via AJAX
-  - `bmExportPDF()` — exportação PDF mantendo filtros ativos
-- **Problema identificado:** A busca de aluno usa `bm.nonce` (que é `bm_reports_nonce`), mas o endpoint `bm_service_search_student` espera `bm_service_nonce`. Isso causa **403 Forbidden** no console.
-
-### 3.6 Tailwind CSS (Tarefa 5 — concluída com abordagem alternativa)
-- **Problema:** Não foi possível instalar o Tailwind CSS via CLI (npm).
-  - O comando `npm install tailwindcss@3 --save-dev` falhou repetidamente
-  - O `package.json` ficou corrompido e precisou ser recriado
-  - Após várias tentativas (limpeza de cache, recriação do package.json, troca de terminal), o npm continuou recusando a instalação do Tailwind
-  - O React instalou normalmente, confirmando que o npm funciona, mas o Tailwind especificamente não
-  - **Causa não identificada** — possível conflito de versão ou cache corrompido
-- **Solução alternativa:** Foi gerado um arquivo CSS mínimo manual (`assets/css/tailwind-custom.css`) contendo apenas as classes Tailwind utilizadas pelo HTML do v0
-  - Display, flexbox, grid, spacing, cores, bordas, sombras, tipografia, hover, transições, animações, responsivo
-  - **Sem CDN** — arquivo local carregado via `wp_enqueue_style`
-  - **Limitação:** Se novas classes Tailwind forem usadas no futuro, precisarão ser adicionadas manualmente a este arquivo
-
-### 3.7 Substituição do formulário (Tarefa 7 — concluída)
-- Arquivo: `includes/admin-service.php`, função `bm_render_reports_page()`
-- Adicionados enqueues condicionais (CSS + JS + wp_localize_script)
-- Formulário antigo substituído pelo HTML do v0
-- **Problema:** A substituição deixou o formulário antigo aninhado dentro do novo, causando duplicação de campos e 2 botões "Gerar Relatório"
-- **Correção:** O bloco antigo foi removido e substituído pelos campos individuais do v0 com classes Tailwind
-- **Problema persistente:** Existem 2 botões "Exportar PDF" na página (herança da duplicação)
-
-### 3.8 Status atual do dashboard
-- **Visual:** CSS Tailwind funcionando — bordas arredondadas, sombras, cores nos cards
-- **Interceptação do formulário:** O JavaScript intercepta o submit (aparece "form interceptado" no console)
-- **Endpoint JSON:** Funcionando — retorna dados corretos quando chamado manualmente via fetch()
-- **Renderização:** **NÃO está funcionando** — os cards permanecem vazios/hidden
-- **Erro no console:** `403 Forbidden` ao chamar `bm_service_search_student` (nonce incorreto)
+- **Plugin:** Book Manager (Gestão de Livros para WordPress)
+- **Slug:** `book-manager`
+- **Versão atual:** 8.1.0
+- **Local:** `C:\Users\odani\Local Sites\biblioteca-plugin\app\public\wp-content\plugins\book-manager`
+- **Objetivo geral:** Sistema completo de gestão de biblioteca escolar com empréstimos, gamificação, relatórios e dashboard estilo Power BI no `wp-admin`.
+- **Página em desenvolvimento:** `wp-admin/admin.php?page=bm_reports` (Relatórios)
 
 ---
 
-## 4. PROBLEMAS COM O TERMINAL (NPM/TAILWIND)
+## 2. ARQUITETURA DO DASHBOARD
 
-- **Ambiente:** Windows 10, PowerShell, VSCode, Local by Flywheel
-- **Caminho:** `C:\Users\odani\Local Sites\biblioteca-plugin\app\public\wp-content\plugins\book-manager`
-- **Comandos tentados:** `npm init -y`, `npm install -D tailwindcss`, `npm install tailwindcss@3 --save-dev`, `npx tailwindcss init`
-- **Sintomas:**
-  - npm exibia "up to date, audited 1 package" mesmo sem `node_modules`
-  - `node_modules` nunca foi criado para o Tailwind
-  - O React instalou normalmente (prova de que o npm tem acesso à rede)
-  - O `package.json` listava `tailwindcss: ^3.4.19` mas o pacote não era baixado
-  - Limpeza de cache (`npm cache clean --force`) não resolveu
-  - Recriação do `package.json` do zero não resolveu
-  - Troca de PowerShell para CMD não resolveu
-- **Hipótese:** Possível conflito com versão do Node.js ou permissões do Local by Flywheel
-- **Solução adotada:** CSS manual (não é a ideal, mas funciona)
+### 2.1 Stack Tecnológica
+- **Backend:** PHP 8.x (WordPress API via `admin-ajax.php`)
+- **Frontend:** Tailwind CSS v3.4.19 (compilado localmente via `tailwind.min.css`), JavaScript vanilla (IIFE), SVG inline para gráficos
+- **Comunicação:** AJAX via endpoint único `bm_get_report_data`
+- **Zero CDN, zero dependências externas, zero bibliotecas**
+
+### 2.2 Fluxo de Dados
+1. Formulário HTML → `bmFetchReport()` → `FormData` → `admin-ajax.php?action=bm_get_report_data`
+2. PHP (`bm_generate_report`) → consulta `post_meta`/`user_meta` → retorna JSON com `_meta.type`
+3. JavaScript (`bmRenderReport`) → roteia por `_meta.type` → renderiza componentes
+
+### 2.3 Endpoints
+- `wp_ajax_bm_get_report_data` — endpoint principal (nonce: `bm_reports_nonce`)
+- `wp_ajax_bm_service_search_student` — busca de aluno (nonce: `bm_service_nonce`)
+- `wp_ajax_bm_export_report_pdf` — exportação PDF (ainda usa layout antigo)
+- `wp_ajax_bm_save_dashboard_order` — salva ordem do drag and drop (Fase 5)
 
 ---
 
-## 5. ARQUIVOS DO PROJETO (HIERARQUIA COMPLETA)
+## 3. ESTRUTURA DE ARQUIVOS (APENAS RELEVANTES AO DASHBOARD)
 book-manager/
-├── assets/ # NOVO — criado no Chat 11
+├── assets/
 │ ├── css/
-│ │ └── tailwind-custom.css # NOVO — CSS manual com classes Tailwind
+│ │ └── tailwind.min.css # Tailwind v3.4.19 compilado (~3MB)
 │ ├── js/
-│ │ └── reports-dashboard.js # NOVO — renderização + AJAX bridge
-│ └── icons/ # NOVO — pasta vazia para ícones futuros
-│
+│ │ └── reports-dashboard.js # Motor de renderização (~900 linhas)
+│ └── icons/ # Vazia
 ├── includes/
-│ ├── reports.php # ALTERADO — adicionado endpoint JSON
-│ ├── admin-settings.php # Não alterado nesta etapa
-│ ├── admin-fields.php # Não alterado nesta etapa
-│ ├── admin-csv.php # Não alterado nesta etapa
-│ ├── admin-service.php # ALTERADO — formulário v0 + enqueues
-│ ├── frontend.php # Não alterado nesta etapa
-│ ├── users-circulacao.php # Não alterado nesta etapa
-│ ├── users-dashboard.php # Não alterado nesta etapa
-│ └── users-gamificacao.php # Não alterado nesta etapa
-│
-├── book-manager.php # Alterado na Fase 38.2 (modularização)
-├── uninstall.php
-├── single-bm_book.php
-├── archive-bm_book.php
-├── package.json # NOVO — criado para tentar instalar Tailwind
-└── tailwind.config.js # NOVO — criado pelo npx tailwindcss init
+│ ├── reports.php # Motor de relatórios + endpoints JSON
+│ ├── admin-service.php # Páginas admin (Balcão, Alunos, Relatórios, etc.)
+│ ├── admin-settings.php # Configurações
+│ ├── admin-fields.php # Campos dinâmicos
+│ ├── admin-csv.php # Importação/exportação CSV
+│ ├── frontend.php # Frontend público + handlers AJAX
+│ ├── users-circulacao.php # Reservas, empréstimos, devoluções, multas
+│ ├── users-dashboard.php # Dashboards do Aluno, Professor, Gestor
+│ └── users-gamificacao.php # Ranking, fichas, XP, medalhas
+├── book-manager.php # Plugin principal
+├── tailwind.config.js # Config do Tailwind (content aponta includes/ e assets/)
+├── input.css # Arquivo de entrada do Tailwind
+├── package.json # Gerado pelo npm (pode ser ignorado)
+├── package-lock.json # Gerado pelo npm (pode ser ignorado)
+└── tailwindcss-3.4.19.tgz # Pacote do Tailwind (pode ser removido)
 
-```markdown
-# RELATÓRIO DE MIGRAÇÃO — CHAT 11 (DASHBOARD DE RELATÓRIOS)
-
-**Data:** 25 de junho de 2026
-**De:** Chat 11
-**Para:** Chat 12
-**Assunto:** Modernização do dashboard de relatórios (wp-admin/relatórios) com visual estilo Power BI
 
 ---
 
-## 1. O QUE O USUÁRIO QUER
+## 4. O QUE FOI FEITO NESTE CHAT (FASES 1 A 5)
 
-- Cards de KPI com números grandes, coloridos, com indicador de variação percentual (ex: "+20% vs mês anterior")
-- Ranking visual com Top 3 leitores destacados com medalhas
-- Gráfico de pizza/donut para distribuição de gêneros literários
-- Barras horizontais de desempenho por aluno (nome + barra proporcional + número)
-- Gráfico de linha mostrando tendência de leitura por mês
-- Alertas visuais para alunos inativos (0 leituras no período)
-- Tudo atualizando via AJAX sem recarregar a página
-- Visual limpo, moderno, estilo dashboard de Business Intelligence
-- 100% local — sem CDN, sem bibliotecas externas
+### Fase 1 — Documentação e Contratos (CONCLUÍDA)
+- 1.1 — Atualizado `spec-frontend.md` com Mapa de Componentes (8 tipos × componentes), Catálogo de Funções JS e Contrato de Dados (JSON para cada tipo)
+- 1.2 — Criado `mapa-visualizacoes.md` com wireframes ASCII e especificações visuais
+- 1.3 — Criado `dicionario-componentes.md` com referência técnica completa
+- 1.4 — Revisado `roadmap-dashboard.md`
 
-## 2. O QUE O USUÁRIO NÃO QUER
+### Fase 2 — Frontend HTML/CSS/JS (CONCLUÍDA)
+- 2.1 — HTML expandido com novos slots (`data-section="pie-chart"`, `line-chart`, `top-readers`, `inactive-alerts`). Removidos scripts inline e botão PDF duplicado.
+- 2.2 — CSS expandido com estilos de BI (pizza, linha, variação, ranking, tooltip, animações)
+- 2.3 — Utilitários de BI: `calculateVariance()`, `rankEntities()`, `formatPercent()` + guard clause
+- 2.4 — Renderizadores SVG: `bmRenderPieChart()`, `bmRenderLineChart()`, `bmRenderTopReaders()`, `bmRenderInactiveAlerts()`
+- 2.5 — Refatoração: KPIs com variação, `genre_ranking` usa pizza, `reading_trend` usa linha, `student_performance` roteia visão geral/individual com Top 3 e inativos
+- 2.6 — Testes com dados reais (9 tipos de relatório validados)
 
-- Dados brutos em tabelas padrão WordPress
-- Apenas uma maquiagem CSS (bordas arredondadas, cores suavizadas)
-- A mesma experiência de antes com aparência levemente melhorada
-- Gráficos que dependam de CDN ou serviços externos
+### Fase 3 — Integração e Correções PHP (CONCLUÍDA)
+- 3.1 — HTML corrigido (botão duplicado removido, scripts inline removidos, loading corrigido)
+- 3.2 — Contratos de dados: `inactive_students` adicionado ao overview e student_performance, `_prev` para variação, `class_reading` ativa Top 3 e inativos, cabeçalhos traduzidos no custom
+- 3.3 — Testes completos com dados reais
 
----
+### Fase 4 — Dashboard Interativo (CONCLUÍDA COM PENDÊNCIAS)
+- 4.0 — **Tailwind CSS completo:** Instalado globalmente (`npm install -g tailwindcss@3.4.19`), compilado `tailwind.min.css` via `tailwindcss -i ./input.css -o ./assets/css/tailwind.min.css --minify`, carregado em `admin-service.php`
+- 4.1 — Visão Geral refatorada como Dashboard Central:
+  - 12 KPIs em 3 linhas com seletores de período independentes
+  - Destaques (Aluno do Período, Livro do Período)
+  - Gráficos com toggles [Barras│Linha│Pizza]
+  - Rankings com toggle [1│3│5│10] e mini barras de progresso
+  - Alertas (inativos, atrasos +7 dias, fila de espera)
+  - Utilidades (sugestões, atividade recente, nunca emprestados)
+  - Meta de leitura com barra de progresso
+  - Cards inteiros clicáveis com hover
+  - Drill-down inline (`bmDrillToReportInline`)
+- 4.2 — Novos endpoints: `bm_report_dashboard_overview`, `bm_report_most_reviewed_books`, `bm_report_most_video_reviewed_books`, `bm_report_never_borrowed_books`, `bm_report_recent_activity`
+- 4.3 — Rankings com mini barras de progresso. Drill-down inline implementado.
+- 4.4 — Testes parciais (Visão Geral validada; relatórios individuais não testados exaustivamente)
 
-## 3. AÇÕES REALIZADAS NO CHAT 11
-
-### 3.1 Documentação consolidada
-- Foi gerado um documento único de fundamentação (`documentacao-consolidada-dashboard.md`) contendo:
-  - Estrutura de arquivos proposta
-  - Arquitetura de dados (PHP como fonte única da verdade, JS como renderizador)
-  - Dicionário de dados (contrato JSON para 8 tipos de relatório)
-  - Roadmap de 8 tarefas
-  - Prompt refinado para v0.app
-  - Estrutura base do `reports-dashboard.js`
-
-### 3.2 Endpoint JSON (Tarefa 1 — concluída)
-- Arquivo: `includes/reports.php`
-- Criada função `bm_ajax_get_report_data()` registrada em `wp_ajax_bm_get_report_data`
-- Recebe parâmetros via POST, sanitiza, chama `bm_generate_report()`, retorna `wp_send_json_success()`
-- Adiciona metadado `_meta` com tipo, período e sujeito para o JS rotear a renderização
-- **Status:** Funcionando — testado via console do navegador, retorna JSON corretamente
-
-### 3.3 Correção de nonce e URLs (Tarefa 2)
-- **Status:** Já estava corrigido antes do Chat 11 iniciar. Nenhuma alteração necessária.
-
-### 3.4 HTML do v0.app (Tarefa 3 — concluída)
-- O usuário gerou o HTML no v0.app usando prompt refinado
-- HTML contém:
-  - Formulário com `id="bm-report-form"` e todos os campos com `name` e `id` corretos
-  - Slots vazios identificados por `data-section`:
-    - `data-section="report-title"` — título e período do relatório
-    - `data-section="kpi-cards"` — 4 cards (azul, verde, vermelho, âmbar) com espaço para label, valor e variação
-    - `data-section="bar-chart"` — container para gráfico de barras com `data-component="bm-chart"`
-    - `data-section="data-table"` — tabela com thead e tbody vazios
-  - Estados visuais: `bm-welcome`, `bm-loading` (com animate-pulse), `bm-empty` (com ícone SVG de caixa vazia)
-  - Ícones SVG inline nos cards (círculos)
-  - Classes Tailwind puras (bg-white, rounded-xl, shadow-sm, grid, flex, etc.)
-
-### 3.5 JavaScript de renderização (Tarefa 4 — concluída)
-- Arquivo: `assets/js/reports-dashboard.js`
-- Funções implementadas:
-  - `bmFetchReport()` — intercepta submit do formulário, chama endpoint JSON via fetch()
-  - `bmRenderReport(data)` — roteador que usa `data._meta.type` para decidir qual renderizador chamar
-  - `bmRenderOverview()`, `bmRenderStudentPerformance()`, `bmRenderClassReading()`, `bmRenderPenalties()`, `bmRenderGenreRanking()`, `bmRenderTopBooks()`, `bmRenderReadingTrend()`, `bmRenderCustom()` — renderizadores para cada tipo de relatório
-  - `bmFillKPICard()` — preenche um card com label, valor e variação
-  - `bmRenderBarChart()` — gera barras horizontais CSS puras a partir de dados `{label: value}`
-  - `bmRenderTable()` — preenche tabela com headers e rows
-  - `bmShowState()` — controla exibição de welcome/loading/empty/dados
-  - `bmToggleCustomDates()`, `bmToggleSubjectOptions()`, `bmToggleCustomOptions()` — controle de campos dinâmicos
-  - `bmSearchStudent()` — busca de aluno via AJAX
-  - `bmExportPDF()` — exportação PDF mantendo filtros ativos
-- **Problema identificado:** A busca de aluno usa `bm.nonce` (que é `bm_reports_nonce`), mas o endpoint `bm_service_search_student` espera `bm_service_nonce`. Isso causa **403 Forbidden** no console.
-
-### 3.6 Tailwind CSS (Tarefa 5 — concluída com abordagem alternativa)
-- **Problema:** Não foi possível instalar o Tailwind CSS via CLI (npm).
-  - O comando `npm install tailwindcss@3 --save-dev` falhou repetidamente
-  - O `package.json` ficou corrompido e precisou ser recriado
-  - Após várias tentativas (limpeza de cache, recriação do package.json, troca de terminal), o npm continuou recusando a instalação do Tailwind
-  - O React instalou normalmente, confirmando que o npm funciona, mas o Tailwind especificamente não
-  - **Causa não identificada** — possível conflito de versão ou cache corrompido
-- **Solução alternativa:** Foi gerado um arquivo CSS mínimo manual (`assets/css/tailwind-custom.css`) contendo apenas as classes Tailwind utilizadas pelo HTML do v0
-  - Display, flexbox, grid, spacing, cores, bordas, sombras, tipografia, hover, transições, animações, responsivo
-  - **Sem CDN** — arquivo local carregado via `wp_enqueue_style`
-  - **Limitação:** Se novas classes Tailwind forem usadas no futuro, precisarão ser adicionadas manualmente a este arquivo
-
-### 3.7 Substituição do formulário (Tarefa 7 — concluída)
-- Arquivo: `includes/admin-service.php`, função `bm_render_reports_page()`
-- Adicionados enqueues condicionais (CSS + JS + wp_localize_script)
-- Formulário antigo substituído pelo HTML do v0
-- **Problema:** A substituição deixou o formulário antigo aninhado dentro do novo, causando duplicação de campos e 2 botões "Gerar Relatório"
-- **Correção:** O bloco antigo foi removido e substituído pelos campos individuais do v0 com classes Tailwind
-- **Problema persistente:** Existem 2 botões "Exportar PDF" na página (herança da duplicação)
-
-### 3.8 Status atual do dashboard
-- **Visual:** CSS Tailwind funcionando — bordas arredondadas, sombras, cores nos cards
-- **Interceptação do formulário:** O JavaScript intercepta o submit (aparece "form interceptado" no console)
-- **Endpoint JSON:** Funcionando — retorna dados corretos quando chamado manualmente via fetch()
-- **Renderização:** **NÃO está funcionando** — os cards permanecem vazios/hidden
-- **Erro no console:** `403 Forbidden` ao chamar `bm_service_search_student` (nonce incorreto)
+### Fase 5 — Personalização de Layout (PARCIAL)
+- 5.1 — Drag and Drop funcional (HTML5 API nativa, placeholder visual, salva ordem via `_bm_dashboard_order`)
+- 5.2 — Redimensionamento de cards (NÃO CONCLUÍDO — pulado por decisão do usuário)
+- 5.3 — Restaurar layout padrão (NÃO INICIADO)
 
 ---
 
-## 4. PROBLEMAS COM O TERMINAL (NPM/TAILWIND)
+## 5. O QUE DEU ERRADO
 
-- **Ambiente:** Windows 10, PowerShell, VSCode, Local by Flywheel
-- **Caminho:** `C:\Users\odani\Local Sites\biblioteca-plugin\app\public\wp-content\plugins\book-manager`
-- **Comandos tentados:** `npm init -y`, `npm install -D tailwindcss`, `npm install tailwindcss@3 --save-dev`, `npx tailwindcss init`
-- **Sintomas:**
-  - npm exibia "up to date, audited 1 package" mesmo sem `node_modules`
-  - `node_modules` nunca foi criado para o Tailwind
-  - O React instalou normalmente (prova de que o npm tem acesso à rede)
-  - O `package.json` listava `tailwindcss: ^3.4.19` mas o pacote não era baixado
-  - Limpeza de cache (`npm cache clean --force`) não resolveu
-  - Recriação do `package.json` do zero não resolveu
-  - Troca de PowerShell para CMD não resolveu
-- **Hipótese:** Possível conflito com versão do Node.js ou permissões do Local by Flywheel
-- **Solução adotada:** CSS manual (não é a ideal, mas funciona)
+### 5.1 Problemas Técnicos
+1. **npm/Tailwind CLI:** O ambiente Windows com PowerShell/Local by Flywheel nunca conseguiu executar `npm install tailwindcss` localmente. Após mais de 30 tentativas, o Tailwind foi instalado **globalmente** (`npm install -g tailwindcss@3.4.19`) e compilado manualmente.
+2. **Conflitos de escopo JavaScript:** As funções do dashboard estão dentro de uma IIFE `(function() { ... })()`. Funções expostas ao console precisam de `window.funcao = funcao`. Houve várias tentativas frustradas de expor funções em locais errados do código.
+3. **Aninhamento de funções quebrado:** Durante as edições, funções foram inseridas dentro de outras (ex: `bmCreateRankingCard` dentro de `bmRenderLineChartInContainer`), causando erros de sintaxe. O arquivo JS precisou ser reescrito completamente uma vez.
+4. **HTML do bar-chart quebrado:** A `<div data-section="bar-chart">` teve seu conteúdo interno deslocado, bagunçando o layout. Corrigido na Tarefa 3.1.
+5. **Drag and Drop não iniciava automaticamente:** A função `bmEnableDragAndDrop` estava definida mas não era chamada. Resolvido com código inline no `setTimeout` dentro de `bmRenderOverview`.
 
----
+### 5.2 Problemas de Processo
+1. **Violações das regras de interação:** Por várias vezes, a IA enviou múltiplos passos em uma única mensagem, violando a regra de "1 passo por vez". Isso causou retrabalho e frustração.
+2. **Localizadores imprecisos:** O arquivo `reports-dashboard.js` foi editado tantas vezes que localizadores CTRL+F frequentemente não correspondiam ao código real, exigindo que o usuário enviasse o arquivo completo para realinhamento.
 
-## 5. ARQUIVOS DO PROJETO (HIERARQUIA COMPLETA)
-
-```
-book-manager/
-├── assets/                              # NOVO — criado no Chat 11
-│   ├── css/
-│   │   └── tailwind-custom.css          # NOVO — CSS manual com classes Tailwind
-│   ├── js/
-│   │   └── reports-dashboard.js         # NOVO — renderização + AJAX bridge
-│   └── icons/                           # NOVO — pasta vazia para ícones futuros
-│
-├── includes/
-│   ├── reports.php                      # ALTERADO — adicionado endpoint JSON
-│   ├── admin-settings.php               # Não alterado nesta etapa
-│   ├── admin-fields.php                 # Não alterado nesta etapa
-│   ├── admin-csv.php                    # Não alterado nesta etapa
-│   ├── admin-service.php                # ALTERADO — formulário v0 + enqueues
-│   ├── frontend.php                     # Não alterado nesta etapa
-│   ├── users-circulacao.php             # Não alterado nesta etapa
-│   ├── users-dashboard.php              # Não alterado nesta etapa
-│   └── users-gamificacao.php            # Não alterado nesta etapa
-│
-├── book-manager.php                     # Alterado na Fase 38.2 (modularização)
-├── uninstall.php
-├── single-bm_book.php
-├── archive-bm_book.php
-├── package.json                         # NOVO — criado para tentar instalar Tailwind
-└── tailwind.config.js                   # NOVO — criado pelo npx tailwindcss init
-```
-
-### Arquivos relevantes para o dashboard (necessários no Chat 12):
-
-| Arquivo | Status | Função |
-|---------|--------|--------|
-| `includes/reports.php` | Alterado | Endpoint JSON `wp_ajax_bm_get_report_data` |
-| `includes/admin-service.php` | Alterado | Função `bm_render_reports_page()` com formulário v0 + enqueues |
-| `assets/js/reports-dashboard.js` | Novo | JavaScript de renderização + AJAX |
-| `assets/css/tailwind-custom.css` | Novo | CSS manual com classes Tailwind |
-| `includes/frontend.php` | Não alterado | Handlers AJAX (`bm_service_search_student`, `bm_export_report_pdf`) |
-| `includes/users-circulacao.php` | Não alterado | Funções de empréstimo/devolução (dados dos relatórios) |
-| `includes/users-gamificacao.php` | Não alterado | Funções de XP, ranking, fichas (dados dos relatórios) |
+### 5.3 Pendências Visuais
+- **Cards "Livros +Resenhados" e "Livros +Vídeos"** não aparecem (arrays vazios do PHP — sem dados no período)
+- **Cards KPI mostram `data-drill-period="undefined"`** (não afeta funcionalidade, mas é um bug cosmético)
+- **"Carregando..." resolvido** (adicionado `classList.add('hidden')` no `bmFetchReport`)
+- **Visual ainda abaixo do esperado** — comparado ao v0.app, falta sparklines, gradientes, sombras duplas, timeline refinada
 
 ---
 
-## 6. PENDÊNCIAS PARA O PRÓXIMO CHAT
+## 6. ESTADO ATUAL DO FRONTEND
 
-- Erro 403 no `reports-dashboard.js` (nonce incorreto na busca de aluno)
-- Cards KPI não estão sendo preenchidos
-- Gráfico de barras não está sendo exibido
-- 2 botões "Exportar PDF" duplicados
-- Tailwind CSS não instalado via CLI (apenas CSS manual)
-- Variação percentual (`calculateVariance`) não implementada
-- Comparação entre períodos não implementada no endpoint JSON
-- Gráfico de pizza e linha não implementados
-- Seção de Top 3 leitores com medalhas não implementada
-- Seção de alunos inativos não implementada
+### 6.1 O que funciona
+- 26 cards renderizando na Visão Geral (12 KPIs, 2 destaques, 2 gráficos, 8 rankings, 1 alerta, 3 utilidades, 1 meta)
+- Gráfico de linha com toggle Barras/Linha/Pizza
+- Gráfico de pizza/donut com toggle Rosca/Barras
+- Rankings com mini barras de progresso e toggle [1│3│5│10]
+- Cards inteiros clicáveis com hover (sombra + elevação)
+- Drill-down inline (abre seção abaixo do dashboard com botão "Voltar")
+- Drag and drop de cards individuais
+- Seletores de período dentro dos cards KPI
+- Tailwind CSS completo carregado
+
+### 6.2 O que NÃO funciona ou está pendente
+- **Toggles de período e visualização:** Os seletores dentro dos cards não respondem ou recarregam a página. O evento `onclick="event.stopPropagation()"` conflita com os listeners de drill-down.
+- **Grid com espaços vazios:** Linhas que deveriam ter 3 ou 4 cards aparecem com 1 ou 2, deixando lacunas. Causa: dados ausentes (ex: `most_reviewed_books` vazio) fazem o JS pular a criação do card.
+- **Drill-down sem busca e sem exportação:** A seção inline mostra tabela simples, sem campo de busca e sem botão de PDF/CSV.
+- **Sparklines ausentes:** Nenhum KPI tem mini gráfico de tendência.
+- **Radar ausente:** Não há gráfico de radar comparando alunos.
+- **Atividade recente em pills:** Deveria ser timeline com bolinhas e tempo relativo.
+- **Últimos cadastrados sem capas:** Mostra apenas nome em pills, sem grid de capas.
+- **Meta de leitura sem marcas de escala.**
+- **Visual básico:** Sem sombras duplas, sem gradientes em placeholders, sem tooltips nativos nos gráficos.
+- **Exportação PDF com layout antigo** (WP List Table, pré-Power BI).
 
 ---
 
-## 7. ANÁLISE CRÍTICA — POR QUE A ABORDAGEM DO CHAT 11 NÃO ENTREGOU O POWER BI
+## 7. TAREFAS RESTANTES (FASES 6 E 7) — DETALHAMENTO
 
-### 7.1 O que foi tentado
-- **Estratégia:** Gerar esqueleto HTML no v0.app → Criar endpoint JSON no PHP → Criar JavaScript que preenche os slots do HTML com dados do JSON
-- **Premissa:** O v0 geraria um layout rico (cards, gráficos, tabelas) e o JavaScript faria a mágica de dar vida a esse layout com dados reais
+### 7.1 Fase 6 — Acabamento Visual (Inspiração v0.app)
 
-### 7.2 Por que falhou
-1. **O v0 gerou apenas um esqueleto básico** — cards vazios, slots para tabela, container para gráfico de barras. Nada de gráfico de pizza, linha, rede, ranking visual, medalhas ou alertas. O output foi muito mais simples do que o prompt pedia.
-2. **O JavaScript foi escrito para preencher slots, não para criar visualizações** — ele só insere números em cards e linhas em tabelas. Não gera gráficos de pizza, não calcula tendências, não destaca variações. É um "preenchedor de templates", não um motor de BI.
-3. **O CSS manual (Tailwind) apenas estiliza** — bordas arredondadas, sombras, cores. Isso melhora a aparência, mas não transforma dados brutos em visualizações de BI.
-4. **Erro 403 não resolvido** — o nonce da busca de aluno está incorreto, o que impede o fluxo completo de funcionar.
-5. **O npm/Tailwind CLI não funcionou no ambiente do usuário** — a abordagem de compilação local foi abandonada em favor de um CSS manual, que é limitado e difícil de escalar.
+#### 6.1 — Sparklines nos KPIs
+- **Status:** ❌ Não iniciado
+- **Objetivo:** Adicionar mini gráficos SVG (sparklines) nos 12 cards KPI
+- **O que fazer:**
+  1. Criar função `bmSparklineSVG(data, color)` que gera SVG com `polygon` (área preenchida), `polyline` (linha) e `circle` (ponto final). Referência: função `sparkSVG()` no código do v0.app.
+  2. Alterar `bmCreateKPICard()` para incluir o sparkline abaixo do valor e acima do seletor de período.
+  3. Adicionar ao endpoint `bm_report_dashboard_overview` os arrays de 7 valores históricos para cada KPI (ex: `spark_loans`, `spark_returns`, etc.).
+- **Arquivos:** `assets/js/reports-dashboard.js`, `includes/reports.php`
 
-### 7.3 O que o usuário recebeu
-- **Antes:** Tabelas WP List Table com dados brutos, cards com border-left colorido, gráfico de barras CSS simples
-- **Depois:** Os mesmos dados brutos, com bordas arredondadas, sombras leves e cores Tailwind. A aparência está mais limpa, mas **não é um dashboard Power BI**. É essencialmente o mesmo relatório com uma camada de CSS moderno.
+#### 6.2 — Gráfico de Radar
+- **Status:** ❌ Não iniciado
+- **Objetivo:** Implementar gráfico de radar SVG comparando dois alunos em múltiplos gêneros
+- **O que fazer:**
+  1. Criar função PHP `bm_report_radar_data($since, $until)` que retorna eixos (gêneros) e valores para os dois alunos com mais livros lidos.
+  2. Criar função JS `bmCreateRadarCard(data)` que gera SVG com anéis concêntricos, eixos rotulados, dois polígonos de preenchimento e legenda. Referência: função `radarCard()` no v0.app.
+  3. Integrar na Visão Geral (linha 10, ao lado da meta).
+- **Arquivos:** `assets/js/reports-dashboard.js`, `includes/reports.php`
 
-### 7.4 O que o próximo chat deve fazer diferente
-- **Reavaliar se o v0 é a ferramenta certa** para gerar visuais de BI. O v0 é bom para layouts, mas não gera gráficos interativos.
-- **Considerar uma biblioteca de gráficos local** (Chart.js ou similar) incluída como arquivo no plugin, sem CDN, para gráficos de pizza, linha e barras avançadas.
-- **Resolver o problema do npm/Tailwind** antes de continuar — o CSS manual não escala.
-- **Focar na experiência visual primeiro**, depois conectar os dados. O layout precisa ter os gráficos funcionando com dados de exemplo antes de receber dados reais do PHP.
-- **Revisar o contrato de JSON** — os endpoints PHP já retornam dados corretos. O problema está exclusivamente na camada de renderização (JavaScript).
+#### 6.3 — Drill-down com Busca e Exportação PDF
+- **Status:** ❌ Não iniciado
+- **Objetivo:** Adicionar campo de busca na tabela do drill-down e botão de exportação PDF prioritário
+- **O que fazer:**
+  1. Adicionar `<input>` de busca no cabeçalho do drill-down que filtra linhas em tempo real.
+  2. Adicionar botão "Exportar PDF" que gera relatório formatado (nova aba com `window.print()`, layout Power BI).
+  3. Opcional: adicionar botão "Exportar CSV" como secundário.
+- **Arquivos:** `assets/js/reports-dashboard.js`
+
+#### 6.4 — Timeline de Atividade Recente
+- **Status:** ❌ Não iniciado
+- **Objetivo:** Substituir pills de texto por timeline com bolinhas coloridas e tempo relativo
+- **O que fazer:**
+  1. Adicionar timestamp real aos dados de `recent_activity` no endpoint `bm_report_recent_activity`.
+  2. Alterar `bmCreateUtilityCard()` para renderizar atividade como timeline.
+- **Arquivos:** `assets/js/reports-dashboard.js`, `includes/reports.php`
+
+#### 6.5 — Grid de Capas para Últimos Cadastrados
+- **Status:** ❌ Não iniciado
+- **Objetivo:** Exibir últimos livros cadastrados como mini capas em grid
+- **O que fazer:**
+  1. Criar função PHP `bm_report_recent_books($limit)` que retorna títulos e URLs de capa.
+  2. Alterar `bmCreateUtilityCard()` para renderizar grid 3×2 com capas ou iniciais em gradiente como fallback.
+  3. Integrar no `bm_report_dashboard_overview`.
+- **Arquivos:** `assets/js/reports-dashboard.js`, `includes/reports.php`
+
+#### 6.6 — Meta de Leitura com Marcas de Escala
+- **Status:** ❌ Não iniciado
+- **Objetivo:** Refinar barra de meta com gradiente, animação e marcas de escala
+- **O que fazer:**
+  1. Adicionar marcas de escala (0, 25%, 50%, 75%, 100%) abaixo da barra.
+  2. Aplicar gradiente `from-emerald-400 to-emerald-600`.
+  3. Garantir animação de largura (`transition: width 1s`).
+- **Arquivos:** `assets/js/reports-dashboard.js`
+
+#### 6.7 — Refinamento Visual Geral
+- **Status:** ❌ Não iniciado
+- **Objetivo:** Aplicar sombras duplas, gradientes em placeholders, tooltips nativos, ícones mais expressivos
+- **O que fazer:**
+  1. Adicionar classes CSS para sombra dupla (`box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)`).
+  2. Substituir círculos genéricos dos KPIs por ícones mais expressivos (emojis ou SVG inline).
+  3. Adicionar `<title>` nos elementos SVG para tooltips nativos.
+  4. Substituir placeholders 👤📖 por iniciais em gradiente (como o v0.app faz).
+- **Arquivos:** `assets/css/tailwind.min.css`, `assets/js/reports-dashboard.js`
+
+#### 6.8 — Drag and Drop por Seção
+- **Status:** ❌ Não iniciado
+- **Objetivo:** Substituir arraste individual de cards por arraste de seções inteiras
+- **O que fazer:**
+  1. Agrupar cards em `<section>` com cabeçalho e grip (⠿).
+  2. Implementar drag and drop nas seções com placeholder visual.
+  3. Salvar ordem via `bm_ajax_save_dashboard_order` (já existente).
+- **Arquivos:** `assets/js/reports-dashboard.js`
+
+### 7.2 Fase 7 — Integração Completa e Testes Finais
+
+#### 7.1 — Substituir dados mock pelos endpoints reais
+- **Status:** ❌ Não iniciado
+- **Objetivo:** Garantir que nenhum dado estático permaneça no código
+- **O que fazer:**
+  1. Revisar cada função de criação de card para consumir apenas dados do JSON.
+  2. Remover qualquer fallback estático ou placeholder de dados.
+  3. Testar todos os 8 tipos de relatório com dados reais do banco.
+- **Arquivos:** `assets/js/reports-dashboard.js`
+
+#### 7.2 — Testes finais e ajustes de performance
+- **Status:** ❌ Não iniciado
+- **Objetivo:** Validar todo o fluxo e corrigir problemas de carregamento
+- **O que fazer:**
+  1. Testar Visão Geral com todos os cards.
+  2. Testar drill-down inline com busca e PDF.
+  3. Testar drag and drop.
+  4. Testar responsividade.
+  5. Verificar cache e performance.
+- **Arquivos:** Nenhum (apenas testes)
+
+---
+
+## 8. CORREÇÕES URGENTES (ANTES DE AVANÇAR PARA A FASE 6)
+
+### 8.1 Toggles não funcionam
+- **Problema:** Seletores de período dentro dos cards KPI e botões de toggle nos gráficos não respondem ou recarregam a página.
+- **Causa provável:** O evento `click` no card inteiro (drill-down) está capturando cliques nos elementos internos. O `event.stopPropagation()` nos `<select>` e botões pode não estar sendo aplicado corretamente após as múltiplas edições.
+- **Solução sugerida:** Revisar `bmCreateKPICard`, `bmCreateChartCard` e `bmCreateRankingCard` para garantir que todos os elementos interativos internos tenham `event.stopPropagation()`.
+
+### 8.2 Grid com espaços vazios
+- **Problema:** Linhas com menos cards do que o esperado, deixando lacunas.
+- **Causa:** O JavaScript cria cards condicionalmente (ex: `if (data.most_reviewed_books && data.most_reviewed_books.length > 0)`). Quando o array está vazio, o card não é criado e a linha fica com menos elementos.
+- **Solução sugerida:** Criar cards mesmo sem dados, exibindo "Nenhum dado no período" ou similar, para manter a integridade do grid.
+
+### 8.3 Drill-down inline sem busca/PDF
+- **Problema:** A seção inline mostra tabela simples, sem campo de busca e sem exportação.
+- **Causa:** A função `bmDrillToReportInline` foi implementada de forma básica, apenas com tabela e botão "Voltar".
+- **Solução:** Expandir a função conforme Tarefa 6.3.
+
+### 8.4 Exportação PDF com layout antigo
+- **Problema:** O botão "Exportar PDF" (fora do drill-down) abre uma página com layout WP List Table, não Power BI.
+- **Causa:** A função `bm_ajax_export_report_pdf` ainda usa `bm_render_report_html()` antiga.
+- **Solução:** Refatorar para usar o layout Power BI (Tarefa 7.1).
+
+---
+
+## 9. REFERÊNCIA VISUAL: v0.app
+
+O código HTML/CSS/JS do v0.app foi analisado e serve como referência de design system. Ele está no chat e pode ser consultado a qualquer momento. Principais características:
+
+- **Sparklines:** Função `sparkSVG(data, color)` — gera SVG com área preenchida e ponto final
+- **Radar:** Função `radarCard()` — anéis concêntricos, dois polígonos sobrepostos, legenda
+- **Drill-down:** Função `openDrill(spec)` — busca em tempo real, exportação CSV
+- **Timeline:** Bolinhas coloridas com `mt-1.5` e texto com tempo relativo
+- **Grid de capas:** Iniciais em gradiente (`bg-gradient-to-br from-blue-400 to-blue-600`)
+- **Meta:** Barra com `transition: width 1s`, marcas de escala, gradiente
+- **Sombras duplas:** `box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)`
+- **Botões de período:** Classe `seg` — fundo cinza claro, ativo com fundo azul e texto branco
+
+---
+
+## 10. DOCUMENTOS QUE O CHAT 13 PRECISA
+
+1. `claude.md` — Constituição do projeto (com a persona atualizada de 12 pontos)
+2. `escopo.md` — Barreiras técnicas
+3. `spec-frontend.md` — Atualizado com seção 10 (Estratégia Fases 6-7)
+4. `roadmap-dashboard.md` — Roadmap completo com Fases 1-7
+5. `mapa-visualizacoes.md` — Wireframes e especificações visuais
+6. `dicionario-componentes.md` — Referência técnica
+7. `changelog.md` — Histórico completo
+
+---
+
+## 11. ARQUIVOS DE CÓDIGO QUE O CHAT 13 PRECISA
+
+1. `assets/js/reports-dashboard.js` — Motor de renderização (~900 linhas)
+2. `assets/css/tailwind.min.css` — Tailwind compilado
+3. `includes/reports.php` — Motor PHP + endpoints
+4. `includes/admin-service.php` — Função `bm_render_reports_page()` (HTML da página)
+5. Código HTML do v0.app (referência visual)
+6. Código HTML do Stitch (referência secundária, pode ser ignorada)
+
+---
+
+## 12. RESUMO PARA O PRÓXIMO CHAT
+
+"Estamos no Chat 13 do projeto Book Manager. O dashboard de relatórios está funcional com 26 cards, KPIs, gráficos SVG (linha/pizza), rankings com mini barras, alertas, utilidades e meta de leitura. Drag and drop de cards funciona. Tailwind CSS completo compilado localmente.
+
+Precisamos concluir as Fases 6 e 7:
+- **Fase 6:** Sparklines nos KPIs, gráfico de radar, drill-down com busca e exportação PDF, timeline de atividade, grid de capas, meta com marcas de escala, refinamento visual (sombras duplas, gradientes, tooltips), drag and drop por seção.
+- **Fase 7:** Conectar todos os dados reais (remover mocks), refazer exportação PDF com layout Power BI, testes finais.
+
+Antes de iniciar a Fase 6, há correções urgentes: toggles de período e visualização não funcionam (conflito com drill-down), grid com espaços vazios (dados ausentes), drill-down sem busca/PDF.
+
+A referência visual é o código do v0.app (já analisado). O design system do v0 deve ser adaptado para nosso HTML/CSS/JS existente.
+
+Siga o roadmap em `roadmap-dashboard.md`. Comece pela Tarefa 6.1 (Sparklines)."
+
+apenas diga prossiga
 
 
-## 8. ARQUIVOS QUE O CHAT 12 VAI RECEBER
-
-### 8.1 Arquivos de documentação (.md) utilizados pelo Chat 11
-
-| Arquivo | Resumo |
-|---------|--------|
-| `claude.md` | Constituição do projeto — 5 princípios, hierarquia de documentos, cláusula de fallback |
-| `escopo.md` | Barreiras técnicas, estrutura de dados, segurança, premissas de performance |
-| `roadmap.md` | Fases de desenvolvimento com checklists (Fase 0 a 38) |
-| `changelog.md` | Histórico imutável de 181+ ações registradas |
-
-### 8.2 Arquivos PHP (apenas os alterados ou relevantes para o dashboard)
-
-| Arquivo | Linhas aprox. | Relevância |
-|---------|--------------|------------|
-| `includes/reports.php` | ~800 | Motor de relatórios + endpoint JSON `wp_ajax_bm_get_report_data` |
-| `includes/admin-service.php` | ~1200 | Função `bm_render_reports_page()` com formulário v0 + enqueues |
-| `includes/frontend.php` | ~2600 | Handlers AJAX (`bm_service_search_student`, `bm_export_report_pdf`) |
-| `includes/users-circulacao.php` | ~1200 | Circulação (dados de empréstimos, devoluções, multas) |
-| `includes/users-gamificacao.php` | ~900 | Ranking, XP, medalhas, fichas de leitura |
-
-### 8.3 Arquivos de Frontend (CSS, JS)
-
-| Arquivo | Relevância |
-|---------|------------|
-| `assets/css/tailwind-custom.css` | CSS manual com classes Tailwind usadas pelo v0 |
-| `assets/js/reports-dashboard.js` | JavaScript de renderização + AJAX bridge |
-
-### 8.4 HTML de referência (não é arquivo do plugin)
-
-| Artefato | Descrição |
-|----------|-----------|
-| HTML gerado pelo v0.app | Esqueleto com slots para cards, gráfico de barras e tabela (já incorporado ao `admin-service.php`) |
-
-### 8.5 Documentação de apoio
-
-| Documento | Conteúdo |
-|-----------|----------|
-| Documentação consolidada do dashboard | Dicionário de dados JSON, estrutura de arquivos, barreiras do escopo |
+**************************************************************************************
+**************************************************************************************
+**************************************************************************************
+**************************************************************************************
 
 
-Apenas brevemente se entendeu. Se não entendeu faça perguntas. Apeas diga prossiga
+Arquivos para Migrar para o Chat 13
+.md (Documentação)
+claude.md — atualizado com persona de 12 pontos (itens 10-12 são novos)
 
-```
+escopo.md — barreiras técnicas
+
+spec-frontend.md — atualizado com seção 10 (Estratégia Fases 6-7)
+
+roadmap-dashboard.md — atualizado com Fases 6-7
+
+mapa-visualizacoes.md
+
+dicionario-componentes.md
+
+changelog.md — atualizado (entrada 194)
+
+.php
+includes/reports.php
+
+includes/admin-service.php
+
+.js
+assets/js/reports-dashboard.js
+
+.css
+assets/css/tailwind.min.css
+
+Referência adicional (não é arquivo do projeto)
+Código HTML do v0.app (design system de referência)
+
+Vou começar a enviar agora, diga o arquivo que recebeu e diga prossiga. Depois que receber tudo apenas confirme com um checklist simples dizendo os arquivos que recebeu.

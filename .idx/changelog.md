@@ -1183,3 +1183,65 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 - **Detalhes:** O `reports-dashboard.js` usava o mesmo nonce (`bmReports.nonce` = `bm_reports_nonce`) para a busca de aluno, mas o handler `bm_ajax_service_search_student` espera o nonce `bm_service_nonce`. Adicionado `serviceNonce` ao objeto `bmReports` no `wp_localize_script` em `admin-service.php`. Atualizada a função `bmSearchStudent()` em `reports-dashboard.js` para usar `bm.serviceNonce` na requisição. Corrigida também a duplicação do botão "Exportar PDF" que aparecia duas vezes no formulário.
 - **Ferramenta:** `write_file`
 - **Arquivos modificados:** `includes/admin-service.php`, `assets/js/reports-dashboard.js`
+
+---Chat 12
+
+**191 - Data:** 2026-06-25
+- **Ação:** Fase 1 do Dashboard Power BI concluída — Documentação e Contratos.
+- **Detalhes:** Tarefa 1.1 — Atualizado `spec-frontend.md` com três novas seções: Mapa de Componentes por Tipo de Relatório (tabela 8 tipos × componentes visuais), Catálogo de Funções JS (assinaturas e contratos de todas as funções do `reports-dashboard.js`), Contrato de Dados (exemplos JSON completos para cada um dos 8 tipos de relatório). Tarefa 1.2 — Criado `mapa-visualizacoes.md` com wireframes ASCII do layout Bento Grid, especificações visuais de cada componente (KPI Card, Gráfico de Barras, Pizza/Donut, Linha, Ranking Top 3, Alertas de Inativos, Tabela), tabela de slots HTML e legenda de cores/ícones. Tarefa 1.3 — Criado `dicionario-componentes.md` com referência técnica completa: slots HTML (`data-section`), estados visuais, classes CSS customizadas, funções JavaScript com assinaturas, objeto `bmReports` injetado via PHP, e hierarquia de arquivos da stack. Tarefa 1.4 — Revisado `roadmap-dashboard.md`, Fase 1 marcada como concluída com 4/4 tarefas finalizadas. Nenhum arquivo de código foi alterado.
+- **Ferramenta:** `write_file` (geração de documentos)
+- **Arquivos criados:** `mapa-visualizacoes.md`, `dicionario-componentes.md`
+- **Arquivos modificados:** `spec-frontend.md`, `roadmap-dashboard.md`
+
+**192 - Data:** 2026-06-25  
+- **Ação:** Fase 2 do Dashboard Power BI parcialmente concluída — Frontend (HTML, CSS, JavaScript).  
+- **Detalhes:** Tarefa 2.1 — HTML expandido: removido botão PDF duplicado, removidos scripts inline de busca de aluno e exportação PDF, adicionados slots `data-section="pie-chart"`, `data-section="line-chart"`, `data-section="top-readers"` (com medalhas), `data-section="inactive-alerts"`. Tarefa 2.2 — CSS enriquecido com classes para gráfico de pizza/donut, gráfico de linha, indicadores de variação (`text-positive`/`text-negative`), ranking (`badge-gold/silver/bronze`), tooltip e animação `slide-in`. Tarefa 2.3 — JavaScript: adicionada guard clause para `bm.ajaxUrl`, implementados utilitários de BI (`calculateVariance`, `rankEntities`, `formatPercent`) com exposição ao console para teste. Tarefa 2.4 — Implementados renderizadores SVG: `bmRenderPieChart` (donut chart com legenda), `bmRenderLineChart` (linha com pontos e tooltips), `bmRenderTopReaders` (3 cards com medalhas e barras), `bmRenderInactiveAlerts` (pills com nomes). Corrigido arquivo `reports-dashboard.js` completo para reorganizar funções e expor ao escopo global. Testes manuais confirmam gráfico de pizza e linha funcionando com dados reais.  
+- **Ferramenta:** `write_file` (múltiplas edições manuais)  
+- **Arquivos modificados:** `includes/admin-service.php`, `assets/css/tailwind-custom.css`, `assets/js/reports-dashboard.js`  
+- **Roadmap:** Tarefas 2.1, 2.2, 2.3, 2.4 marcadas como concluídas.
+
+**193 - Data:** 2026-06-25
+- **Ação:** Fase 2 do Dashboard Power BI concluída — Refatoração e Testes do Frontend.
+- **Detalhes:** Tarefa 2.5 — Refatorados renderizadores existentes com BI: `bmFillKPICard` agora usa seletores por classe e exibe variação percentual condicional (verde/vermelho); `bmRenderBarChart` adicionado tooltip no hover e animação de largura; `bmRenderOverview` chama `bmRenderInactiveAlerts` quando há inativos e calcula variância para empréstimos/devoluções; `bmRenderGenreRanking` usa `bmRenderPieChart` (donut); `bmRenderReadingTrend` usa `bmRenderLineChart`; `bmRenderStudentPerformance` roteia entre visão geral (Top 3 + inativos) e individual; `bmShowState` limpa novos componentes (pie-chart, line-chart, top-readers, inactive-alerts) entre relatórios. Tarefa 2.6 — Testados 9 tipos de relatório com dados reais: visão geral, desempenho (todos/individual), leitura por turma, multas ativas, ranking por gênero, livros mais emprestados, tendência de leitura e configurável. Corrigido HTML quebrado na seção de resultados (bar-chart estava com conteúdo interno deslocado). Identificadas 5 pendências para a Fase 3 (variação % sem `_prev`, `inactive_students` ausente no PHP, `class_reading` sem Top 3/inativos, loading não desaparece, cabeçalhos técnicos no custom).
+- **Ferramenta:** `write_file` (múltiplas edições manuais)
+- **Arquivos modificados:** `assets/js/reports-dashboard.js`, `includes/admin-service.php`
+- **Roadmap:** Tarefas 2.5 e 2.6 marcadas como concluídas. Fase 2 finalizada.
+
+**194 - Data:** 2026-06-26
+- **Ação:** Fases 4 e 5 do Dashboard Power BI — Expansão visual, novos endpoints, interatividade e personalização.
+- **Detalhes:** 
+  - **4.0 — Tailwind CSS completo:** Instalado globalmente via `npm install -g tailwindcss@3.4.19`, criado `tailwind.config.js` com `content` apontando para PHP e JS, compilado `tailwind.min.css` (3.4MB) e carregado em `admin-service.php` substituindo o CSS manual. Dashboard agora tem acesso a todas as classes do Tailwind.
+  - **4.1 — Visão Geral como Dashboard Central:** HTML base com grid de 4 colunas. Implementadas funções `bmCreateKPICard`, `bmCreateHighlightCard`, `bmCreateChartCard`, `bmCreateRankingCard`, `bmCreateAlertCard`, `bmCreateUtilityCard`. Adicionados 12 KPIs em 3 linhas, cards de destaque (Aluno e Livro do Período), gráficos com toggles [Barras│Linha│Pizza], rankings com toggle [1│3│5│10] e mini barras de progresso, alertas (inativos, atrasos +7 dias, fila de espera), utilidades (sugestões, atividade recente, nunca emprestados, meta de leitura). Drill-down inline implementado via `bmDrillToReportInline` — relatório abre abaixo do dashboard sem recarregar a página, com botão "← Voltar para Visão Geral". Cards inteiros clicáveis com hover.
+  - **4.2 — Novos endpoints PHP:** Criada `bm_report_dashboard_overview` que agrega dados de overview, performance, gêneros, livros, tendência, resenhadores, vídeos, autores, nunca emprestados, fila de espera, atrasos, turmas, sugestões, atividade recente e meta de leitura em uma única chamada. Criadas funções auxiliares: `bm_report_most_reviewed_books`, `bm_report_most_video_reviewed_books`, `bm_report_never_borrowed_books`, `bm_report_recent_activity`. Adicionado `inactive_students` ao `student_performance` e `_prev` ao overview para variação percentual.
+  - **4.3 — Componentes de card:** Rankings ganharam mini barras de progresso proporcionais. Drill-down inline implementado com tabelas detalhadas para `student_performance`, `top_books` e `active_penalties`.
+  - **4.4 — Testes:** Visão Geral validada com 26 cards renderizando. Toggles de gráfico e ranking funcionando. Drill-down inline funcional. Pendências: relatórios individuais não testados, responsividade não testada, exportação PDF não testada.
+  - **5.1 — Drag and Drop:** Implementado com HTML5 Drag and Drop API nativa. Cards ganharam `draggable="true"` e eventos `dragstart`, `dragover`, `drop`. Placeholder visual (borda tracejada azul) indica posição de inserção. Função `bmSaveDashboardOrder` salva ordem via AJAX em `_bm_dashboard_order` (user_meta). Endpoint `bm_ajax_save_dashboard_order` no PHP com verificação de nonce e capability. Drag and drop funcional após correção de escopo (código inline no `setTimeout`).
+  - **5.2 — Redimensionamento:** Não concluído (pulado por decisão do usuário).
+  - **5.3 — Restaurar layout padrão:** Não iniciado.
+- **Ferramenta:** `write_file` (múltiplas edições manuais), terminal (npm, tailwindcss CLI)
+- **Arquivos modificados:** `assets/js/reports-dashboard.js`, `includes/reports.php`, `includes/admin-service.php`, `tailwind.config.js` (criado), `input.css` (criado)
+- **Arquivos criados:** `assets/css/tailwind.min.css`, `tailwind.config.js`, `input.css`
+- **Roadmap:** Fase 4 concluída (com pendências em 4.4). Fase 5 parcialmente concluída (5.1 ✅, 5.2 ❌, 5.3 ❌).
+
+**195 - Data:** 2026-06-26
+- **Ação:** Chat 12 finalizado — Expansão do Dashboard Power BI (Fases 1-5), análise comparativa de design systems e preparação para migração.
+- **Detalhes:** 
+  - **Fase 1 — Documentação e Contratos:** Atualizado `spec-frontend.md` com Mapa de Componentes (8 tipos × componentes), Catálogo de Funções JS e Contrato de Dados (JSON para cada tipo). Criados `mapa-visualizacoes.md` e `dicionario-componentes.md`. Roadmap revisado.
+  - **Fase 2 — Frontend HTML/CSS/JS:** HTML expandido com slots para gráficos (pie-chart, line-chart, top-readers, inactive-alerts). Removidos scripts inline e botão PDF duplicado. CSS enriquecido com estilos de pizza, linha, variação, ranking, tooltip e animações. Implementados utilitários de BI (`calculateVariance`, `rankEntities`, `formatPercent`) e renderizadores SVG (`bmRenderPieChart`, `bmRenderLineChart`, `bmRenderTopReaders`, `bmRenderInactiveAlerts`). Refatorados renderizadores com variação percentual, pizza no lugar de barras, linha no lugar de barras. Testados 9 tipos de relatório.
+  - **Fase 3 — Integração e Correções PHP:** HTML corrigido (botão duplicado, scripts inline, loading). Contratos de dados revisados: `inactive_students` adicionado ao overview e student_performance, `_prev` para variação, `class_reading` com Top 3 e inativos, cabeçalhos traduzidos no custom.
+  - **Fase 4 — Dashboard Interativo:**
+    - 4.0 — Tailwind CSS completo: instalado globalmente (`npm install -g tailwindcss@3.4.19`), compilado `tailwind.min.css` via `tailwindcss -i ./input.css -o ./assets/css/tailwind.min.css --minify`, carregado em `admin-service.php`. Criados `tailwind.config.js` e `input.css`.
+    - 4.1 — Visão Geral refatorada com 26 cards: 12 KPIs com seletores de período, destaques (Aluno e Livro do Período), gráficos com toggles [Barras|Linha|Pizza], rankings com toggle [1|3|5|10] e mini barras de progresso, alertas (inativos, atrasos +7 dias, fila de espera), utilidades (sugestões, atividade recente, nunca emprestados), meta de leitura. Cards inteiros clicáveis com hover. Drill-down inline (`bmDrillToReportInline`) abre seção abaixo do dashboard sem recarregar.
+    - 4.2 — Novos endpoints: `bm_report_dashboard_overview` (agrega todos os dados em uma chamada), `bm_report_most_reviewed_books`, `bm_report_most_video_reviewed_books`, `bm_report_never_borrowed_books`, `bm_report_recent_activity`.
+    - 4.3 — Rankings com mini barras de progresso e toggles. Drill-down inline implementado.
+    - 4.4 — Testes parciais (Visão Geral validada; relatórios individuais não testados).
+  - **Fase 5 — Personalização de Layout:** Drag and Drop funcional (HTML5 API nativa, placeholder visual, salva ordem via `_bm_dashboard_order` em user_meta). Redimensionamento de cards e restaurar layout padrão não concluídos (pulados por decisão do usuário).
+  - **Análise comparativa:** Código do Stitch e v0.app analisados. v0.app escolhido como referência de design system por cobrir todos os componentes, ter zero dependências externas, e oferecer interatividade rica (sparklines, radar, drill-down com busca/CSV, timeline, grid de capas, meta com marcas de escala).
+  - **Atualização da persona:** Adicionados itens 10 (Design System & Acabamento Visual), 11 (Interações Avançadas) e 12 (Adaptação ao Interlocutor) ao `claude.md`.
+  - **Atualização do spec:** Adicionada seção 10 ao `spec-frontend.md` com estratégia para Fases 6-7, barreiras técnicas reforçadas e sequência de implementação.
+  - **Pendências identificadas para o Chat 13:** Toggles de período/visualização não funcionam (conflito com drill-down), grid com espaços vazios (dados ausentes), drill-down sem busca/PDF, sparklines ausentes, radar ausente, timeline sem bolinhas, grid de capas sem imagens, meta sem marcas de escala, visual sem sombras duplas/gradientes, exportação PDF com layout antigo.
+  - **Relatório de migração gerado** com estrutura completa de arquivos, histórico de alterações, pendências detalhadas e instruções para o próximo chat.
+- **Ferramenta:** `write_file` (múltiplas edições), terminal (npm, tailwindcss CLI), análise de código (Stitch, v0.app)
+- **Arquivos criados:** `mapa-visualizacoes.md`, `dicionario-componentes.md`, `assets/css/tailwind.min.css`, `tailwind.config.js`, `input.css`
+- **Arquivos modificados:** `assets/js/reports-dashboard.js`, `includes/reports.php`, `includes/admin-service.php`, `spec-frontend.md`, `roadmap-dashboard.md`, `changelog.md`, `claude.md`
+- **Próximo chat:** Fase 6 — Sparklines, radar, drill-down com busca/PDF, timeline, grid de capas, meta com marcas, refinamento visual, drag and drop por seção. Fase 7 — Integração completa e testes finais.

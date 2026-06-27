@@ -266,3 +266,105 @@
     2.  [ ] Ao clicar, remover `_bm_dashboard_order` e `_bm_dashboard_sizes` do usuário.
     3.  [ ] Recarregar a página com o layout original.
 *   **Critério de saída:** O botão reseta o layout ao estado padrão. A confirmação é necessária antes de resetar.
+
+# Roadmap — Dashboard Power BI (Book Manager)
+
+## Fase 6 — Acabamento Visual (Inspiração v0.app)
+
+#### 6.1 — Sparklines nos KPIs
+*   **Descrição:** Adicionar mini gráficos SVG (sparklines) nos 12 cards KPI da Visão Geral.
+*   **Arquivos:** `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [ ] Criar função `bmSparklineSVG(data, color)` que gera SVG com `polygon` de área preenchida, `polyline` de linha e `circle` no ponto final.
+    2.  [ ] Alterar `bmCreateKPICard()` para incluir o sparkline SVG abaixo do valor.
+    3.  [ ] Testar com dados reais — cada KPI deve exibir sua tendência de 7 pontos.
+*   **Critério de saída:** Os 12 KPIs exibem sparklines com cor correspondente à categoria do card.
+
+#### 6.2 — Gráfico de Radar (Distribuição de Gêneros por Aluno)
+*   **Descrição:** Implementar gráfico de radar SVG que compara dois alunos em múltiplos gêneros literários.
+*   **Arquivos:** `assets/js/reports-dashboard.js`, `includes/reports.php`
+*   **Tarefas:**
+    1.  [ ] Criar função PHP `bm_report_radar_data($since, $until)` que retorna eixos (gêneros) e valores para os dois alunos com mais livros lidos no período.
+    2.  [ ] Criar função JS `bmCreateRadarCard(data)` que gera SVG com anéis concêntricos, eixos rotulados, polígonos de preenchimento e legenda.
+    3.  [ ] Integrar o card de radar na Visão Geral (linha 10).
+*   **Critério de saída:** O radar exibe dois polígonos sobrepostos com cores distintas e legenda identificando cada aluno.
+
+#### 6.3 — Drill-down com Busca e Exportação CSV
+*   **Descrição:** Melhorar o drill-down inline adicionando campo de busca na tabela e botão de exportação CSV.
+*   **Arquivos:** `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [ ] Adicionar campo de busca (`<input>`) no cabeçalho do drill-down que filtra as linhas da tabela em tempo real.
+    2.  [ ] Adicionar botão "Exportar CSV" que gera arquivo CSV a partir dos dados da tabela e dispara download.
+    3.  [ ] Testar com dados reais de diferentes tipos de drill-down (student_performance, top_books, active_penalties).
+*   **Critério de saída:** O drill-down permite buscar na tabela e exportar os dados em CSV.
+
+#### 6.4 — Timeline de Atividade Recente
+*   **Descrição:** Substituir as pills de texto da Atividade Recente por uma timeline com bolinhas coloridas e tempo relativo.
+*   **Arquivos:** `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [ ] Alterar `bmCreateUtilityCard()` para renderizar atividade recente como timeline (bolinha colorida + texto + tempo).
+    2.  [ ] Adicionar timestamp real aos dados de `recent_activity` no endpoint PHP (`bm_report_recent_activity`).
+    3.  [ ] Testar com dados reais.
+*   **Critério de saída:** A atividade recente exibe cada ação com bolinha colorida, descrição e tempo relativo ("há 5 min", "há 2 h").
+
+#### 6.5 — Grid de Capas para Últimos Cadastrados
+*   **Descrição:** Exibir os últimos livros cadastrados como mini capas em grid.
+*   **Arquivos:** `assets/js/reports-dashboard.js`, `includes/reports.php`
+*   **Tarefas:**
+    1.  [ ] Criar função PHP `bm_report_recent_books($limit)` que retorna os últimos livros cadastrados com título e URL da capa.
+    2.  [ ] Alterar `bmCreateUtilityCard()` para renderizar grid de capas (3 colunas) com fallback de inicial em gradiente quando não houver capa.
+    3.  [ ] Integrar os dados no `bm_report_dashboard_overview`.
+*   **Critério de saída:** O card "Últimos Cadastrados" exibe mini capas reais ou iniciais coloridas.
+
+#### 6.6 — Meta de Leitura com Marcas de Escala
+*   **Descrição:** Refinar a barra de meta de leitura com gradiente, animação e marcas de escala.
+*   **Arquivos:** `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [ ] Alterar a renderização da meta de leitura para incluir marcas de escala (0, 25%, 50%, 75%, 100%).
+    2.  [ ] Adicionar animação de largura na barra (`transition: width 1s`).
+    3.  [ ] Aplicar gradiente (`from-emerald-400 to-emerald-600`) na barra.
+*   **Critério de saída:** A barra de meta exibe marcas de escala, gradiente e animação ao carregar.
+
+#### 6.7 — Refinamento Visual Geral
+*   **Descrição:** Aplicar sombras duplas, gradientes em iniciais e tooltips nativos nos gráficos.
+*   **Arquivos:** `assets/css/tailwind.min.css`, `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [ ] Adicionar classes CSS para sombra dupla (`box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)`).
+    2.  [ ] Adicionar classes CSS para gradientes em avatares de placeholder.
+    3.  [ ] Adicionar títulos nativos (`<title>`) nos elementos SVG dos gráficos de linha e pizza para tooltips.
+    4.  [ ] Substituir ícones genéricos dos KPIs por emojis ou SVG mais expressivos.
+    5.  [ ] Ajustar cores de variação para usar `text-verde` e `text-vermelho` com fundo claro.
+*   **Critério de saída:** O dashboard tem aparência profissional com sombras refinadas, tooltips e ícones expressivos.
+
+#### 6.8 — Drag and Drop por Seção
+*   **Descrição:** Substituir o drag and drop individual de cards pelo arraste de seções inteiras (linhas do grid) usando um grip.
+*   **Arquivos:** `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [ ] Agrupar os cards em seções (elementos `<section>`) com cabeçalho e grip (⠿).
+    2.  [ ] Implementar drag and drop nas seções com placeholder visual.
+    3.  [ ] Salvar a ordem das seções via AJAX (reaproveitar `bm_ajax_save_dashboard_order`).
+*   **Critério de saída:** As seções podem ser reordenadas arrastando o grip. A ordem é mantida após recarregar.
+
+---
+
+## Fase 7 — Integração Completa com o Backend
+
+#### 7.1 — Substituir dados mock pelos endpoints reais
+*   **Descrição:** Conectar todos os componentes do dashboard aos dados reais do WordPress.
+*   **Arquivos:** `assets/js/reports-dashboard.js`
+*   **Tarefas:**
+    1.  [ ] Adaptar `bmFetchReport()` para popular o dashboard com a resposta de `bm_report_dashboard_overview`.
+    2.  [ ] Substituir dados estáticos dos rankings, alertas e utilidades pelos dados do JSON.
+    3.  [ ] Testar todos os 8 tipos de relatório com dados reais.
+*   **Critério de saída:** Nenhum dado mock permanece no código. Tudo vem do PHP.
+
+#### 7.2 — Testes finais e ajustes de performance
+*   **Descrição:** Validar todo o fluxo e corrigir problemas de carregamento.
+*   **Tarefas:**
+    1.  [ ] Testar Visão Geral com todos os cards renderizando.
+    2.  [ ] Testar drill-down inline com busca e exportação CSV.
+    3.  [ ] Testar drag and drop por seção.
+    4.  [ ] Testar responsividade (desktop, tablet, mobile).
+    5.  [ ] Testar exportação PDF.
+    6.  [ ] Verificar cache e performance (transients).
+*   **Critério de saída:** Zero erros no console. Dashboard funcional em todos os dispositivos.

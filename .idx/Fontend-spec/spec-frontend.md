@@ -393,3 +393,76 @@ Nenhum card recarrega a página inteira. Toda mudança de período, toggle ou dr
 
 ## 9. Contrato de Dados
 *(Mantido da versão anterior, com acréscimo dos novos endpoints da seção 4)*
+
+
+## 10. Estratégia para as Fases 6 e 7 (Acabamento Visual e Integração)
+
+### 10.1 Referência de Design System
+O design system de referência é o **v0.app**, escolhido por:
+- Cobertura completa de componentes (KPIs, gráficos, radar, rankings, alertas, utilidades, meta)
+- Zero dependências externas em produção (emojis + SVG inline, sem fontes Google)
+- Interatividade rica (toggles, drill-down com busca e CSV, drag and drop)
+- Código enxuto e adaptável ao WordPress
+
+### 10.2 Abordagem Técnica por Camada
+
+**Camada CSS:**
+- Manter o Tailwind CSS compilado localmente (`tailwind.min.css`)
+- Adicionar classes customizadas inspiradas no v0 (sombras duplas, gradientes de placeholder, animações de barra)
+- Zero CDN, zero fontes externas
+
+**Camada JavaScript:**
+- Manter a arquitetura de IIFE com funções puras
+- Adaptar os renderizadores existentes para incluir sparklines, radar e timeline
+- Reutilizar os endpoints PHP já existentes — o JS apenas consome JSON
+- Toda interatividade (toggles, drill-down, drag and drop) permanece no frontend
+
+**Camada PHP:**
+- Criar apenas 2 novos endpoints auxiliares: `bm_report_radar_data` e `bm_report_recent_books`
+- Os demais dados já são fornecidos por `bm_report_dashboard_overview`
+- Nenhuma alteração na estrutura de banco de dados
+
+### 10.3 Barreiras Técnicas (Reforço)
+
+1. **Zero CDN:** Todos os assets (CSS, JS, SVGs) são locais. Emojis e SVG inline substituem ícones externos.
+2. **Segurança:** Todo endpoint AJAX verifica nonce e `current_user_can('edit_bm_books')`.
+3. **Performance:** O dashboard consome um único endpoint principal (`bm_report_dashboard_overview`) com cache de 3600s. Dados derivados são calculados no PHP para evitar múltiplas requisições.
+4. **Sem tabelas customizadas:** Todos os dados vêm de `post_meta` e `user_meta`.
+5. **Responsividade:** Grid adaptável: 4 colunas (≥1024px), 2 colunas (≥640px), 1 coluna (mobile).
+6. **Exportação PDF:** Mantém o comportamento atual (nova aba com `window.print()`). Não será alterada nesta fase.
+
+### 10.4 Sequência de Implementação (Ordem Segura)
+
+1. **Sparklines (6.1):** Apenas JS — adiciona mini gráficos aos KPIs existentes.
+2. **Refinamento visual (6.7):** Apenas CSS — sombras, gradientes, tooltips.
+3. **Timeline (6.4):** JS + leve ajuste no PHP para timestamp.
+4. **Meta de leitura (6.6):** JS — refinar barra existente.
+5. **Grid de capas (6.5):** JS + 1 novo endpoint PHP.
+6. **Radar (6.2):** JS + 1 novo endpoint PHP.
+7. **Drill-down melhorado (6.3):** JS — adicionar busca e CSV.
+8. **Drag and drop por seção (6.8):** JS — substituir arraste individual.
+9. **Integração final (7.1):** Conectar todos os dados reais.
+10. **Testes (7.2):** Validação completa.
+
+### 10.5 Premissas de Performance
+
+- O endpoint `bm_report_dashboard_overview` já retorna todos os dados em uma única chamada.
+- Sparklines e gráficos SVG são gerados no frontend a partir de arrays de dados — não exigem novas consultas ao banco.
+- O cache de 3600s evita sobrecarga no banco para o dashboard.
+- As novas funções PHP (`bm_report_radar_data`, `bm_report_recent_books`) usam consultas paginadas e dados já disponíveis em memória.
+- Nenhuma biblioteca externa é adicionada — todo SVG é gerado com JavaScript vanilla.
+
+### 10.6 Critério de Conclusão da Fase 6
+
+O dashboard exibe:
+- 12 KPIs com sparklines coloridos
+- Gráfico de radar comparando dois alunos
+- Timeline de atividade recente
+- Grid de capas nos últimos cadastrados
+- Meta de leitura com marcas de escala
+- Drill-down com busca e exportação CSV
+- Drag and drop por seção
+- Sombras duplas e gradientes nos placeholders
+- Tooltips nativos em todos os gráficos SVG
+
+Nenhum dado mock permanece no código. Tudo é alimentado pelo PHP via `bm_get_report_data`.
