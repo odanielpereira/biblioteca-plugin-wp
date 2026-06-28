@@ -1261,3 +1261,48 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
   - **7.2 — Testes finais:** Dashboard validado sem erros no console. Responsividade, exportação PDF e performance verificadas.
 - **Ferramenta:** `write_file`
 - **Arquivos modificados:** `assets/js/reports-dashboard.js`, `includes/reports.php`, `includes/admin-service.php`, `assets/css/tailwind.min.css`
+
+
+
+CHAT 14
+
+**197 - Data:** 2026-06-28
+- **Ação:** Fase 39 concluída — Criação da taxonomia `bm_reading_level` (Nível de Leitura).
+- **Detalhes:** Registrada a quarta taxonomia padrão protegida `bm_reading_level` em `book-manager.php` (função `bm_register_reading_level_taxonomy()`), com `show_in_menu => false` e capabilities `manage_options`. Adicionada ao array de protegidas em `bm_install_default_taxonomies()`. Criada função `bm_install_default_reading_level_terms()` que insere os 5 termos ("Muito fácil", "Fácil", "Intermediário", "Avançado", "Muito avançado") via `wp_insert_term()` na ativação do plugin. Adicionada ao array `$skip` em `bm_add_dynamic_taxonomy_metaboxes()` para evitar metabox duplicada. Corrigido posteriormente na Fase 41 para usar labels dinâmicos no registro.
+- **Arquivos modificados:** `book-manager.php`, `includes/admin-fields.php`
+- **Ferramenta:** `write_file` (manual pelo usuário)
+- **Decisão:** A taxonomia é fixa e seus termos não podem ser alterados pela IA — apenas escolhidos entre os 5 existentes.
+
+**198 - Data:** 2026-06-28
+- **Ação:** Fase 40 concluída — Correção da duplicação de widgets para taxonomias dinâmicas.
+- **Detalhes:** A função `bm_remove_native_taxonomy_metaboxes()` em `admin-fields.php` foi generalizada para iterar sobre `get_option('bm_dynamic_taxonomies')` e remover a metabox nativa (`<slug>div`) de todas as taxonomias, exceto as que estão no array `$skip` (`bm_discipline` e `bm_reading_level`). Isso garante que apenas a caixa personalizada do plugin apareça na edição do livro. A importação CSV continua funcional pois usa `wp_set_post_terms()` diretamente. A análise contextual detectou que o Chat 11 não considerou o risco de remover a caixa nativa das taxonomias skipadas — a abordagem foi ajustada para preservá-las.
+- **Arquivos modificados:** `includes/admin-fields.php`
+- **Ferramenta:** `write_file` (manual pelo usuário)
+- **Decisão:** Abordagem cirúrgica aprovada após análise contextual do código real.
+
+**199 - Data:** 2026-06-28
+- **Ação:** Fase 41 concluída — Permitir renomear taxonomias protegidas, ocultar slugs e corrigir labels nos filtros públicos e widgets.
+- **Detalhes:** Na função `bm_render_taxonomies_page()` em `admin-settings.php`: (1) removida a trava que bloqueava o campo de renomeação para taxonomias protegidas — agora todas mostram campo de texto com 🔒 ao lado; (2) removida a trava de salvamento que impedia atualizar o label de protegidas; (3) coluna Slug ocultada para protegidas (mostra "—"). Na função `bm_register_discipline_taxonomy()` em `book-manager.php`, os labels foram alterados para consultar `get_option('bm_dynamic_taxonomies')` e usar o nome salvo, com fallback para o padrão. O mesmo foi feito para `bm_reading_level` (label principal). Os templates `archive-bm_book.php` e `bm_catalog_shortcode()` em `frontend.php` foram atualizados para usar os labels dinâmicos. A coluna Slug foi removida da tabela de taxonomias por decisão do usuário. Corrigido desalinhamento de colunas após remoção.
+- **Arquivos modificados:** `includes/admin-settings.php`, `book-manager.php`, `archive-bm_book.php`, `includes/frontend.php`
+- **Ferramenta:** `write_file` (manual pelo usuário)
+- **Decisão:** A análise contextual revelou que o Chat 11 não considerou o bloqueio de salvamento — o código foi ajustado para destravar também o salvamento.
+
+**200 - Data:** 2026-06-28
+- **Ação:** Fase 42 concluída — Checkboxes de visibilidade de taxonomias na vitrine pública.
+- **Detalhes:** Adicionado o array `taxonomy_visibility` com defaults `1` (visível) para as 4 taxonomias protegidas em `bm_get_settings()`. Na tabela de Taxonomias (`bm_render_taxonomies_page()`), adicionada coluna "Visível" com checkboxes apenas para as taxonomias protegidas — taxonomias criadas pelo Gestor mostram "—". O salvamento da visibilidade foi integrado ao botão "Salvar Alterações" já existente. Os templates `archive-bm_book.php` e `bm_catalog_shortcode()` foram atualizados para verificar a visibilidade antes de exibir cada dropdown e para incluir o dropdown de Nível de Leitura. Adicionado `bm_reading_level` ao `tax_query` em ambos os arquivos. Corrigido problema de HTML com filtros aninhados em `<div>` extra.
+- **Arquivos modificados:** `includes/admin-settings.php`, `archive-bm_book.php`, `includes/frontend.php`
+- **Ferramenta:** `write_file` (manual pelo usuário)
+- **Decisão:** A localização dos checkboxes na própria página de Taxonomias foi preferida pelo usuário em vez da aba "Acessos e Visibilidade" proposta pelo Chat 11.
+
+**201 - Data:** 2026-06-28
+- **Ação:** Fase 43 concluída — Corrigir erro "página não encontrada" e HTML dos filtros no shortcode `[bm_catalog]`.
+- **Detalhes:** O HTML dos filtros no shortcode estava com o mesmo problema de aninhamento de `<div>` que o archive — corrigido extraindo o bloco PHP de dentro do `<div>` extra. Adicionada função `bm_disable_canonical_redirect_for_catalog()` em `frontend.php` que desativa o redirecionamento canônico do WordPress apenas em páginas que contêm o shortcode `[bm_catalog]`, resolvendo o erro "página não encontrada" ao usar filtros. A URL `get_permalink()` foi mantida como base para a paginação. O CSS responsivo foi ajustado para forçar largura total nos selects em mobile, mas o alinhamento fino ficou como pendência para ciclo futuro.
+- **Arquivos modificados:** `includes/frontend.php`
+- **Ferramenta:** `write_file` (manual pelo usuário)
+- **Decisão:** O diagnóstico confirmou que o problema ocorria apenas no shortcode, não em `/livros/`. A solução com `redirect_canonical` é cirúrgica e não afeta outras páginas.
+
+---
+
+**Pendências registradas para ciclos futuros:**
+- Alinhamento fino dos filtros em telas mobile (Fase 43)
+- Responsividade dos boxes de filtro no shortcode (Fase 43)

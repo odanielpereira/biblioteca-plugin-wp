@@ -1,0 +1,349 @@
+
+# RELATÓRIO CONSOLIDADO — FILTROS, TAXONOMIAS E CSV (ATUALIZADO)
+
+**Data:** 28 de junho de 2026
+**Base:** Changelog, código modularizado, esclarecimentos do usuário
+
+---
+
+## PARTE 1 — FILTROS E TAXONOMIAS
+
+### Correção 1: Filtros públicos retornam "página não encontrada"
+
+**Esclarecimento do usuário:** O problema ocorre **apenas no shortcode `[bm_catalog]`**, não em `/livros/`. Em `/livros/` os filtros funcionam.
+
+**Análise técnica revisada:**
+
+O shortcode `bm_catalog_shortcode()` em `frontend.php` usa `new WP_Query` com parâmetros capturados de `$_GET`. O erro 404 provavelmente ocorre porque:
+
+1. O formulário no shortcode aponta para `the_permalink()` (a página onde o shortcode está), mas o WordPress pode não reconhecer essa URL com query strings adicionais como uma página de shortcode válida, dependendo da configuração de permalinks ou do tema.
+2. A paginação `paginate_links()` pode estar gerando URLs que não correspondem à página correta, quebrando a navegação.
+
+**Possível causa raiz:** O formulário está correto, mas a combinação de `the_permalink()` + query strings + `paginate_links()` pode estar resultando em uma URL que o WordPress resolve como 404. Como não depende de tema (Twenty Twenty-Five foi descartado), o foco é puramente no PHP do shortcode.
+
+**Arquivos e funções afetadas:**
+- `frontend.php` → `bm_catalog_shortcode()`
+
+**Solução proposta:** Revisar a construção do `WP_Query` dentro do shortcode, garantindo que a página atual (`get_permalink()`) seja usada como base correta para o formulário e paginação.
+
+---
+
+### Correção 2: Caixa de pesquisa retorna "página não encontrada"
+
+**Esclarecimento do usuário:** Mesmo problema do item anterior — ocorre apenas no shortcode `[bm_catalog]`.
+
+**Análise técnica revisada:**
+
+Mesma causa raiz da Correção 1. O parâmetro `s` da busca textual é adicionado à query, mas a URL resultante pode estar incorreta.
+
+**Arquivos e funções afetadas:**
+- `frontend.php` → `bm_catalog_shortcode()`
+
+---
+
+### Correção 3: Duplicação de widgets para novas taxonomias
+
+**Esclarecimento do usuário:** Confirma que há complexidade. Tentativas anteriores de remover metaboxes nativas quebraram a importação CSV.
+
+**Análise técnica revisada:**
+
+O problema é extremamente sensível. A função `bm_remove_native_taxonomy_metaboxes()` atualmente remove apenas `bm_genrediv` e `bm_categorydiv`. Para taxonomias dinâmicas, o WordPress registra automaticamente uma metabox nativa (div com slug `<taxonomy>div`), e o plugin adiciona outra via `bm_add_dynamic_taxonomy_metaboxes()`, resultando em duas.
+
+**Risco:** Se removermos **todas** as metaboxes nativas de taxonomias dinâmicas, a importação CSV pode falhar porque o salvamento `wp_set_post_terms()` depende da taxonomia estar registrada, mas não da metabox. O risco é remover acidentalmente algo essencial.
+
+**Abordagem cirúrgica proposta:** Em vez de remover todas, adicionar explicitamente cada slug de metabox nativa a ser removida, iterando sobre `get_option('bm_dynamic_taxonomies')` e montando o nome da div (`<slug>div`). Testar exaustivamente.
+
+**Arquivos e funções afetadas:**
+- `admin-fields.php` → `bm_remove_native_taxonomy_metaboxes()`
+
+---
+
+### Alteração 1: Quarta taxonomia padrão protegida
+
+**Esclarecimento do usuário:** Confirmado: "Nível de Leitura" / `bm_reading_level`. Termos: Muito fácil, Fácil, Intermediário, Avançado, Muito avançado.
+
+**Análise técnica:**
+
+Registrar `bm_reading_level` como taxonomia fixa (similar a `bm_discipline`), adicionar à option `bm_dynamic_taxonomies` como protegida, e incluí-la nos arrays de `$skip` para metaboxes e filtros.
+
+**Arquivos e funções afetadas:**
+- `book-manager.php` → `bm_register_discipline_taxonomy()` ou nova função
+- `book-manager.php` → `bm_install_default_taxonomies()`
+- `admin-fields.php` → `bm_remove_native_taxonomy_metaboxes()`
+
+---
+
+### Alteração 2: Quarta taxonomia nos filtros públicos
+
+**Análise técnica:**
+
+Adicionar dropdown de `bm_reading_level` no `archive-bm_book.php` e no `bm_catalog_shortcode()`, e incluir no `tax_query` de `bm_filter_books_frontend()`.
+
+**Arquivos e funções afetadas:**
+- `archive-bm_book.php`
+- `frontend.php` → `bm_catalog_shortcode()`, `bm_filter_books_frontend()`
+
+---
+
+### Alteração 3: Checkboxes de visibilidade na página pública
+
+**Esclarecimento do usuário:** Afeta apenas a vitrine pública (`/livros/` e `[bm_catalog]`). Não afeta o admin.
+
+**Análise técnica:**
+
+Adicionar checkboxes nas Configurações (ex: "Visibilidade de Taxonomias") para cada taxonomia padrão. Modificar `archive-bm_book.php` e `bm_catalog_shortcode()` para verificar essas opções antes de exibir os dropdowns.
+
+**Arquivos e funções afetadas:**
+- `admin-settings.php` → `bm_render_access_settings_page()` (nova seção)
+- `archive-bm_book.php`
+- `frontend.php` → `bm_catalog_shortcode()`
+
+---
+
+### Alteração 4: Permitir renomear taxonomias protegidas
+
+**Análise técnica:**
+
+Na tabela de taxonomias (`bm_render_taxonomies_page()`), remover a condição que bloqueia o input de renomeação para protegidas.
+
+**Arquivos e funções afetadas:**
+- `admin-settings.php` → `bm_render_taxonomies_page()`
+
+---
+
+### Alteração 5: Ocultar slugs das taxonomias padrão
+
+**Análise técnica:**
+
+Na mesma tabela, substituir a exibição do slug por "—" ou "Protegido" para taxonomias com `protected => true`.
+
+**Arquivos e funções afetadas:**
+- `admin-settings.php` → `bm_render_taxonomies_page()`
+
+---
+
+## PARTE 2 — IMPORTAÇÃO CSV
+
+### Alteração 1: Relatório nominal detalhado
+
+**Análise técnica:**
+
+Modificar o processamento da importação para armazenar arrays de detalhes (título, autor, motivo do erro) e exibir listas nominais no relatório final.
+
+**Arquivos e funções afetadas:**
+- `admin-csv.php` → `bm_render_csv_import_page()` (estágio 'process')
+
+---
+
+### Alteração 2: Conflito com taxonomia Gênero na importação
+
+**Análise técnica:**
+
+Se os gêneros aparecem na coluna "Gênero" da listagem, os termos foram salvos (`wp_set_post_terms` funcionou). O widget não estar marcado indica que a metabox personalizada não está recuperando os termos. Possível causa: o slug passado para `wp_get_post_terms` na metabox está incorreto, ou a metabox personalizada para `bm_genre` não está sendo renderizada (pulada pelo array `$skip`).
+
+**Verificação necessária:** Confirmar se `bm_add_dynamic_taxonomy_metaboxes()` está criando metabox para `bm_genre`. Se `bm_genre` está no array `$skip` (atualmente só `bm_discipline` está), então deveria estar funcionando. Testar com um livro importado.
+
+**Arquivos e funções afetadas:**
+- `admin-fields.php` → `bm_add_dynamic_taxonomy_metaboxes()`, `bm_render_dynamic_taxonomy_metabox()`
+
+---
+
+### Alteração 3: Importar Nível de Leitura com checkbox e fallback para IA
+
+**Esclarecimento do usuário:**
+- Se a IA não souber, deixa vazio (sem termo).
+- Deve haver checkbox "Classificar Nível de Leitura" na tela de mapeamento.
+- Termos: Muito fácil, Fácil, Intermediário, Avançado, Muito avançado.
+
+**Análise técnica:**
+
+1. Adicionar checkbox na tela de mapeamento.
+2. No processamento: se o checkbox estiver marcado e o CSV não tiver a coluna ou o valor estiver vazio, chamar `bm_classify_reading_level_with_ai($post_id)`.
+3. A função de IA envia prompt para Groq com título, autor, sinopse (se disponível), solicitando classificação entre os 5 termos. Se a resposta não estiver na lista, deixa vazio.
+4. Não gerar aviso no relatório sobre indeterminação (conforme solicitado).
+
+**Arquivos e funções afetadas:**
+- `admin-csv.php` → `bm_render_csv_import_page()` (mapeamento e processamento)
+- `frontend.php` → `bm_classify_reading_level_with_ai()` (nova)
+
+---
+
+## ARQUIVOS E FUNÇÕES AFETADOS (CONSOLIDADO FINAL)
+
+### Filtros e Taxonomias
+
+| Arquivo | Função | Alteração |
+|---------|--------|-----------|
+| `book-manager.php` | `bm_register_discipline_taxonomy()` (ou nova) | Registrar `bm_reading_level` |
+| `book-manager.php` | `bm_install_default_taxonomies()` | Adicionar `bm_reading_level` como protegida |
+| `admin-fields.php` | `bm_remove_native_taxonomy_metaboxes()` | Generalizar para todas as taxonomias dinâmicas |
+| `admin-settings.php` | `bm_render_taxonomies_page()` | Permitir renomear protegidas, ocultar slugs |
+| `admin-settings.php` | `bm_render_access_settings_page()` | Adicionar checkboxes de visibilidade |
+| `archive-bm_book.php` | (template) | Verificar visibilidade, adicionar dropdown `bm_reading_level` |
+| `frontend.php` | `bm_catalog_shortcode()` | Verificar visibilidade, corrigir 404, adicionar dropdown `bm_reading_level` |
+| `frontend.php` | `bm_filter_books_frontend()` | Adicionar `bm_reading_level` ao `tax_query` |
+
+### Importação CSV
+
+| Arquivo | Função | Alteração |
+|---------|--------|-----------|
+| `admin-csv.php` | `bm_render_csv_import_page()` (mapeamento) | Adicionar checkbox "Classificar Nível de Leitura" |
+| `admin-csv.php` | `bm_render_csv_import_page()` (processamento) | Relatório nominal, integrar IA para `bm_reading_level` |
+| `admin-fields.php` | `bm_add_dynamic_taxonomy_metaboxes()`, `bm_render_dynamic_taxonomy_metabox()` | Verificar conflito widget Gênero |
+| `frontend.php` | `bm_classify_reading_level_with_ai()` (nova) | Classificar nível de leitura via Groq |
+
+---
+
+
+
+****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************
+
+
+
+# RELATÓRIO UNIFICADO — CHAT 11 PARA CHAT 12
+
+**Data:** 28 de junho de 2026
+**Para:** Próximo agente de IA (Chat 12)
+**De:** Chat 11 — Documentalista Técnico WordPress / Programador Sênior WordPress
+**Objetivo:** Executar as Fases 39 a 46 do roadmap
+
+---
+
+## 1. IDENTIDADE DO PROJETO
+
+| Campo | Valor |
+|-------|-------|
+| **Nome do plugin** | Gestão de Livros (Book Manager) |
+| **Slug** | `book-manager` |
+| **Text Domain** | `book-manager` |
+| **Prefixo de funções** | `bm_` |
+| **Prefixo de meta keys** | `_bm_` |
+| **Versão atual do código** | 8.1.1 |
+| **Versão do planejamento** | 10.0.0 |
+| **Autor** | Daniel Pereira |
+
+---
+
+## 2. O QUE FOI FEITO NO CHAT 11
+
+1.  **Fase 38.2 — Modularização:** Concluída. Os arquivos `admin.php` e `users.php` foram divididos em 7 módulos e depois removidos. A estrutura atual de `includes/` é:
+    - `admin-settings.php`
+    - `admin-fields.php`
+    - `admin-csv.php`
+    - `admin-service.php`
+    - `frontend.php`
+    - `reports.php`
+    - `users-circulacao.php`
+    - `users-dashboard.php`
+    - `users-gamificacao.php`
+
+2.  **Dashboard de Relatórios — Modernização:** Parcialmente implementada, mas com problemas. O HTML do v0 foi integrado, o endpoint AJAX foi criado, e o CSS Tailwind foi adicionado. O dashboard ainda não está funcional, e esta é uma pendência para um futuro ciclo de polimento.
+
+3.  **Análise e Planejamento:** O foco principal do Chat 11 foi analisar os relatórios dos chats anteriores sobre **filtros, taxonomias e CSV**, desambiguar as solicitações do usuário e produzir um plano de ação consolidado (Fases 39 a 46). É esta a base que você, Chat 12, executará.
+
+---
+
+## 3. ESCOPO DE TRABALHO — FASES 39 A 46
+
+Estas são as 8 novas fases aprovadas. As tarefas foram desambiguadas e refinadas. O roadmap completo está no arquivo `roadmap.md`.
+
+1.  **Fase 39 — Criar taxonomia `bm_reading_level` com termos pré-criados**
+    - Registrar a nova taxonomia, adicioná-la como protegida, e pré-criar seus 5 termos.
+
+2.  **Fase 40 — Corrigir duplicação de widgets para taxonomias dinâmicas**
+    - Garantir que a edição do livro mostre apenas um widget (o personalizado) para cada taxonomia.
+
+3.  **Fase 41 — Permitir renomear taxonomias protegidas e ocultar slugs**
+    - O Gestor poderá renomear as 4 taxonomias padrão, mas os slugs (ex: `bm_genre`) ficarão ocultos na interface.
+
+4.  **Fase 42 — Checkboxes de visibilidade de taxonomias na vitrine pública**
+    - Adicionar uma configuração para escolher quais taxonomias aparecem nos filtros de `/livros/` e `[bm_catalog]`.
+
+5.  **Fase 43 — Corrigir 404 nos filtros e busca do shortcode `[bm_catalog]`**
+    - Resolver o erro "página não encontrada" ao usar filtros no shortcode. Atenção: os filtros funcionam em `/livros/`, o problema é só no shortcode.
+
+6.  **Fase 44 — Relatório nominal na importação rápida de CSV**
+    - Ao final da importação, exibir uma lista detalhada (não apenas números) do que foi importado, duplicado ou gerou erro.
+
+7.  **Fase 45 — Corrigir conflito do widget Gênero na importação CSV**
+    - Livros importados via CSV têm o Gênero marcado na coluna da listagem, mas o widget de checkboxes na edição do livro aparece vazio. O widget precisa ser corrigido para refletir os termos importados.
+
+8.  **Fase 46 — Checkbox "Classificar Nível de Leitura" + IA na importação CSV**
+    - Na tela de mapeamento da importação, adicionar a opção de usar IA para classificar o nível de leitura, caso a informação não venha no CSV. A IA deve escolher entre os 5 termos pré-definidos ou não atribuir nenhum se não souber.
+
+---
+
+## 4. DESAMBIGUAÇÕES E REGRAS DE NEGÓCIO (LEIA ANTES DE CODAR)
+
+- **Taxonomia `bm_reading_level`:** Os 5 termos são "Muito fácil", "Fácil", "Intermediário", "Avançado", "Muito avançado". Eles devem ser pré-criados na ativação do plugin.
+- **Classificação por IA (Fase 46):** A IA **não** sugere novos termos. Ela apenas escolhe um dos 5 existentes. Se não tiver certeza, **não atribui nenhum**. O comportamento é o mesmo da classificação de disciplinas. O checkbox "Classificar Nível de Leitura" é **opcional** no momento da importação (o usuário decide se quer usar).
+- **Correção dos Widgets (Fase 40):** A remoção da metabox nativa (via `remove_meta_box`) é uma operação sensível. Tentativas anteriores de removê-la para todas as taxonomias quebraram a importação CSV. Uma abordagem cirúrgica é remover apenas a metabox nativa de cada taxonomia registrada como dinâmica, preservando a metabox personalizada do plugin.
+- **Visibilidade na Vitrine (Fase 42):** A configuração de visibilidade afeta **apenas** a página pública (`/livros/` e `[bm_catalog]`). A exibição no admin não muda.
+- **Renomear Taxonomias (Fase 41):** Taxonomias protegidas **podem** ser renomeadas (o label muda), mas **não podem** ser excluídas. O slug interno (ex: `bm_genre`) nunca muda e deve ficar oculto na interface.
+- **Filtros (Fase 43):** O problema de 404 ocorre **apenas no shortcode `[bm_catalog]`**, não em `/livros/`. Isso indica um problema na construção da query ou na URL base dentro da função do shortcode.
+
+---
+
+## 5. MAPEAMENTO TÉCNICO: ARQUIVOS E FUNÇÕES POR FASE
+
+### Fase 39: Criar taxonomia `bm_reading_level`
+- `book-manager.php` -> Criar nova função `bm_register_reading_level_taxonomy()` e adicionar `bm_reading_level` em `bm_install_default_taxonomies()` como protegida.
+- `book-manager.php` -> Criar e chamar `bm_install_default_reading_level_terms()` para inserir os 5 termos.
+- `admin-fields.php` -> Adicionar `'bm_reading_level'` no array `$skip` da função `bm_add_dynamic_taxonomy_metaboxes()` para evitar metabox duplicada.
+
+### Fase 40: Corrigir duplicação de widgets
+- `admin-fields.php` -> Alterar `bm_remove_native_taxonomy_metaboxes()` para iterar sobre `get_option('bm_dynamic_taxonomies')` e remover a metabox nativa (`<slug>div`) para cada uma.
+
+### Fase 41: Renomear protegidas e ocultar slugs
+- `admin-settings.php` -> Alterar `bm_render_taxonomies_page()`.
+    - Remover a trava que impedia a renomeação de itens protegidos.
+    - Ocultar o slug (`<code>`) para taxonomias com `protected == true`, substituindo por "—".
+
+### Fase 42: Checkboxes de visibilidade
+- `admin-settings.php` -> Alterar `bm_render_access_settings_page()` para adicionar a nova seção de checkboxes.
+- `admin-settings.php` -> Garantir que `bm_get_settings()` retorne os defaults para `taxonomy_visibility`.
+- `archive-bm_book.php` e `frontend.php` (`bm_catalog_shortcode`) -> Verificar `bm_get_settings()` antes de exibir cada `wp_dropdown_categories`.
+
+### Fase 43: Corrigir 404 no `[bm_catalog]`
+- `frontend.php` -> Revisar e corrigir a função `bm_catalog_shortcode()`.
+    - Garantir que `$args` da `WP_Query` sejam populados por `$_GET`.
+    - Garantir que `paginate_links()` use a URL base correta.
+
+### Fase 44: Relatório nominal
+- `admin-csv.php` -> Alterar `bm_render_csv_import_page()` (estágio de `process`).
+    - Modificar os arrays de resultado para guardar detalhes (título, autor).
+    - Ao final, exibir as listas nominais de importados, duplicados e erros.
+
+### Fase 45: Corrigir widget Gênero
+- `admin-csv.php` -> Verificar se o campo mapeado para Gênero está caindo na lógica de `taxonomy_exists` e não em `update_post_meta`.
+- `admin-fields.php` -> Verificar se `bm_render_dynamic_taxonomy_metabox()` está recuperando os termos corretamente para `bm_genre`.
+
+### Fase 46: IA para Nível de Leitura
+- `admin-csv.php` -> Alterar `bm_render_csv_import_page()` (estágios de `map` e `process`) para adicionar o checkbox e o processamento.
+- `frontend.php` -> Criar `bm_classify_reading_level_with_ai($post_id)`.
+
+---
+
+## 6. REGRAS DE INTERAÇÃO (LEMBRETE)
+
+1.  **Relatório no início de cada tarefa** seguindo o modelo: Tarefa, Total de passos, Passos listados, Como era, Como vai ficar, Jornada, Arquivos utilizados, Onde.
+2.  **1 passo = 1 par de código** (1 localizador CTRL+F exato + 1 ação).
+3.  **Ações**: substituir (caixa baixa), **ADICIONAR EXATAMENTE ANTES**, **ADICIONAR EXATAMENTE DEPOIS**, **REMOVER** (CAIXA ALTA em negrito).
+4.  **Localizadores 100% copiados do código real** — nunca presumir.
+5.  **Nunca enviar código sem o OK do usuário** após o relatório.
+6.  **Testes E2E apenas no final da tarefa**, não no relatório inicial.
+7.  **Não usar jargão técnico** — comunicar em linguagem simples e didática.
+8.  **Não quebrar o que já funciona** — testar mentalmente antes de propor. Alterações cirúrgicas.
+9.  **O código-fonte de referência são os arquivos que o usuário enviou**.
+10. **Um passo por vez**. Jamais apresentar mais de um passo simultaneamente.
+11. **Respeitar a pirâmide**: `claude.md` > `escopo.md` > `changelog.md`/`roadmap.md`.
+
+
+
+
+
+
+**********************************************************************************************************
+****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************
+
+

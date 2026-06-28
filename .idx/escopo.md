@@ -929,3 +929,56 @@ Todo dado exibido em HTML deve ser escapado no contexto correto.
 - Paginação de 60 livros na vitrine é aceitável para acervos escolares típicos
 - Upload de foto: limitar tamanho do arquivo (2MB máximo)
 - Carteirinha: gerar QR code sob demanda, não armazenar imagem
+
+## 20. CICLO 11 — CORREÇÕES FINAIS: FILTROS, TAXONOMIAS E CSV (VERSÃO 10.1.0)
+
+### 20.1 Nova Taxonomia Padrão — Nível de Leitura (Fase 39)
+- **Acesso:** Admin (ativação), Admin e Gestor (uso)
+- **Arquivos:** `book-manager.php`
+- **Descrição:** Registrar a quarta taxonomia padrão protegida `bm_reading_level` (Nível de Leitura), nos mesmos moldes de `bm_discipline`. Pré-criar 5 termos na ativação do plugin: "Muito fácil", "Fácil", "Intermediário", "Avançado", "Muito avançado". A taxonomia será adicionada ao option `bm_dynamic_taxonomies` como protegida, impedindo exclusão.
+- **Barreiras:** ❌ Não remover taxonomia existente. ❌ Não quebrar classificação por IA existente. ❌ IA não pode criar novos termos — apenas escolher entre os 5 pré-criados.
+- **Funções obrigatórias:** `register_taxonomy()`, `wp_insert_term()`, `term_exists()`
+
+### 20.2 Correção de Widgets Duplicados (Fase 40)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `admin-fields.php`
+- **Descrição:** Generalizar a função `bm_remove_native_taxonomy_metaboxes()` para remover a metabox nativa do WordPress de TODAS as taxonomias registradas como dinâmicas (incluindo as 4 padrão). Atualmente remove apenas `bm_genrediv` e `bm_categorydiv`. A remoção deve iterar sobre `get_option('bm_dynamic_taxonomies')` e chamar `remove_meta_box('<slug>div', 'bm_book', 'side')` para cada. Isso garante que apenas 1 widget (o personalizado do plugin) apareça na edição do livro.
+- **Barreiras:** ❌ Não quebrar a importação CSV existente (o salvamento via `wp_set_post_terms()` não depende da metabox). ❌ Não remover a metabox personalizada do plugin. ❌ Testar exaustivamente — tentativas anteriores de generalização causaram efeitos colaterais.
+
+### 20.3 Renomeação de Taxonomias Protegidas e Ocultação de Slugs (Fase 41)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `admin-settings.php`
+- **Descrição:** Permitir que o Gestor renomeie as 4 taxonomias padrão (`bm_genre`, `bm_category`, `bm_discipline`, `bm_reading_level`) através da interface de Taxonomias. O label pode ser alterado, mas o slug interno permanece imutável para não quebrar referências. Na mesma interface, a coluna de slug deve exibir "—" para taxonomias protegidas, em vez do slug real, evitando ambiguidade (ex: `bm_category` aparecendo como "Temas").
+- **Barreiras:** ❌ Não permitir alteração de slugs — apenas labels. ❌ Não permitir exclusão de taxonomias protegidas. ❌ Manter a lógica de proteção existente.
+
+### 20.4 Visibilidade Configurável de Taxonomias na Vitrine Pública (Fase 42)
+- **Acesso:** Admin (configuração), Todos (vitrine)
+- **Arquivos:** `admin-settings.php`, `archive-bm_book.php`, `frontend.php`
+- **Descrição:** Adicionar checkboxes na aba "Acessos e Visibilidade" das Configurações para controlar quais das 4 taxonomias padrão aparecem nos filtros da vitrine pública (`/livros/` e `[bm_catalog]`). A configuração é armazenada em `bm_settings['taxonomy_visibility']` (array associativo com 0/1 por taxonomia). Os templates `archive-bm_book.php` e a função `bm_catalog_shortcode()` devem verificar essa configuração antes de exibir cada `wp_dropdown_categories`. Se nenhuma taxonomia estiver visível, a seção de filtros é ocultada (mantendo apenas a busca textual).
+- **Barreiras:** ❌ Não afetar a exibição de taxonomias no admin. ❌ Não remover o suporte às taxonomias, apenas ocultar os dropdowns. ❌ A configuração afeta apenas a vitrine pública.
+- **Armazenamento:** `bm_settings['taxonomy_visibility']` (option, array 0/1)
+
+### 20.5 Correção de 404 no Shortcode `[bm_catalog]` (Fase 43)
+- **Acesso:** Todos (visitantes)
+- **Arquivos:** `frontend.php`
+- **Descrição:** Resolver o erro "página não encontrada" ao usar filtros de taxonomia ou busca textual no shortcode `[bm_catalog]`. O problema não ocorre em `/livros/`. A causa provável é a construção da `WP_Query` dentro do shortcode, que pode não estar populando corretamente `$args['tax_query']` e `$args['s']` a partir de `$_GET`, ou `paginate_links()` usando URL base incorreta. O formulário de filtro deve apontar para `get_permalink()` da página onde o shortcode está inserido.
+- **Barreiras:** ❌ Não usar `query_posts()`. ❌ Não quebrar os filtros já funcionais em `/livros/`. ❌ Não introduzir regressões no archive nativo.
+
+### 20.6 Relatório Nominal na Importação Rápida de CSV (Fase 44)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `admin-csv.php`
+- **Descrição:** Substituir o relatório atual da importação rápida (apenas contagens com emojis) por um relatório nominal detalhado, exibindo três listas: "Importados com sucesso" (título e autor), "Duplicados pulados" (título e motivo), "Erros" (título e motivo). O processamento da importação deve ser modificado para armazenar esses detalhes durante a execução, e a exibição deve ser similar ao relatório já existente na central Exportar/Importar Tudo.
+- **Barreiras:** ❌ Não quebrar o formato CSV existente. ❌ Não usar tabelas customizadas. ❌ Não modificar a lógica de detecção de duplicados.
+
+### 20.7 Correção do Widget Gênero na Importação CSV (Fase 45)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `admin-csv.php`, `admin-fields.php`
+- **Descrição:** Resolver o problema onde livros importados via CSV têm o Gênero marcado corretamente na coluna da listagem, mas o widget de checkboxes na edição do livro aparece vazio. A causa pode ser: (1) a metabox personalizada para `bm_genre` não está sendo renderizada — verificar se `bm_add_dynamic_taxonomy_metaboxes()` não está pulando `bm_genre` no array `$skip`; (2) `bm_render_dynamic_taxonomy_metabox()` não está recuperando os termos corretamente; (3) a importação pode estar usando `update_post_meta()` em vez de `wp_set_post_terms()`. A correção deve garantir que a importação CSV chame `wp_set_post_terms()` para `bm_genre` e que a metabox personalizada exiba os termos importados.
+- **Barreiras:** ❌ Não quebrar o salvamento de outras taxonomias. ❌ Não duplicar metaboxes (conflito com Fase 40).
+
+### 20.8 Classificação de Nível de Leitura por IA na Importação CSV (Fase 46)
+- **Acesso:** Admin e Gestor (importação), Admin (API Groq)
+- **Arquivos:** `admin-csv.php`, `frontend.php`
+- **Descrição:** Adicionar um checkbox "Classificar Nível de Leitura" na tela de mapeamento da importação CSV. Se marcado e o CSV não tiver a coluna `bm_reading_level` preenchida, o sistema chamará a nova função `bm_classify_reading_level_with_ai($post_id)` em `frontend.php`, que enviará um prompt para a API Groq com título, autor e sinopse do livro, solicitando a classificação entre os 5 termos pré-criados. Se o CSV tiver valor, o CSV prevalece (CSV manda). Se a IA não souber determinar, nenhum termo é atribuído. A resposta da IA deve ser validada — apenas 1 dos 5 termos exatos é aceito. O checkbox é opcional e fica na mesma seção dos demais checkboxes (Classificar por IA, Número de Chamada, etc.).
+- **Barreiras:** ❌ IA não pode inventar termos fora dos 5 existentes. ❌ Não sobrescrever valor do CSV. ❌ Usar apenas Groq via `wp_remote_post`. ❌ Não usar bibliotecas externas de IA. ❌ Se a IA não souber, deixar vazio — não gerar aviso no relatório.
+- **Funções obrigatórias:** `wp_remote_post()`, `wp_set_post_terms()`, `get_post_meta()`, `wp_strip_all_tags()`

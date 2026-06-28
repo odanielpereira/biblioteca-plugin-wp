@@ -545,4 +545,103 @@ Aqui está o bloco atualizado para substituir a Fase 33 no roadmap.md:
 *   **Tarefas:**
     1.  [x] **38.1 — Mudar ordem dos submenus do WordPress:** Reorganizar os submenus do menu Biblioteca priorizando Balcão de Atendimento, Alunos, Livros, Importação/Exportação, Relatórios e Configurações.
     2.  [ ] **38.2 — Modularização — dividir arquivos grandes:** Separar `admin.php` e `users.php` em módulos menores por responsabilidade técnica. `admin.php` será dividido em `admin-csv.php`, `admin-fields.php`, `admin-service.php` e `admin-settings.php`. `users.php` será dividido em `users-circulation.php` e `users-dashboard.php`. Os arquivos originais deixarão de existir.    
+
 ```
+CHAT 14
+
+### Fase 39: Criar taxonomia `bm_reading_level` com termos pré-criados
+*   **Descrição:** Registrar a quarta taxonomia padrão protegida "Nível de Leitura" (`bm_reading_level`) e pré-criar os 5 termos.
+*   **Critério de saída:** Taxonomia registrada, 5 termos criados, aparecendo como protegida na interface de Taxonomias.
+
+*   **Tarefas:**
+    1.  [x] **39.1 — Criar função `bm_register_reading_level_taxonomy()`** em `book-manager.php` (similar a `bm_register_discipline_taxonomy()`), com `show_in_menu => false`, `map_meta_cap => true`, capabilities `edit_bm_books`.
+    2.  [x] **39.2 — Adicionar `bm_reading_level` à função `bm_install_default_taxonomies()`** como protegida.
+    3.  [x] **39.3 — Criar função `bm_install_default_reading_level_terms()`** que insere os 5 termos via `wp_insert_term()` caso não existam: "Muito fácil", "Fácil", "Intermediário", "Avançado", "Muito avançado".
+    4.  [x] **39.4 — Chamar `bm_install_default_reading_level_terms()`** no hook de ativação do plugin e ao carregar a página de Taxonomias.
+    5.  [x] **39.5 — Adicionar `bm_reading_level` ao array `$skip`** em `bm_add_dynamic_taxonomy_metaboxes()` e nos loops de filtro do admin para evitar duplicação.
+
+---
+
+### Fase 40: Corrigir duplicação de widgets para taxonomias dinâmicas
+*   **Descrição:** Garantir que taxonomias dinâmicas exibam apenas 1 widget (o personalizado) na edição do livro, removendo a metabox nativa sem quebrar a importação CSV.
+*   **Critério de saída:** Apenas 1 widget por taxonomia na edição do livro. Importação CSV continua funcionando.
+
+*   **Tarefas:**
+    1.  [x] **40.1 — Generalizar `bm_remove_native_taxonomy_metaboxes()`** em `admin-fields.php` para iterar sobre `get_option('bm_dynamic_taxonomies')` e remover `remove_meta_box('<slug>div', 'bm_book', 'side')` para cada taxonomia registrada (incluindo as 4 padrão).
+    2.  [x] **40.2 — Testar importação CSV** para confirmar que continua atribuindo termos corretamente via `wp_set_post_terms()`.
+    3.  [x] **40.3 — Testar gerenciamento de termos** (adicionar/editar) para confirmar que permanece funcional sem a metabox nativa.
+
+---
+
+### Fase 41: Permitir renomear taxonomias protegidas e ocultar slugs
+*   **Descrição:** Permitir que o Gestor/Admin renomeie as 4 taxonomias padrão, mas sem alterar os slugs internos. Ocultar a coluna de slug para taxonomias protegidas.
+*   **Critério de saída:** Taxonomias protegidas podem ser renomeadas. Slugs não aparecem na coluna do admin.
+
+*   **Tarefas:**
+    1.  [x] **41.1 — Remover bloqueio de renomeação** em `bm_render_taxonomies_page()` (`admin-settings.php`), permitindo input para taxonomias com `protected => true`.
+    2.  [x] **41.2 — Ocultar slugs na coluna** substituindo a exibição por "—" para taxonomias protegidas.
+    3.  [x] **41.3 — Manter bloqueio de exclusão** para taxonomias protegidas.
+
+---
+
+### Fase 42: Checkboxes de visibilidade de taxonomias na vitrine pública
+*   **Descrição:** Adicionar configuração para que o Admin/Gestor escolha quais taxonomias aparecem nos filtros da vitrine pública (`/livros/` e `[bm_catalog]`).
+*   **Critério de saída:** Checkboxes funcionais nas Configurações. Vitrine e shortcode respeitam a seleção.
+
+*   **Tarefas:**
+    1.  [x] **42.1 — Adicionar seção "Visibilidade de Taxonomias"** na aba "Acessos e Visibilidade" em `bm_render_access_settings_page()` (`admin-settings.php`), com checkboxes para `bm_genre`, `bm_category`, `bm_discipline` e `bm_reading_level`.
+    2.  [x] **42.2 — Armazenar em `bm_settings['taxonomy_visibility']`** (array associativo com 0/1).
+    3.  [x] **42.3 — Verificar `bm_get_settings()`** em `archive-bm_book.php` antes de exibir cada `wp_dropdown_categories`.
+    4.  [x] **42.4 — Verificar mesma configuração** em `bm_catalog_shortcode()` (`frontend.php`).
+    5.  [x] **42.5 — Ocultar seção de filtros** se nenhuma taxonomia estiver visível (manter apenas busca textual).
+
+---
+
+### Fase 43: Corrigir 404 nos filtros e busca do shortcode `[bm_catalog]`
+*   **Descrição:** Resolver o erro "página não encontrada" ao usar filtros de taxonomia ou busca textual no shortcode `[bm_catalog]`.
+*   **Critério de saída:** Filtros e busca funcionam sem 404 no shortcode.
+
+*   **Tarefas:**
+    1.  [x] **43.1 — Revisar `WP_Query`** em `bm_catalog_shortcode()` para garantir que `$args['tax_query']` e `$args['s']` são populados de `$_GET`.
+    2.  [x] **43.2 — Verificar `paginate_links()`** usa a URL base correta (`get_permalink()`).
+    3.  [x] **43.3 — Testar cada filtro** individualmente (Gênero, Categoria, Disciplina, Nível de Leitura) e combinados.
+    4.  [x] **43.4 — Testar busca textual** com termo que existe e termo que não existe.
+    5.  [x] **43.5 — Confirmar formulário de filtro** aponta para a URL correta da página onde o shortcode está inserido.
+
+---
+
+### Fase 44: Relatório nominal na importação rápida de CSV
+*   **Descrição:** Exibir lista detalhada de livros importados, duplicados e erros ao final da importação.
+*   **Critério de saída:** Relatório mostra listas nominais de importados, duplicados e erros.
+
+*   **Tarefas:**
+    1.  [ ] **44.1 — Modificar arrays de resultado** no processamento da importação em `bm_render_csv_import_page()` (`admin-csv.php`) para armazenar detalhes (título, autor) de cada livro.
+    2.  [ ] **44.2 — Adaptar exibição de relatório nominal** da central Exportar/Importar Tudo para a importação rápida.
+    3.  [ ] **44.3 — Exibir três listas:** "Importados com sucesso" (verde), "Duplicados pulados" (amarelo), "Erros" (vermelho), cada com títulos e motivos.
+    4.  [ ] **44.4 — Exibir apenas lista de importados** se não houver duplicados ou erros.
+
+---
+
+### Fase 45: Corrigir conflito do widget Gênero na importação CSV
+*   **Descrição:** Resolver problema onde Gênero importado via CSV aparece na coluna da listagem mas não tem o widget marcado na edição.
+*   **Critério de saída:** Widget Gênero aparece marcado corretamente para livros importados.
+
+*   **Tarefas:**
+    1.  [ ] **45.1 — Verificar `bm_add_dynamic_taxonomy_metaboxes()`** para confirmar que `bm_genre` não está no array `$skip`.
+    2.  [ ] **45.2 — Testar com livro importado** se `wp_get_post_terms($post_id, 'bm_genre')` retorna os termos.
+    3.  [ ] **45.3 — Corrigir lógica de exibição** se a metabox personalizada não estiver sendo renderizada.
+    4.  [ ] **45.4 — Confirmar que importação CSV** está chamando `wp_set_post_terms()` para `bm_genre`, não `update_post_meta()`.
+
+---
+
+### Fase 46: Checkbox "Classificar Nível de Leitura" + IA na importação CSV
+*   **Descrição:** Adicionar checkbox na tela de mapeamento para classificar nível de leitura via IA quando o CSV não tiver a coluna ou valor.
+*   **Critério de saída:** Checkbox funcional. IA classifica entre os 5 termos ou deixa vazio se não souber.
+
+*   **Tarefas:**
+    1.  [ ] **46.1 — Adicionar checkbox "Classificar Nível de Leitura"** na tela de mapeamento em `bm_render_csv_import_page()` (`admin-csv.php`).
+    2.  [ ] **46.2 — Criar `bm_classify_reading_level_with_ai($post_id)`** em `frontend.php` que envia prompt para Groq e retorna um dos 5 termos ou vazio.
+    3.  [ ] **46.3 — No processamento**, se checkbox marcado e CSV sem valor, chamar `bm_classify_reading_level_with_ai()` e atribuir via `wp_set_post_terms()`.
+    4.  [ ] **46.4 — Se CSV tiver valor**, usar o CSV (CSV manda), ignorando IA.
+    5.  [ ] **46.5 — Se IA não souber**, não atribuir termo (comportamento padrão).
+    6.  [ ] **46.6 — Validar resposta da IA** contém exatamente um dos 5 termos antes de atribuir.

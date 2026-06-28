@@ -70,20 +70,27 @@ add_action( 'init', 'bm_register_book_cpt' );
 // FASE 8G: TAXONOMIA DE DISCIPLINAS ESCOLARES
 // ==========================================
 function bm_register_discipline_taxonomy() {
+    $taxonomies = get_option('bm_dynamic_taxonomies', array());
+    $label_plural = isset($taxonomies['bm_discipline']['label']) ? $taxonomies['bm_discipline']['label'] : __('Disciplinas', 'book-manager');
+    $label_singular = rtrim($label_plural, 's'); // Remove 's' final para singular simples
+    if (mb_substr($label_plural, -2) === 'as') {
+        $label_singular = mb_substr($label_plural, 0, -1); // 'Disciplinas' -> 'Disciplina'
+    }
+    
     register_taxonomy('bm_discipline', 'bm_book', array(
-        'label'        => __('Disciplinas', 'book-manager'),
+        'label'        => $label_plural,
         'labels'       => array(
-            'name'              => __('Disciplinas', 'book-manager'),
-            'singular_name'     => __('Disciplina', 'book-manager'),
-            'search_items'      => __('Buscar Disciplinas', 'book-manager'),
-            'all_items'         => __('Todas as Disciplinas', 'book-manager'),
-            'parent_item'       => __('Disciplina Pai', 'book-manager'),
-            'parent_item_colon' => __('Disciplina Pai:', 'book-manager'),
-            'edit_item'         => __('Editar Disciplina', 'book-manager'),
-            'update_item'       => __('Atualizar Disciplina', 'book-manager'),
-            'add_new_item'      => __('Adicionar Nova Disciplina', 'book-manager'),
-            'new_item_name'     => __('Nome da Nova Disciplina', 'book-manager'),
-            'menu_name'         => __('Disciplinas', 'book-manager'),
+            'name'              => $label_plural,
+            'singular_name'     => $label_singular,
+            'search_items'      => sprintf(__('Buscar %s', 'book-manager'), $label_plural),
+            'all_items'         => sprintf(__('Todas as %s', 'book-manager'), $label_plural),
+            'parent_item'       => sprintf(__('%s Pai', 'book-manager'), $label_singular),
+            'parent_item_colon' => sprintf(__('%s Pai:', 'book-manager'), $label_singular),
+            'edit_item'         => sprintf(__('Editar %s', 'book-manager'), $label_singular),
+            'update_item'       => sprintf(__('Atualizar %s', 'book-manager'), $label_singular),
+            'add_new_item'      => sprintf(__('Adicionar Nova %s', 'book-manager'), $label_singular),
+            'new_item_name'     => sprintf(__('Nome da Nova %s', 'book-manager'), $label_singular),
+            'menu_name'         => $label_plural,
         ),
         'rewrite'      => false,
         'hierarchical' => true,
@@ -97,7 +104,34 @@ function bm_register_discipline_taxonomy() {
 }
 add_action('init', 'bm_register_discipline_taxonomy');
 
-
+// ==========================================
+// FASE 39: TAXONOMIA DE NÍVEL DE LEITURA
+// ==========================================
+function bm_register_reading_level_taxonomy() {
+    register_taxonomy('bm_reading_level', 'bm_book', array(
+        'label'        => isset($taxonomies['bm_reading_level']['label']) ? $taxonomies['bm_reading_level']['label'] : __('Nível de Leitura', 'book-manager'),
+        'labels'       => array(
+            'name'              => __('Níveis de Leitura', 'book-manager'),
+            'singular_name'     => __('Nível de Leitura', 'book-manager'),
+            'search_items'      => __('Buscar Níveis de Leitura', 'book-manager'),
+            'all_items'         => __('Todos os Níveis de Leitura', 'book-manager'),
+            'edit_item'         => __('Editar Nível de Leitura', 'book-manager'),
+            'update_item'       => __('Atualizar Nível de Leitura', 'book-manager'),
+            'add_new_item'      => __('Adicionar Novo Nível de Leitura', 'book-manager'),
+            'new_item_name'     => __('Nome do Novo Nível', 'book-manager'),
+            'menu_name'         => __('Níveis de Leitura', 'book-manager'),
+        ),
+        'rewrite'      => false,
+        'hierarchical' => true,
+        'show_ui'      => true,
+        'show_in_menu' => false,
+        'capabilities' => array(
+            'manage_terms' => 'manage_options', 'edit_terms' => 'manage_options',
+            'delete_terms' => 'manage_options', 'assign_terms' => 'manage_options',
+        ),
+    ));
+}
+add_action('init', 'bm_register_reading_level_taxonomy');
 
 // ==========================================
 // FASE 1/5: CAPABILITIES E CICLO DE VIDA
@@ -195,7 +229,8 @@ function bm_install_default_taxonomies() {
     $defaults = array(
         'bm_genre'      => array('label' => 'Gêneros',    'hierarchical' => true, 'protected' => true),
         'bm_category'   => array('label' => 'Categorias',  'hierarchical' => true, 'protected' => true),
-        'bm_discipline' => array('label' => 'Disciplinas', 'hierarchical' => true, 'protected' => true),
+        'bm_discipline'     => array('label' => 'Disciplinas',       'hierarchical' => true, 'protected' => true),
+        'bm_reading_level'  => array('label' => 'Nível de Leitura',  'hierarchical' => true, 'protected' => true),
     );
     
     foreach ($defaults as $slug => $info) {
@@ -207,6 +242,23 @@ function bm_install_default_taxonomies() {
     update_option('bm_dynamic_taxonomies', $existing);
 }
 
+
+// FASE 39: Instalar termos padrão da taxonomia Nível de Leitura
+function bm_install_default_reading_level_terms() {
+    $terms = array(
+        'muito-facil'    => __('Muito fácil', 'book-manager'),
+        'facil'          => __('Fácil', 'book-manager'),
+        'intermediario'  => __('Intermediário', 'book-manager'),
+        'avancado'       => __('Avançado', 'book-manager'),
+        'muito-avancado' => __('Muito avançado', 'book-manager'),
+    );
+    
+    foreach ($terms as $slug => $name) {
+        if (!term_exists($slug, 'bm_reading_level')) {
+            wp_insert_term($name, 'bm_reading_level', array('slug' => $slug));
+        }
+    }
+}
 
 // FASE 12E-T4: Limpar roles sujas na ativação
 function bm_clean_dirty_roles() {
@@ -236,6 +288,7 @@ function bm_plugin_activation() {
     bm_clean_dirty_roles();
     bm_install_default_taxonomies();
     bm_install_default_user_fields();
+    bm_install_default_reading_level_terms();    
     flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 'bm_plugin_activation');

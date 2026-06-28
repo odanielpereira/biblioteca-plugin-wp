@@ -45,11 +45,22 @@ $wl = bm_get_white_label();
             <label><?php _e('Buscar', 'book-manager'); ?></label>
             <input type="text" name="bm_search" value="<?php echo isset($_GET['bm_search']) ? esc_attr($_GET['bm_search']) : ''; ?>" placeholder="<?php _e('Título ou autor', 'book-manager'); ?>" />
         </div>
+        <?php 
+        $taxonomies = get_option('bm_dynamic_taxonomies', array());
+        $settings = function_exists('bm_get_settings') ? bm_get_settings() : array();
+        $visibility = isset($settings['taxonomy_visibility']) ? $settings['taxonomy_visibility'] : array();
+        
+        $genre_label = isset($taxonomies['bm_genre']['label']) ? $taxonomies['bm_genre']['label'] : __('Gênero', 'book-manager');
+        $category_label = isset($taxonomies['bm_category']['label']) ? $taxonomies['bm_category']['label'] : __('Categoria', 'book-manager');
+        $discipline_label = isset($taxonomies['bm_discipline']['label']) ? $taxonomies['bm_discipline']['label'] : __('Disciplina', 'book-manager');
+        $reading_level_label = isset($taxonomies['bm_reading_level']['label']) ? $taxonomies['bm_reading_level']['label'] : __('Nível de Leitura', 'book-manager');
+        ?>
+        <?php if (!isset($visibility['bm_genre']) || $visibility['bm_genre']): ?>
         <div>
-            <label><?php _e('Gênero', 'book-manager'); ?></label>
+            <label><?php echo esc_html($genre_label); ?></label>
             <?php
             wp_dropdown_categories(array(
-                'show_option_all' => __('Todos os Gêneros', 'book-manager'),
+                'show_option_all' => sprintf(__('Todos os %s', 'book-manager'), $genre_label),
                 'taxonomy' => 'bm_genre',
                 'name' => 'bm_genre',
                 'selected' => isset($_GET['bm_genre']) ? $_GET['bm_genre'] : '',
@@ -57,11 +68,13 @@ $wl = bm_get_white_label();
             ));
             ?>
         </div>
+        <?php endif; ?>
+        <?php if (!isset($visibility['bm_category']) || $visibility['bm_category']): ?>
         <div>
-            <label><?php _e('Categoria', 'book-manager'); ?></label>
+            <label><?php echo esc_html($category_label); ?></label>
             <?php
             wp_dropdown_categories(array(
-                'show_option_all' => __('Todas as Categorias', 'book-manager'),
+                'show_option_all' => sprintf(__('Todas as %s', 'book-manager'), $category_label),
                 'taxonomy' => 'bm_category',
                 'name' => 'bm_category',
                 'selected' => isset($_GET['bm_category']) ? $_GET['bm_category'] : '',
@@ -69,11 +82,13 @@ $wl = bm_get_white_label();
             ));
             ?>
         </div>
+        <?php endif; ?>
+        <?php if (!isset($visibility['bm_discipline']) || $visibility['bm_discipline']): ?>
         <div>
-            <label><?php _e('Disciplina', 'book-manager'); ?></label>
+            <label><?php echo esc_html($discipline_label); ?></label>
             <?php
             wp_dropdown_categories(array(
-                'show_option_all' => __('Todas as Disciplinas', 'book-manager'),
+                'show_option_all' => sprintf(__('Todas as %s', 'book-manager'), $discipline_label),
                 'taxonomy' => 'bm_discipline',
                 'name' => 'bm_discipline',
                 'selected' => isset($_GET['bm_discipline']) ? $_GET['bm_discipline'] : '',
@@ -81,6 +96,21 @@ $wl = bm_get_white_label();
             ));
             ?>
         </div>
+        <?php endif; ?>
+        <?php if (!isset($visibility['bm_reading_level']) || $visibility['bm_reading_level']): ?>
+        <div>
+            <label><?php echo esc_html($reading_level_label); ?></label>
+            <?php
+            wp_dropdown_categories(array(
+                'show_option_all' => sprintf(__('Todos os %s', 'book-manager'), $reading_level_label),
+                'taxonomy' => 'bm_reading_level',
+                'name' => 'bm_reading_level',
+                'selected' => isset($_GET['bm_reading_level']) ? $_GET['bm_reading_level'] : '',
+                'hide_empty' => true,
+            ));
+            ?>
+        </div>
+        <?php endif; ?>
         <div>
             <button type="submit" class="bm-btn-filter"><?php _e('Filtrar', 'book-manager'); ?></button>
             <a href="<?php echo get_post_type_archive_link('bm_book'); ?>" class="bm-btn-clear"><?php _e('Limpar', 'book-manager'); ?></a>
@@ -108,6 +138,10 @@ if (count($tax_query) > 1) $tax_query['relation'] = 'AND';
 $bm_discipline = isset($_GET['bm_discipline']) ? $_GET['bm_discipline'] : '';
 if ($bm_discipline !== '' && $bm_discipline !== '0') {
     $tax_query[] = array('taxonomy' => 'bm_discipline', 'field' => 'term_id', 'terms' => intval($bm_discipline));
+}
+$bm_reading_level = isset($_GET['bm_reading_level']) ? $_GET['bm_reading_level'] : '';
+if ($bm_reading_level !== '' && $bm_reading_level !== '0') {
+    $tax_query[] = array('taxonomy' => 'bm_reading_level', 'field' => 'term_id', 'terms' => intval($bm_reading_level));
 }
 if (!empty($tax_query)) $args['tax_query'] = $tax_query;
 

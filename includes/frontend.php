@@ -55,7 +55,9 @@ function bm_catalog_shortcode() {
         .bm-book-grid { grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:10px; }
         .bm-card-cover img, .bm-card-no-cover { height:170px; }
         .bm-filters { flex-direction:column; }
-        .bm-filters input[type="text"] { min-width:100%; }
+        .bm-filters > div { width:100%; }
+        .bm-filters input[type="text"] { width:100%; }
+        .bm-filters select { width:100%; }
     }
     </style>
     <?php
@@ -69,11 +71,22 @@ function bm_catalog_shortcode() {
                 <label><?php _e('Buscar', 'book-manager'); ?></label>
                 <input type="text" name="bm_search" value="<?php echo isset($_GET['bm_search']) ? esc_attr($_GET['bm_search']) : ''; ?>" placeholder="<?php _e('Título ou autor', 'book-manager'); ?>" />
             </div>
+            <?php 
+            $taxonomies = get_option('bm_dynamic_taxonomies', array());
+            $settings = function_exists('bm_get_settings') ? bm_get_settings() : array();
+            $visibility = isset($settings['taxonomy_visibility']) ? $settings['taxonomy_visibility'] : array();
+            
+            $genre_label = isset($taxonomies['bm_genre']['label']) ? $taxonomies['bm_genre']['label'] : __('Gênero', 'book-manager');
+            $category_label = isset($taxonomies['bm_category']['label']) ? $taxonomies['bm_category']['label'] : __('Categoria', 'book-manager');
+            $discipline_label = isset($taxonomies['bm_discipline']['label']) ? $taxonomies['bm_discipline']['label'] : __('Disciplina', 'book-manager');
+            $reading_level_label = isset($taxonomies['bm_reading_level']['label']) ? $taxonomies['bm_reading_level']['label'] : __('Nível de Leitura', 'book-manager');
+            ?>
+            <?php if (!isset($visibility['bm_genre']) || $visibility['bm_genre']): ?>
             <div>
-                <label><?php _e('Gênero', 'book-manager'); ?></label>
+                <label><?php echo esc_html($genre_label); ?></label>
                 <?php
                 wp_dropdown_categories(array(
-                    'show_option_all' => __('Todos os Gêneros', 'book-manager'),
+                    'show_option_all' => sprintf(__('Todos os %s', 'book-manager'), $genre_label),
                     'taxonomy' => 'bm_genre',
                     'name' => 'bm_genre',
                     'selected' => isset($_GET['bm_genre']) ? $_GET['bm_genre'] : '',
@@ -81,11 +94,13 @@ function bm_catalog_shortcode() {
                 ));
                 ?>
             </div>
+            <?php endif; ?>
+            <?php if (!isset($visibility['bm_category']) || $visibility['bm_category']): ?>
             <div>
-                <label><?php _e('Categoria', 'book-manager'); ?></label>
+                <label><?php echo esc_html($category_label); ?></label>
                 <?php
                 wp_dropdown_categories(array(
-                    'show_option_all' => __('Todas as Categorias', 'book-manager'),
+                    'show_option_all' => sprintf(__('Todas as %s', 'book-manager'), $category_label),
                     'taxonomy' => 'bm_category',
                     'name' => 'bm_category',
                     'selected' => isset($_GET['bm_category']) ? $_GET['bm_category'] : '',
@@ -93,11 +108,13 @@ function bm_catalog_shortcode() {
                 ));
                 ?>
             </div>
+            <?php endif; ?>
+            <?php if (!isset($visibility['bm_discipline']) || $visibility['bm_discipline']): ?>
             <div>
-                <label><?php _e('Disciplina', 'book-manager'); ?></label>
+                <label><?php echo esc_html($discipline_label); ?></label>
                 <?php
                 wp_dropdown_categories(array(
-                    'show_option_all' => __('Todas as Disciplinas', 'book-manager'),
+                    'show_option_all' => sprintf(__('Todas as %s', 'book-manager'), $discipline_label),
                     'taxonomy' => 'bm_discipline',
                     'name' => 'bm_discipline',
                     'selected' => isset($_GET['bm_discipline']) ? $_GET['bm_discipline'] : '',
@@ -105,6 +122,23 @@ function bm_catalog_shortcode() {
                 ));
                 ?>
             </div>
+            <?php endif; ?>
+            <?php if (!isset($visibility['bm_reading_level']) || $visibility['bm_reading_level']): ?>
+            <div>
+                <label><?php echo esc_html($reading_level_label); ?></label>
+                <?php
+                wp_dropdown_categories(array(
+                    'show_option_all' => sprintf(__('Todos os %s', 'book-manager'), $reading_level_label),
+                    'taxonomy' => 'bm_reading_level',
+                    'name' => 'bm_reading_level',
+                    'selected' => isset($_GET['bm_reading_level']) ? $_GET['bm_reading_level'] : '',
+                    'hide_empty' => true,
+                ));
+                ?>
+            </div>
+            <?php endif; ?>
+            <input type="hidden" name="page_id" value="<?php echo get_the_ID(); ?>" />
+
             <div>
                 <button type="submit" class="bm-btn-filter"><?php _e('Filtrar', 'book-manager'); ?></button>
                 <a href="<?php the_permalink(); ?>" class="bm-btn-clear"><?php _e('Limpar', 'book-manager'); ?></a>
@@ -130,6 +164,10 @@ function bm_catalog_shortcode() {
     $bm_discipline = isset($_GET['bm_discipline']) ? $_GET['bm_discipline'] : '';
     if ($bm_discipline !== '' && $bm_discipline !== '0') {
         $tax_query[] = array('taxonomy' => 'bm_discipline', 'field' => 'term_id', 'terms' => intval($bm_discipline));
+    }
+    $bm_reading_level = isset($_GET['bm_reading_level']) ? $_GET['bm_reading_level'] : '';
+    if ($bm_reading_level !== '' && $bm_reading_level !== '0') {
+        $tax_query[] = array('taxonomy' => 'bm_reading_level', 'field' => 'term_id', 'terms' => intval($bm_reading_level));
     }
     if (count($tax_query) > 1) $tax_query['relation'] = 'AND';
     if (!empty($tax_query)) $args['tax_query'] = $tax_query;
@@ -176,8 +214,9 @@ function bm_catalog_shortcode() {
             <div class="bm-pagination">
                 <?php
                 $big = 999999999;
+                $page_url = get_permalink();
                 echo paginate_links(array(
-                    'base' => str_replace($big, '%#%', esc_url(get_pagenum_link($big))),
+                    'base' => $page_url . '%_%',
                     'format' => '?paged=%#%',
                     'current' => max(1, $paged),
                     'total' => $bm_query->max_num_pages,
@@ -195,6 +234,15 @@ function bm_catalog_shortcode() {
     return ob_get_clean();
 }
 add_shortcode('bm_catalog', 'bm_catalog_shortcode');
+
+// FASE 43: Desativar redirecionamento canônico na página do shortcode [bm_catalog]
+function bm_disable_canonical_redirect_for_catalog($redirect_url, $requested_url) {
+    if (is_singular() && has_shortcode(get_post()->post_content, 'bm_catalog')) {
+        return false;
+    }
+    return $redirect_url;
+}
+add_filter('redirect_canonical', 'bm_disable_canonical_redirect_for_catalog', 10, 2);
 
 
 function bm_force_templates($template) {

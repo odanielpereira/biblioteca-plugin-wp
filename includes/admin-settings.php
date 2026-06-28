@@ -28,6 +28,12 @@ function bm_get_settings() {
             'copies'    => array('student' => 0, 'teacher' => 0, 'librarian' => 1),
             'audit_log' => array('student' => 0, 'teacher' => 0, 'librarian' => 1),
         ),
+        'taxonomy_visibility' => array(
+            'bm_genre'          => 1,
+            'bm_category'       => 1,
+            'bm_discipline'     => 1,
+            'bm_reading_level'  => 1,
+        ),
     );
     $saved = get_option('bm_settings', array());
     if (!is_array($saved)) $saved = array();
@@ -1231,12 +1237,20 @@ function bm_render_taxonomies_page() {
                 $slug = sanitize_key($slug);
                 $new_label = sanitize_text_field($new_label);
                 if (isset($taxonomies[$slug]) && !empty($new_label)) {
-                    if (empty($taxonomies[$slug]['protected'])) {
-                        $taxonomies[$slug]['label'] = $new_label;
-                    }
+                    $taxonomies[$slug]['label'] = $new_label;
                 }
             }
             update_option('bm_dynamic_taxonomies', $taxonomies);
+            
+            // FASE 42: Salvar visibilidade das taxonomias na vitrine
+            if (isset($_POST['bm_taxonomy_visibility']) && is_array($_POST['bm_taxonomy_visibility'])) {
+                $settings = bm_get_settings();
+                foreach (array('bm_genre', 'bm_category', 'bm_discipline', 'bm_reading_level') as $protected_slug) {
+                    $settings['taxonomy_visibility'][$protected_slug] = isset($_POST['bm_taxonomy_visibility'][$protected_slug]) ? 1 : 0;
+                }
+                update_option('bm_settings', $settings);
+            }
+            
             $msg = '<div class="notice notice-success"><p>' . __('Taxonomias renomeadas.', 'book-manager') . '</p></div>';
         }
     }
@@ -1290,9 +1304,9 @@ function bm_render_taxonomies_page() {
                     <thead>
                         <tr>
                             <th><?php _e('Nome', 'book-manager'); ?></th>
-                            <th><?php _e('Slug', 'book-manager'); ?></th>
-                            <th><?php _e('Hierárquica', 'book-manager'); ?></th>
-                            <th><?php _e('Termos', 'book-manager'); ?></th>
+                            <th style="text-align:center;"><?php _e('Hierárquica', 'book-manager'); ?></th>
+                            <th style="text-align:center;"><?php _e('Visível', 'book-manager'); ?></th>
+                            <th style="text-align:center;"><?php _e('Termos', 'book-manager'); ?></th>
                             <th><?php _e('Ações', 'book-manager'); ?></th>
                         </tr>
                     </thead>
@@ -1300,15 +1314,21 @@ function bm_render_taxonomies_page() {
                         <?php foreach ($taxonomies as $slug => $info): ?>
                             <tr>
                                 <td>
-                                <?php if (isset($info['protected']) && $info['protected']): ?>
-                                    <strong><?php echo esc_html($info['label']); ?></strong> 🔒
-                                <?php else: ?>
-                                    <input type="text" name="rename_taxonomy[<?php echo esc_attr($slug); ?>]" value="<?php echo esc_attr($info['label']); ?>" style="width:100%;" />
-                                <?php endif; ?>
+                                <input type="text" name="rename_taxonomy[<?php echo esc_attr($slug); ?>]" value="<?php echo esc_attr($info['label']); ?>" style="width:100%;" />
+                                <?php if (isset($info['protected']) && $info['protected']): ?> 🔒<?php endif; ?>
                             </td>
-                                <td><code><?php echo esc_html($slug); ?></code></td>
-                                <td><?php echo $info['hierarchical'] ? '✅' : '❌'; ?></td>
-                                <td>
+                                <td style="text-align:center;"><?php echo $info['hierarchical'] ? '✅' : '❌'; ?></td>
+                                <td style="text-align:center;">
+                                    <?php if (isset($info['protected']) && $info['protected']): 
+                                        $settings = bm_get_settings();
+                                        $visibility = isset($settings['taxonomy_visibility'][$slug]) ? $settings['taxonomy_visibility'][$slug] : 1;
+                                    ?>
+                                        <input type="checkbox" name="bm_taxonomy_visibility[<?php echo esc_attr($slug); ?>]" value="1" <?php checked($visibility, 1); ?> />
+                                    <?php else: ?>
+                                        <span style="color:#999;">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="text-align:center;">
                                     <a href="<?php echo admin_url('edit-tags.php?taxonomy=' . $slug . '&post_type=bm_book'); ?>" class="button button-small"><?php _e('Gerenciar Termos', 'book-manager'); ?></a>
                                 </td>
                                 <td>
