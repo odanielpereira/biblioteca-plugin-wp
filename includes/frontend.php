@@ -687,6 +687,59 @@ add_action('edit_form_after_title', 'bm_add_sinopse_button');
 // ==========================================
 // FASE 11B: CLASSIFICAÇÃO POR DISCIPLINA COM GROQ
 // ==========================================
+// FASE 46: Classificar Nível de Leitura com IA via Groq
+function bm_classify_reading_level_with_ai($post_id) {
+    $groq_key = bm_get_api_key('groq');
+    if (empty($groq_key)) return false;
+    
+    $title = get_the_title($post_id);
+    $author = get_post_meta($post_id, '_bm_author', true);
+    $sinopse = get_post_meta($post_id, '_bm_dynamic_sinopse', true);
+    
+    $prompt = "Analise o livro abaixo e classifique o nível de leitura. Responda SOMENTE com uma das opções exatas: \"Muito fácil\", \"Fácil\", \"Intermediário\", \"Avançado\", \"Muito avançado\". Se não souber determinar, responda SOMENTE \"Desconhecido\".\n\n";
+    $prompt .= "Livro: \"" . $title . "\"\n";
+    if ($author) $prompt .= "Autor: " . $author . "\n";
+    if ($sinopse) $prompt .= "Sinopse: " . wp_strip_all_tags($sinopse) . "\n";
+    $prompt .= "\nResponda apenas com o nome do nível ou Desconhecido.";
+    
+    $url = 'https://api.groq.com/openai/v1/chat/completions';
+    $body = json_encode(array(
+        'model' => 'llama-3.3-70b-versatile',
+        'messages' => array(array('role' => 'user', 'content' => $prompt)),
+        'temperature' => 0.2,
+        'max_tokens' => 20,
+    ));
+    
+    $response = wp_remote_post($url, array(
+        'timeout' => 15,
+        'headers' => array(
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer ' . $groq_key,
+        ),
+        'body' => $body,
+    ));
+    
+    if (is_wp_error($response)) return false;
+    
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+    if (!isset($data['choices'][0]['message']['content'])) return false;
+    
+    $result = trim($data['choices'][0]['message']['content']);
+    
+    $valid_terms = array('Muito fácil', 'Fácil', 'Intermediário', 'Avançado', 'Muito avançado');
+    
+    if (in_array($result, $valid_terms)) {
+        $term = term_exists($result, 'bm_reading_level');
+        if ($term) {
+            $term_id = is_array($term) ? $term['term_id'] : $term;
+            wp_set_post_terms($post_id, array($term_id), 'bm_reading_level', false);
+            return $result;
+        }
+    }
+    
+    return false;
+}
+
 function bm_classify_book_with_ai($post_id) {
     $groq_key = bm_get_api_key('groq');
     if (empty($groq_key)) return false;

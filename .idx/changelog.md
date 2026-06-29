@@ -1246,6 +1246,9 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 - **Arquivos modificados:** `assets/js/reports-dashboard.js`, `includes/reports.php`, `includes/admin-service.php`, `spec-frontend.md`, `roadmap-dashboard.md`, `changelog.md`, `claude.md`
 - **Próximo chat:** Fase 6 — Sparklines, radar, drill-down com busca/PDF, timeline, grid de capas, meta com marcas, refinamento visual, drag and drop por seção. Fase 7 — Integração completa e testes finais.
 
+---CHAT 13
+
+
 **196 - Data:** 2026-06-27
 - **Ação:** Fases 6 e 7 concluídas — Acabamento Visual e Testes Finais do Dashboard Power BI.
 - **Detalhes:** 
@@ -1264,7 +1267,7 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 
 
 
-CHAT 14
+---CHAT 14
 
 **197 - Data:** 2026-06-28
 - **Ação:** Fase 39 concluída — Criação da taxonomia `bm_reading_level` (Nível de Leitura).
@@ -1301,8 +1304,27 @@ CHAT 14
 - **Ferramenta:** `write_file` (manual pelo usuário)
 - **Decisão:** O diagnóstico confirmou que o problema ocorria apenas no shortcode, não em `/livros/`. A solução com `redirect_canonical` é cirúrgica e não afeta outras páginas.
 
----
-
 **Pendências registradas para ciclos futuros:**
 - Alinhamento fino dos filtros em telas mobile (Fase 43)
 - Responsividade dos boxes de filtro no shortcode (Fase 43)
+
+**202 - Data:** 2026-06-28
+- **Ação:** Fase 44 concluída — Relatório nominal na importação rápida de CSV.
+- **Detalhes:** Substituído o relatório genérico de contagens (✅ X importados, ⚠️ Y duplicados) por um relatório nominal detalhado com três listas: "Importados com sucesso" (título e autor, fundo verde), "Duplicados pulados" (título, autor e motivo, fundo amarelo) e "Erros" (título e motivo, fundo vermelho). Adicionados arrays `$imported_list`, `$dup_list` e `$error_list` para armazenar os detalhes durante o processamento. Corrigida a exibição do HTML com `wp_kses_post()` no lugar de `esc_html()`. Adicionada a alimentação da lista de importados com `$imported_list[]` após `$imported++`. Nenhuma lógica de processamento foi alterada.
+- **Arquivos modificados:** `includes/admin-csv.php`
+- **Ferramenta:** `write_file` (manual pelo usuário)
+- **Decisão:** O relatório nominal facilita a auditoria do Gestor, permitindo identificar rapidamente quais livros entraram no acervo e quais foram rejeitados.
+
+**203 - Data:** 2026-06-29
+- **Ação:** Fase 45 concluída — Corrigido conflito do widget Gênero na importação CSV.
+- **Detalhes:** O widget de Gênero aparecia vazio para livros importados via CSV, mesmo com os termos salvos corretamente na coluna da listagem. Causa: a função `bm_save_dynamic_taxonomy_terms()` em `admin-fields.php` era executada no hook `save_post_bm_book` e sobrescrevia os termos com array vazio, pois a importação não enviava os campos do formulário. Solução: adicionar `bm_genre` e `bm_reading_level` ao array `$skip` dessa função, junto com `bm_discipline` que já estava protegido.
+- **Arquivos modificados:** `includes/admin-fields.php`
+- **Ferramenta:** `write_file` (manual pelo usuário)
+- **Decisão:** As taxonomias gerenciadas pelo plugin via metaboxes personalizados são puladas no salvamento automático para evitar conflito com a importação CSV.
+
+**204 - Data:** 2026-06-29
+- **Ação:** Fase 46 concluída — Checkbox "Classificar Nível de Leitura" + IA na importação CSV.
+- **Detalhes:** Adicionado checkbox "Nível de Leitura por IA" na tela de mapeamento da importação CSV com texto explicativo detalhado. Criada função `bm_classify_reading_level_with_ai()` em `frontend.php` que envia título, autor e sinopse para a API Groq (modelo Llama 3.3 70B) e retorna um dos 5 termos válidos ("Muito fácil", "Fácil", "Intermediário", "Avançado", "Muito avançado") ou false se não souber determinar. Integrado no processamento da importação: se o checkbox estiver marcado e o CSV não tiver valor na coluna `bm_reading_level`, a IA é chamada. Se o CSV tiver valor, o CSV prevalece. Se a IA não souber, o campo fica vazio sem erro. Regras de negócio aplicadas conforme especificado pelo usuário.
+- **Arquivos modificados:** `includes/admin-csv.php`, `includes/frontend.php`
+- **Ferramenta:** `write_file` (manual pelo usuário)
+- **Decisão:** A classificação por IA é opcional e não interfere nos dados existentes do CSV.

@@ -214,7 +214,7 @@ function bm_save_dynamic_taxonomy_terms($post_id) {
     $taxonomies = get_option('bm_dynamic_taxonomies', array());
     if (!is_array($taxonomies)) return;
     
-    $skip = array('bm_discipline');
+    $skip = array('bm_discipline', 'bm_genre', 'bm_reading_level');
     
     foreach ($taxonomies as $slug => $info) {
         if (in_array($slug, $skip)) continue;

@@ -73,6 +73,7 @@ function bm_render_csv_import_page() {
         $google_isbn13 = isset($_POST['google_isbn13']) && '1' === $_POST['google_isbn13'];
         $google_isbn10 = isset($_POST['google_isbn10']) && '1' === $_POST['google_isbn10'];
         $imported=0; $skipped=0; $dup_skipped=0; $dup_forced=0;
+        $imported_list = array(); $dup_list = array(); $error_list = array();
         $mapping_raw = isset($_POST['mapping']) ? array_map('sanitize_text_field',$_POST['mapping']) : array();
         $mapping = array();
         foreach ($mapping_raw as $csv_index => $field) { if (!empty($field)) $mapping[$field] = intval($csv_index); }
@@ -83,10 +84,10 @@ function bm_render_csv_import_page() {
                 if (isset($mapping['title'])&&isset($row[$mapping['title']])) $title=trim(sanitize_text_field($row[$mapping['title']]));
                 if (isset($mapping['_bm_author'])&&isset($row[$mapping['_bm_author']])) $author=sanitize_text_field($row[$mapping['_bm_author']]);
                 if (isset($mapping['_bm_publisher'])&&isset($row[$mapping['_bm_publisher']])) $publisher=sanitize_text_field($row[$mapping['_bm_publisher']]);
-                if (empty($title)) { $skipped++; continue; }
+                if (empty($title)) { $skipped++; $error_list[] = array('title' => __('(sem título)', 'book-manager'), 'reason' => __('Linha sem título', 'book-manager')); continue; }
                 $csv_location = isset($mapping['_bm_location']) && isset($row[$mapping['_bm_location']]) ? sanitize_text_field($row[$mapping['_bm_location']]) : '';
                 $exists = bm_find_duplicate_book($title,$author,$publisher,$csv_location);
-                if ($exists && $skip_duplicates) { $dup_skipped++; continue; }
+                if ($exists && $skip_duplicates) { $dup_skipped++; $dup_list[] = array('title' => $title, 'author' => $author, 'reason' => __('Duplicado — já existe no acervo', 'book-manager')); continue; }
                 if ($exists) { $dup_forced++; }
                 $post_id = wp_insert_post(array('post_type'=>'bm_book','post_title'=>$title,'post_status'=>'publish'));
                 if ($post_id && !is_wp_error($post_id)) {
@@ -120,7 +121,7 @@ function bm_render_csv_import_page() {
                         }
                     }
                     $imported++;
-                    
+                    $imported_list[] = array('title' => $title, 'author' => $author);
                     if ($google_enabled) {
                         $google_data = bm_fetch_google_book_data($title, $author, $publisher);
                         
@@ -193,6 +194,21 @@ function bm_render_csv_import_page() {
                             bm_classify_book_with_ai($post_id);
                         }
                     }
+                    if (isset($_POST['classify_reading_level_with_ai']) && $_POST['classify_reading_level_with_ai'] === '1') {
+                        $csv_has_reading_level = false;
+                        foreach ($mapping as $field => $index) {
+                            if ($field === 'bm_reading_level' && isset($row[$index]) && !empty(trim($row[$index]))) {
+                                $csv_has_reading_level = true;
+                                break;
+                            }
+                        }
+                        if (!$csv_has_reading_level) {
+                            $groq_key = bm_get_api_key('groq');
+                            if (!empty($groq_key)) {
+                                bm_classify_reading_level_with_ai($post_id);
+                            }
+                        }
+                    }
                     if ($generate_call_number) {
                         $csv_cdu = get_post_meta($post_id, '_bm_cdu', true);
                         $csv_cutter = get_post_meta($post_id, '_bm_cutter', true);
@@ -216,13 +232,37 @@ function bm_render_csv_import_page() {
                 } else { $skipped++; }
             }
         }
-        $parts = array();
-        if ($imported > 0) $parts[] = '✅ ' . $imported . ' ' . __('importados', 'book-manager');
-        if ($dup_forced > 0) $parts[] = '🟡 ' . $dup_forced . ' ' . __('duplicados forçados', 'book-manager');
-        if ($dup_skipped > 0) $parts[] = '⚠️ ' . $dup_skipped . ' ' . __('duplicados pulados', 'book-manager');
-        if ($skipped > 0) $parts[] = '⚪ ' . $skipped . ' ' . __('ignorados (sem título)', 'book-manager');
-        if (empty($parts)) $parts[] = __('nenhum livro processado', 'book-manager');
-        $message = __('Importação concluída!', 'book-manager') . ' ' . implode(' | ', $parts) . '.';
+        $message = '<div class="notice notice-success"><p><strong>' . __('Importação concluída!', 'book-manager') . '</strong> ' . sprintf(__('%d livros processados.', 'book-manager'), $imported + $dup_skipped + $dup_forced + $skipped) . '</p></div>';
+        
+        if (!empty($imported_list)) {
+            $message .= '<div style="background:#e8f5e9;padding:10px;border-radius:4px;margin-bottom:10px;border-left:4px solid #46b450;">';
+            $message .= '<strong>✅ ' . sprintf(__('Importados com sucesso (%d):', 'book-manager'), count($imported_list)) . '</strong>';
+            $message .= '<ul style="margin:5px 0 0 0;padding-left:20px;max-height:300px;overflow-y:auto;">';
+            foreach ($imported_list as $item) {
+                $message .= '<li>' . esc_html($item['title']) . ($item['author'] ? ' — ' . esc_html($item['author']) : '') . '</li>';
+            }
+            $message .= '</ul></div>';
+        }
+        
+        if (!empty($dup_list)) {
+            $message .= '<div style="background:#fff8e1;padding:10px;border-radius:4px;margin-bottom:10px;border-left:4px solid #f0ad4e;">';
+            $message .= '<strong>⚠️ ' . sprintf(__('Duplicados pulados (%d):', 'book-manager'), count($dup_list)) . '</strong>';
+            $message .= '<ul style="margin:5px 0 0 0;padding-left:20px;max-height:300px;overflow-y:auto;">';
+            foreach ($dup_list as $item) {
+                $message .= '<li>' . esc_html($item['title']) . ($item['author'] ? ' — ' . esc_html($item['author']) : '') . ' <span style="color:#999;">(' . esc_html($item['reason']) . ')</span></li>';
+            }
+            $message .= '</ul></div>';
+        }
+        
+        if (!empty($error_list)) {
+            $message .= '<div style="background:#fff3f3;padding:10px;border-radius:4px;margin-bottom:10px;border-left:4px solid #dc3545;">';
+            $message .= '<strong>❌ ' . sprintf(__('Erros (%d):', 'book-manager'), count($error_list)) . '</strong>';
+            $message .= '<ul style="margin:5px 0 0 0;padding-left:20px;max-height:300px;overflow-y:auto;">';
+            foreach ($error_list as $item) {
+                $message .= '<li>' . esc_html($item['title']) . ' <span style="color:#999;">(' . esc_html($item['reason']) . ')</span></li>';
+            }
+            $message .= '</ul></div>';
+        }
     }
     if ('map'===$stage && isset($_POST['bm_csv_import_nonce']) && wp_verify_nonce($_POST['bm_csv_import_nonce'],'bm_csv_import_action')) {
         $headers = isset($_POST['csv_headers']) ? json_decode(stripslashes($_POST['csv_headers']), true) : array();
@@ -271,7 +311,7 @@ function bm_render_csv_import_page() {
     ?>
     <div class="wrap">
         <h1><?php _e('Importar Livros via CSV','book-manager'); ?></h1>
-        <?php if ($message): ?><div class="notice notice-success is-dismissible"><p><?php echo esc_html($message); ?></p></div><?php endif; ?>
+        <?php if ($message): ?><div class="notice notice-success is-dismissible"><?php echo wp_kses_post($message); ?></div><?php endif; ?>
         <?php if ('map'===$stage && !empty($headers)): ?>
             <h2><?php _e('Mapeamento de Colunas','book-manager'); ?></h2>
             <p><?php _e('Associe cada coluna do seu arquivo ao campo correspondente no sistema.','book-manager'); ?></p>
@@ -333,7 +373,10 @@ function bm_render_csv_import_page() {
                 </p>
                 
                 <p><strong><?php _e('Classificação por IA:','book-manager'); ?></strong>
-                    <label><input type="checkbox" name="classify_with_ai" value="1" checked> <?php _e('Classificar livros por disciplina (Groq)', 'book-manager'); ?></label></p>
+                <label><input type="checkbox" name="classify_with_ai" value="1" checked> <?php _e('Classificar livros por disciplina (Groq)', 'book-manager'); ?></label></p>
+                <p><strong><?php _e('Nível de Leitura por IA:', 'book-manager'); ?></strong>
+                    <label><input type="checkbox" name="classify_reading_level_with_ai" value="1"> <?php _e('Classificar Nível de Leitura automaticamente (Groq)', 'book-manager'); ?></label>
+                    <br><small><?php _e('Se o CSV não tiver a coluna Nível de Leitura ou o valor estiver vazio, a IA analisará o livro e escolherá entre: Muito fácil, Fácil, Intermediário, Avançado, Muito avançado. Se a IA não souber, o campo ficará vazio.', 'book-manager'); ?></small></p>
                 <p><strong><?php _e('Número de Chamada:','book-manager'); ?></strong>
                     <label><input type="checkbox" name="generate_call_number" value="1" checked> <?php _e('Gerar Classificação/Cutter via IA (Groq)', 'book-manager'); ?></label>
                     <br><small><?php _e('Se o CSV já tiver Classificação e Cutter, a IA não será chamada.', 'book-manager'); ?></small></p>

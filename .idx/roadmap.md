@@ -615,10 +615,10 @@ CHAT 14
 *   **Critério de saída:** Relatório mostra listas nominais de importados, duplicados e erros.
 
 *   **Tarefas:**
-    1.  [ ] **44.1 — Modificar arrays de resultado** no processamento da importação em `bm_render_csv_import_page()` (`admin-csv.php`) para armazenar detalhes (título, autor) de cada livro.
-    2.  [ ] **44.2 — Adaptar exibição de relatório nominal** da central Exportar/Importar Tudo para a importação rápida.
-    3.  [ ] **44.3 — Exibir três listas:** "Importados com sucesso" (verde), "Duplicados pulados" (amarelo), "Erros" (vermelho), cada com títulos e motivos.
-    4.  [ ] **44.4 — Exibir apenas lista de importados** se não houver duplicados ou erros.
+    1.  [x] **44.1 — Modificar arrays de resultado** no processamento da importação em `bm_render_csv_import_page()` (`admin-csv.php`) para armazenar detalhes (título, autor) de cada livro.
+    2.  [x] **44.2 — Adaptar exibição de relatório nominal** da central Exportar/Importar Tudo para a importação rápida.
+    3.  [x] **44.3 — Exibir três listas:** "Importados com sucesso" (verde), "Duplicados pulados" (amarelo), "Erros" (vermelho), cada com títulos e motivos.
+    4.  [x] **44.4 — Exibir apenas lista de importados** se não houver duplicados ou erros.
 
 ---
 
@@ -627,10 +627,10 @@ CHAT 14
 *   **Critério de saída:** Widget Gênero aparece marcado corretamente para livros importados.
 
 *   **Tarefas:**
-    1.  [ ] **45.1 — Verificar `bm_add_dynamic_taxonomy_metaboxes()`** para confirmar que `bm_genre` não está no array `$skip`.
-    2.  [ ] **45.2 — Testar com livro importado** se `wp_get_post_terms($post_id, 'bm_genre')` retorna os termos.
-    3.  [ ] **45.3 — Corrigir lógica de exibição** se a metabox personalizada não estiver sendo renderizada.
-    4.  [ ] **45.4 — Confirmar que importação CSV** está chamando `wp_set_post_terms()` para `bm_genre`, não `update_post_meta()`.
+    1.  [x] **45.1 — Verificar `bm_add_dynamic_taxonomy_metaboxes()`** para confirmar que `bm_genre` não está no array `$skip`.
+    2.  [x] **45.2 — Testar com livro importado** se `wp_get_post_terms($post_id, 'bm_genre')` retorna os termos.
+    3.  [x] **45.3 — Corrigir lógica de exibição** se a metabox personalizada não estiver sendo renderizada.
+    4.  [x] **45.4 — Confirmar que importação CSV** está chamando `wp_set_post_terms()` para `bm_genre`, não `update_post_meta()`.
 
 ---
 
@@ -639,9 +639,9 @@ CHAT 14
 *   **Critério de saída:** Checkbox funcional. IA classifica entre os 5 termos ou deixa vazio se não souber.
 
 *   **Tarefas:**
-    1.  [ ] **46.1 — Adicionar checkbox "Classificar Nível de Leitura"** na tela de mapeamento em `bm_render_csv_import_page()` (`admin-csv.php`).
-    2.  [ ] **46.2 — Criar `bm_classify_reading_level_with_ai($post_id)`** em `frontend.php` que envia prompt para Groq e retorna um dos 5 termos ou vazio.
-    3.  [ ] **46.3 — No processamento**, se checkbox marcado e CSV sem valor, chamar `bm_classify_reading_level_with_ai()` e atribuir via `wp_set_post_terms()`.
-    4.  [ ] **46.4 — Se CSV tiver valor**, usar o CSV (CSV manda), ignorando IA.
-    5.  [ ] **46.5 — Se IA não souber**, não atribuir termo (comportamento padrão).
-    6.  [ ] **46.6 — Validar resposta da IA** contém exatamente um dos 5 termos antes de atribuir.
+    1.  [x] **46.1 — Adicionar checkbox "Classificar Nível de Leitura"** na tela de mapeamento em `bm_render_csv_import_page()` (`admin-csv.php`).
+    2.  [x] **46.2 — Criar `bm_classify_reading_level_with_ai($post_id)`** em `frontend.php` que envia prompt para Groq e retorna um dos 5 termos ou vazio.
+    3.  [x] **46.3 — No processamento**, se checkbox marcado e CSV sem valor, chamar `bm_classify_reading_level_with_ai()` e atribuir via `wp_set_post_terms()`.
+    4.  [x] **46.4 — Se CSV tiver valor**, usar o CSV (CSV manda), ignorando IA.
+    5.  [x] **46.5 — Se IA não souber**, não atribuir termo (comportamento padrão).
+    6.  [x] **46.6 — Validar resposta da IA** contém exatamente um dos 5 termos antes de atribuir.
