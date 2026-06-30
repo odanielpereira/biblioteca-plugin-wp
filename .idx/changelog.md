@@ -1328,3 +1328,31 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 - **Arquivos modificados:** `includes/admin-csv.php`, `includes/frontend.php`
 - **Ferramenta:** `write_file` (manual pelo usuário)
 - **Decisão:** A classificação por IA é opcional e não interfere nos dados existentes do CSV.
+
+---CHAT 15
+
+
+    **205 - Data:** 2026-06-30
+- **Ação:** Fase 47 concluída — Correções na página de importação CSV.
+- **Detalhes:** Tarefa 47.1: corrigido toggle Google Books API que buscava capas mesmo desmarcado. O checkbox toggle ganhou `name="bm-enable-google-api"` e o PHP passou a verificar `$_POST['bm-enable-google-api']` no lugar dos checkboxes internos. Tarefa 47.2: página de mapeamento reorganizada com `<hr>` entre seções e títulos em `<h2>`. Tarefa 47.3: adicionado aviso "⚠️ ATENÇÃO: Quanto mais checkboxes forem selecionados, mais lenta será a importação" antes de Google Books API. Tarefa 47.4: seção "Classificação por IA" separada em checkboxes individuais (Gênero, Categoria, Nível de Leitura, Disciplina) e seções "Número de Chamada" e "Livros Duplicados" reorganizadas com `<hr>` e `<h2>`.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**206 - Data:** 2026-06-30
+- **Ação:** Fase 48 concluída — Labels dinâmicos nos checkboxes de IA.
+- **Detalhes:** Tarefas 48.1 e 48.2: checkboxes de classificação por IA na tela de mapeamento da importação CSV agora consultam `get_option('bm_dynamic_taxonomies')` para obter o label atual de cada taxonomia (`bm_genre`, `bm_category`, `bm_discipline`, `bm_reading_level`). Se o Gestor renomeou "Categoria" para "Temas", o checkbox exibe "Classificar livro por Temas". A mesma lógica já aplicada nos filtros da vitrine pública (Fase 41) foi reutilizada.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**207 - Data:** 2026-06-30
+- **Ação:** Fase 49 concluída — IA para Gênero e Categoria na importação CSV.
+- **Detalhes:** Tarefa 49.1: criada `bm_classify_genre_with_ai($post_id)` em `frontend.php` consultando `get_terms('bm_genre')`. Tarefa 49.2: criada `bm_classify_category_with_ai($post_id)` consultando `get_terms('bm_category')`. Tarefa 49.3: integradas no processamento da importação em `admin-csv.php` — se checkbox marcado e CSV sem valor, IA analisa; se CSV tem valor, CSV prevalece. Tarefa 49.4: validação compara nomes normalizados com `mb_strtolower`. Tarefa 49.5: IA não cria novos termos, apenas seleciona entre os existentes. Tarefa 49.6 (extra): implementadas múltiplas marcações via lista separada por vírgulas (Caminho B) — IA pode retornar "Romance, Aventura" e marcar vários checkboxes quando o livro se encaixa em mais de um gênero/categoria. `max_tokens` ajustado para 50.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**208 - Data:** 2026-06-30
+- **Ação:** Fase 50 concluída — IA na edição individual do livro.
+- **Detalhes:** Tarefas 50.1-50.3: adicionados botões "Classificar Gênero", "Classificar Categoria" e "Classificar Nível de Leitura" na metabox de detalhes do livro em `admin-fields.php`, com handlers AJAX em `frontend.php` (`bm_ajax_classify_genre`, `bm_ajax_classify_category`, `bm_ajax_classify_reading_level`). Tarefa 50.4: funções existentes (Classificar Disciplina, Gerar Atividades, Número de Chamada) permanecem intactas. Tarefa 50.5: labels dinâmicos aplicados aos botões (mesma lógica da Fase 48). Tarefa 50.6: corrigida duplicação de botões — o primeiro bloco com nomes fixos e emojis foi removido, mantendo apenas a versão com labels dinâmicos. Tarefa 50.7: removidos emojis 🤖 dos botões.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**209 - Data:** 2026-06-30
+- **Ação:** Fase 51 concluída — Log de importação.
+- **Detalhes:** Tarefa 51.1: criada lógica de salvamento do log em `update_option('bm_import_log', ...)` ao final de cada importação, contendo data/hora, status, total e as 3 listas (importados, duplicados, erros). Tarefa 51.2: adicionada subaba "Histórico" em `bm_render_csv_import_page()` com `nav-tab-wrapper` usando `$_GET['subtab']`. Tarefa 51.3: função `bm_render_import_history()` exibe tabela com data, status (Concluída), total de livros, botão "Ver detalhes" (expande listas) e botão "Excluir". Tarefa 51.4: limitado a 10 registros, com botão "Limpar histórico". Tarefa 51.5: salvamento parcial implementado — ao iniciar, salva registro com status "processando"; ao finalizar, atualiza para "concluida"; se houver registro "processando" ao carregar a página, exibe aviso de interrupção. Corrigido erro de estrutura `if/else` na função `bm_render_import_history` que impedia a exibição dos logs quando havia dados salvos.
+- **Ferramenta:** `write_file` (manual pelo usuário)

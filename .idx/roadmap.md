@@ -646,15 +646,15 @@ CHAT 14
     5.  [x] **46.5 — Se IA não souber**, não atribuir termo (comportamento padrão).
     6.  [x] **46.6 — Validar resposta da IA** contém exatamente um dos 5 termos antes de atribuir.
 
-    ### Fase 47: Correções na página de importação CSV
+   ### Fase 47: Correções na página de importação CSV
 *   **Descrição:** Corrigir o toggle do Google Books que busca capas mesmo quando desmarcado e reorganizar visualmente a página de mapeamento da importação com seções claras e divisórias.
 *   **Critério de saída:** Toggle do Google Books respeita a seleção (desmarcado = não busca capas). Página de mapeamento reorganizada com `<hr>` entre seções, títulos em destaque e aviso sobre lentidão no topo.
 
 *   **Tarefas:**
-    1.  [ ] **47.1 — Corrigir Google Books API** no processamento da importação em `admin-csv.php` para que, quando o toggle estiver desmarcado, a capa não seja buscada (sinopse já funciona — não alterar).
-    2.  [ ] **47.2 — Reorganizar visualmente a página de mapeamento** em `bm_render_csv_import_page()` (`admin-csv.php`): adicionar `<hr>` entre seções, transformar títulos em `h2`/`h3`, colocar checkboxes abaixo dos títulos.
-    3.  [ ] **47.3 — Adicionar aviso no topo:** "ATENÇÃO: Quanto mais checkboxes forem selecionados, mais lenta será a importação" antes da seção Google Books API.
-    4.  [ ] **47.4 — Separar "Classificação por IA"** em checkboxes individuais (Gênero, Categoria, Nível de Leitura, Disciplina) com layout consistente com as demais seções.
+    1.  [x] **47.1 — Corrigir Google Books API** no processamento da importação em `admin-csv.php` para que, quando o toggle estiver desmarcado, a capa não seja buscada (sinopse já funciona — não alterar).
+    2.  [x] **47.2 — Reorganizar visualmente a página de mapeamento** em `bm_render_csv_import_page()` (`admin-csv.php`): adicionar `<hr>` entre seções, transformar títulos em `h2`/`h3`, colocar checkboxes abaixo dos títulos.
+    3.  [x] **47.3 — Adicionar aviso no topo:** "ATENÇÃO: Quanto mais checkboxes forem selecionados, mais lenta será a importação" antes da seção Google Books API.
+    4.  [x] **47.4 — Separar "Classificação por IA"** em checkboxes individuais (Gênero, Categoria, Nível de Leitura, Disciplina) com layout consistente com as demais seções.
 
 ---
 
@@ -663,33 +663,37 @@ CHAT 14
 *   **Critério de saída:** Se "Categoria" foi renomeada para "Temas", o checkbox mostra "Classificar livro por Temas". Se as 4 taxonomias forem renomeadas, todos os labels acompanham a mudança.
 
 *   **Tarefas:**
-    1.  [ ] **48.1 — Consultar `get_option('bm_dynamic_taxonomies')`** para obter o label atual de cada taxonomia (`bm_genre`, `bm_category`, `bm_discipline`, `bm_reading_level`) ao renderizar os checkboxes.
-    2.  [ ] **48.2 — Aplicar labels dinâmicos** nos checkboxes da tela de mapeamento em `bm_render_csv_import_page()` (`admin-csv.php`).
+    1.  [x] **48.1 — Consultar `get_option('bm_dynamic_taxonomies')`** para obter o label atual de cada taxonomia (`bm_genre`, `bm_category`, `bm_discipline`, `bm_reading_level`) ao renderizar os checkboxes.
+    2.  [x] **48.2 — Aplicar labels dinâmicos** nos checkboxes da tela de mapeamento em `bm_render_csv_import_page()` (`admin-csv.php`).
 
 ---
 
 ### Fase 49: IA para Gênero e Categoria na importação CSV
 *   **Descrição:** Criar funções de IA para classificar Gênero e Categoria durante a importação CSV, nos mesmos moldes da classificação por Disciplina e Nível de Leitura.
-*   **Critério de saída:** Checkboxes "Classificar livro por Gênero" e "Classificar livro por Categoria" funcionais. IA consulta termos existentes via `get_terms()` e classifica conforme as regras de negócio (CSV manda, IA como fallback).
+*   **Critério de saída:** Checkboxes "Classificar livro por Gênero" e "Classificar livro por Categoria" funcionais. IA consulta termos existentes via `get_terms()` e classifica conforme as regras de negócio (CSV manda, IA como fallback). [Adicionado suporte a múltiplas marcações via lista separada por vírgulas]
 
 *   **Tarefas:**
-    1.  [ ] **49.1 — Criar `bm_classify_genre_with_ai($post_id)`** em `frontend.php`, seguindo o modelo de `bm_classify_book_with_ai()`, mas consultando `get_terms('bm_genre')`.
-    2.  [ ] **49.2 — Criar `bm_classify_category_with_ai($post_id)`** em `frontend.php`, consultando `get_terms('bm_category')`.
-    3.  [ ] **49.3 — Integrar no processamento da importação** em `admin-csv.php`: se checkbox marcado e CSV sem valor, chamar a função correspondente. Se CSV tiver valor, o CSV prevalece.
-    4.  [ ] **49.4 — Validar resposta da IA** contém exatamente um dos termos existentes antes de atribuir. Se não souber, deixa vazio sem erro.
-    5.  [ ] **49.5 — IA não cria novos termos** — apenas seleciona entre os já cadastrados pelo usuário.
+    1.  [x] **49.1 — Criar `bm_classify_genre_with_ai($post_id)`** em `frontend.php`, seguindo o modelo de `bm_classify_book_with_ai()`, mas consultando `get_terms('bm_genre')`.
+    2.  [x] **49.2 — Criar `bm_classify_category_with_ai($post_id)`** em `frontend.php`, consultando `get_terms('bm_category')`.
+    3.  [x] **49.3 — Integrar no processamento da importação** em `admin-csv.php`: se checkbox marcado e CSV sem valor, chamar a função correspondente. Se CSV tiver valor, o CSV prevalece.
+    4.  [x] **49.4 — Validar resposta da IA** contém exatamente um dos termos existentes antes de atribuir. Se não souber, deixa vazio sem erro.
+    5.  [x] **49.5 — IA não cria novos termos** — apenas seleciona entre os já cadastrados pelo usuário.
+    6.  [x] **49.6 — Múltiplas marcações** — IA pode retornar lista separada por vírgulas (ex: "Romance, Aventura") e marcar vários checkboxes quando o livro se encaixa em mais de um gênero/categoria. [Adicionado]
 
 ---
 
 ### Fase 50: IA na edição individual do livro
 *   **Descrição:** Adicionar botões de classificação por IA para Gênero, Categoria e Nível de Leitura na tela de edição do livro (admin).
-*   **Critério de saída:** Botões "Classificar Gênero", "Classificar Categoria" e "Classificar Nível de Leitura" funcionais na edição do livro. Funções existentes (Disciplina, Atividades, Número de Chamada) permanecem intactas.
+*   **Critério de saída:** Botões "Classificar Gênero", "Classificar Categoria" e "Classificar Nível de Leitura" funcionais na edição do livro. Funções existentes (Disciplina, Atividades, Número de Chamada) permanecem intactas. [Adicionados labels dinâmicos e removidos emojis]
 
 *   **Tarefas:**
-    1.  [ ] **50.1 — Criar botão "Classificar Gênero"** com handler AJAX em `admin-fields.php` e `frontend.php`, usando `bm_classify_genre_with_ai()`.
-    2.  [ ] **50.2 — Criar botão "Classificar Categoria"** com handler AJAX em `admin-fields.php` e `frontend.php`, usando `bm_classify_category_with_ai()`.
-    3.  [ ] **50.3 — Criar botão "Classificar Nível de Leitura"** com handler AJAX em `admin-fields.php` e `frontend.php`, usando `bm_classify_reading_level_with_ai()` (função já existente).
-    4.  [ ] **50.4 — Garantir que funções existentes não sejam alteradas** (Classificar Disciplina, Gerar Atividades, Número de Chamada).
+    1.  [x] **50.1 — Criar botão "Classificar Gênero"** com handler AJAX em `admin-fields.php` e `frontend.php`, usando `bm_classify_genre_with_ai()`.
+    2.  [x] **50.2 — Criar botão "Classificar Categoria"** com handler AJAX em `admin-fields.php` e `frontend.php`, usando `bm_classify_category_with_ai()`.
+    3.  [x] **50.3 — Criar botão "Classificar Nível de Leitura"** com handler AJAX em `admin-fields.php` e `frontend.php`, usando `bm_classify_reading_level_with_ai()` (função já existente).
+    4.  [x] **50.4 — Garantir que funções existentes não sejam alteradas** (Classificar Disciplina, Gerar Atividades, Número de Chamada).
+    5.  [x] **50.5 — Labels dinâmicos nos botões** — mesmos labels da Fase 48 aplicados aos botões da edição. [Adicionado]
+    6.  [x] **50.6 — Corrigir duplicação de botões** — removida a versão duplicada com nomes fixos. [Adicionado]
+    7.  [x] **50.7 — Remover emojis** dos botões de classificação. [Adicionado]
 
 ---
 
@@ -698,8 +702,8 @@ CHAT 14
 *   **Critério de saída:** Subaba "Histórico" disponível na página de importação, exibindo as últimas 10 importações com data, status, total de livros e listas de importados/duplicados/erros. Registro parcial salvo se a importação for interrompida.
 
 *   **Tarefas:**
-    1.  [ ] **51.1 — Criar lógica de salvamento** do log em `update_option('bm_import_log', ...)` ao final de cada importação, contendo: data/hora, status, total processado e as 3 listas do relatório nominal.
-    2.  [ ] **51.2 — Adicionar subaba "Histórico"** em `bm_render_csv_import_page()` (`admin-csv.php`) com `nav-tab-wrapper`.
-    3.  [ ] **51.3 — Exibir tabela com as últimas importações:** data, status (concluída/interrompida), total de livros, botão "Ver detalhes" (expande listas) e botão "Excluir".
-    4.  [ ] **51.4 — Limitar a 10 registros**, com botão "Limpar histórico" para remover todos.
-    5.  [ ] **51.5 — Salvar parcialmente** durante a importação para detectar importações interrompidas e exibir aviso "Uma importação anterior foi interrompida".
+    1.  [x] **51.1 — Criar lógica de salvamento** do log em `update_option('bm_import_log', ...)` ao final de cada importação, contendo: data/hora, status, total processado e as 3 listas do relatório nominal.
+    2.  [x] **51.2 — Adicionar subaba "Histórico"** em `bm_render_csv_import_page()` (`admin-csv.php`) com `nav-tab-wrapper`.
+    3.  [x] **51.3 — Exibir tabela com as últimas importações:** data, status (concluída/interrompida), total de livros, botão "Ver detalhes" (expande listas) e botão "Excluir".
+    4.  [x] **51.4 — Limitar a 10 registros**, com botão "Limpar histórico" para remover todos.
+    5.  [x] **51.5 — Salvar parcialmente** durante a importação para detectar importações interrompidas e exibir aviso "Uma importação anterior foi interrompida".

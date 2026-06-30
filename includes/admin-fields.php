@@ -66,15 +66,21 @@ function bm_render_book_details_metabox( $post ) {
     $title_value = $post->post_title;
     $author_value = get_post_meta($post->ID, '_bm_author', true);
     ?>
+    <?php 
+    $taxonomies = get_option('bm_dynamic_taxonomies', array());
+    $genre_label = isset($taxonomies['bm_genre']['label']) ? $taxonomies['bm_genre']['label'] : __('Gênero', 'book-manager');
+    $category_label = isset($taxonomies['bm_category']['label']) ? $taxonomies['bm_category']['label'] : __('Categoria', 'book-manager');
+    $reading_level_label = isset($taxonomies['bm_reading_level']['label']) ? $taxonomies['bm_reading_level']['label'] : __('Nível de Leitura', 'book-manager');
+    ?>
     <p>
         <button type="button" id="bm-classify-genre" class="button" style="margin-top:5px;">
-            🤖 <?php _e('Classificar Gênero', 'book-manager'); ?>
+            <?php printf(__('Classificar %s', 'book-manager'), $genre_label); ?>
         </button>
         <button type="button" id="bm-classify-category" class="button" style="margin-top:5px;margin-left:5px;">
-            🤖 <?php _e('Classificar Categoria', 'book-manager'); ?>
+            <?php printf(__('Classificar %s', 'book-manager'), $category_label); ?>
         </button>
         <button type="button" id="bm-classify-reading-level" class="button" style="margin-top:5px;margin-left:5px;">
-            🤖 <?php _e('Classificar Nível de Leitura', 'book-manager'); ?>
+            <?php printf(__('Classificar %s', 'book-manager'), $reading_level_label); ?>
         </button>
         <span id="bm-classify-loading" style="display:none;margin-left:10px;color:#666;"></span>
         <span id="bm-classify-result" style="display:none;margin-left:10px;"></span>
@@ -102,11 +108,12 @@ function bm_render_book_details_metabox( $post ) {
                 });
             }
             
-            $('#bm-classify-genre').on('click', function() { bmClassify('genre', '<?php echo wp_create_nonce("bm_ai_classify_nonce"); ?>', 'Gênero'); });
-            $('#bm-classify-category').on('click', function() { bmClassify('category', '<?php echo wp_create_nonce("bm_ai_classify_nonce"); ?>', 'Categoria'); });
-            $('#bm-classify-reading-level').on('click', function() { bmClassify('reading_level', '<?php echo wp_create_nonce("bm_ai_classify_nonce"); ?>', 'Nível de Leitura'); });
+            $('#bm-classify-genre').on('click', function() { bmClassify('genre', '<?php echo wp_create_nonce("bm_ai_classify_nonce"); ?>', '<?php echo esc_js($genre_label); ?>'); });
+            $('#bm-classify-category').on('click', function() { bmClassify('category', '<?php echo wp_create_nonce("bm_ai_classify_nonce"); ?>', '<?php echo esc_js($category_label); ?>'); });
+            $('#bm-classify-reading-level').on('click', function() { bmClassify('reading_level', '<?php echo wp_create_nonce("bm_ai_classify_nonce"); ?>', '<?php echo esc_js($reading_level_label); ?>'); });
         });
         </script>
+
         <button type="button" id="bm-fill-by-isbn" class="button" style="margin-top:5px;" <?php echo empty($isbn_value) ? 'disabled' : ''; ?>>
             📚 <?php _e('Preencher via ISBN', 'book-manager'); ?>
         </button>

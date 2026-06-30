@@ -262,6 +262,22 @@ function bm_render_csv_import_page() {
                 } else { $skipped++; }
             }
         }
+        // Salvar log da importação (Fase 51)
+        $import_log = get_option('bm_import_log', array());
+        if (!is_array($import_log)) $import_log = array();
+        $import_log[] = array(
+            'date' => current_time('mysql'),
+            'status' => 'concluida',
+            'total' => $imported + $dup_skipped + $dup_forced + $skipped,
+            'imported_list' => $imported_list,
+            'dup_list' => $dup_list,
+            'error_list' => $error_list,
+        );
+        if (count($import_log) > 10) {
+            $import_log = array_slice($import_log, -10);
+        }
+        update_option('bm_import_log', $import_log);
+        
         $message = '<div class="notice notice-success"><p><strong>' . __('Importação concluída!', 'book-manager') . '</strong> ' . sprintf(__('%d livros processados.', 'book-manager'), $imported + $dup_skipped + $dup_forced + $skipped) . '</p></div>';
         
         if (!empty($imported_list)) {
@@ -339,10 +355,22 @@ function bm_render_csv_import_page() {
         $system_fields[$slug] = $info['label'] . ' (' . __('taxonomia','book-manager') . ')';
     }
     ?>
+    <?php 
+    $subtab = isset($_GET['subtab']) ? sanitize_text_field($_GET['subtab']) : 'import';
+    ?>
     <div class="wrap">
         <h1><?php _e('Importar Livros via CSV','book-manager'); ?></h1>
-        <?php if ($message): ?><div class="notice notice-success is-dismissible"><?php echo wp_kses_post($message); ?></div><?php endif; ?>
-        <?php if ('map'===$stage && !empty($headers)): ?>
+        
+        <nav class="nav-tab-wrapper" style="margin-bottom:15px;">
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_data_io&tab=import_books&subtab=import'); ?>" class="nav-tab <?php echo $subtab === 'import' ? 'nav-tab-active' : ''; ?>">📥 <?php _e('Importar', 'book-manager'); ?></a>
+            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_data_io&tab=import_books&subtab=history'); ?>" class="nav-tab <?php echo $subtab === 'history' ? 'nav-tab-active' : ''; ?>">📋 <?php _e('Histórico', 'book-manager'); ?></a>
+        </nav>
+        
+        <?php if ($subtab === 'history'): ?>
+            <?php bm_render_import_history(); ?>
+        <?php else: ?>
+            <?php if ($message): ?><div class="notice notice-success is-dismissible"><?php echo wp_kses_post($message); ?></div><?php endif; ?>
+            <?php if ('map'===$stage && !empty($headers)): ?>
             <h2><?php _e('Mapeamento de Colunas','book-manager'); ?></h2>
             <p><?php _e('Associe cada coluna do seu arquivo ao campo correspondente no sistema.','book-manager'); ?></p>
             <form method="post">
@@ -456,8 +484,129 @@ function bm_render_csv_import_page() {
                 <?php submit_button(__('Enviar Arquivo','book-manager')); ?>
             </form>
         <?php endif; ?>
+    <?php endif; ?>
     </div>
     <?php
+}
+
+// FASE 51: Função de exibição do histórico de importações
+function bm_render_import_history() {
+    if (isset($_POST['clear_history']) && wp_verify_nonce($_POST['bm_history_nonce'], 'bm_history_action')) {
+        update_option('bm_import_log', array());
+        echo '<div class="notice notice-success"><p>' . __('Histórico limpo.', 'book-manager') . '</p></div>';
+    }
+    
+    if (isset($_POST['delete_entry']) && wp_verify_nonce($_POST['bm_history_nonce'], 'bm_history_action')) {
+        $delete_index = intval($_POST['delete_entry']);
+        $import_log = get_option('bm_import_log', array());
+        if (isset($import_log[$delete_index])) {
+            unset($import_log[$delete_index]);
+            update_option('bm_import_log', array_values($import_log));
+            echo '<div class="notice notice-success"><p>' . __('Registro excluído.', 'book-manager') . '</p></div>';
+        }
+    }
+    
+    $import_log = get_option('bm_import_log', array());
+    if (!is_array($import_log) || empty($import_log)):
+    ?>
+        <p><?php _e('Nenhuma importação registrada.', 'book-manager'); ?></p>
+    <?php else: 
+        // Verificar importações interrompidas
+        $interrupted = false;
+        foreach ($import_log as $entry) {
+            if ($entry['status'] === 'processando') {
+                $interrupted = true;
+                break;
+            }
+        }
+        if ($interrupted): ?>
+            <div class="notice notice-warning" style="margin-bottom:15px;">
+                <p><strong>⚠️ <?php _e('Uma importação anterior foi interrompida.', 'book-manager'); ?></strong> <?php _e('Isso pode ter ocorrido por timeout do servidor. Os livros processados antes da interrupção já foram salvos.', 'book-manager'); ?></p>
+            </div>
+        <?php endif; ?>
+        <?php $import_log = array_reverse($import_log); ?>
+        <form method="post" style="margin-bottom:10px;">
+            <?php wp_nonce_field('bm_history_action', 'bm_history_nonce'); ?>
+            <button type="submit" name="clear_history" class="button" onclick="return confirm('<?php _e('Limpar todo o histórico?', 'book-manager'); ?>')"><?php _e('Limpar histórico', 'book-manager'); ?></button>
+        </form>
+        
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th><?php _e('Data', 'book-manager'); ?></th>
+                    <th><?php _e('Status', 'book-manager'); ?></th>
+                    <th><?php _e('Total', 'book-manager'); ?></th>
+                    <th><?php _e('Ações', 'book-manager'); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($import_log as $index => $entry): 
+                    $original_index = count($import_log) - 1 - $index;
+                    $status_label = $entry['status'] === 'concluida' ? '✅ ' . __('Concluída', 'book-manager') : '⚠️ ' . __('Interrompida', 'book-manager');
+                ?>
+                    <tr>
+                        <td><?php echo date('d/m/Y H:i', strtotime($entry['date'])); ?></td>
+                        <td><?php echo $status_label; ?></td>
+                        <td><?php echo intval($entry['total']); ?> <?php _e('livros', 'book-manager'); ?></td>
+                        <td>
+                            <button type="button" class="button button-small bm-toggle-details" data-index="<?php echo $index; ?>">🔍 <?php _e('Ver detalhes', 'book-manager'); ?></button>
+                            <form method="post" style="display:inline;">
+                                <?php wp_nonce_field('bm_history_action', 'bm_history_nonce'); ?>
+                                <input type="hidden" name="delete_entry" value="<?php echo $original_index; ?>">
+                                <button type="submit" class="button button-small" onclick="return confirm('<?php _e('Excluir este registro?', 'book-manager'); ?>')"><?php _e('Excluir', 'book-manager'); ?></button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr id="bm-history-detail-<?php echo $index; ?>" style="display:none;">
+                        <td colspan="4">
+                            <?php if (!empty($entry['imported_list'])): ?>
+                                <div style="background:#e8f5e9;padding:10px;border-radius:4px;margin-bottom:8px;border-left:4px solid #46b450;">
+                                    <strong>✅ <?php printf(__('Importados com sucesso (%d):', 'book-manager'), count($entry['imported_list'])); ?></strong>
+                                    <ul style="margin:5px 0 0 0;padding-left:20px;">
+                                        <?php foreach ($entry['imported_list'] as $item): ?>
+                                            <li><?php echo esc_html($item['title']); ?><?php echo !empty($item['author']) ? ' — ' . esc_html($item['author']) : ''; ?></li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($entry['dup_list'])): ?>
+                                <div style="background:#fff8e1;padding:10px;border-radius:4px;margin-bottom:8px;border-left:4px solid #f0ad4e;">
+                                    <strong>⚠️ <?php printf(__('Duplicados pulados (%d):', 'book-manager'), count($entry['dup_list'])); ?></strong>
+                                    <ul style="margin:5px 0 0 0;padding-left:20px;">
+                                        <?php foreach ($entry['dup_list'] as $item): ?>
+                                            <li><?php echo esc_html($item['title']); ?><?php echo !empty($item['author']) ? ' — ' . esc_html($item['author']) : ''; ?> — <?php echo esc_html($item['reason']); ?></li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($entry['error_list'])): ?>
+                                <div style="background:#fff3f3;padding:10px;border-radius:4px;border-left:4px solid #dc3545;">
+                                    <strong>❌ <?php printf(__('Erros (%d):', 'book-manager'), count($entry['error_list'])); ?></strong>
+                                    <ul style="margin:5px 0 0 0;padding-left:20px;">
+                                        <?php foreach ($entry['error_list'] as $item): ?>
+                                            <li><?php echo esc_html($item['title']); ?> — <?php echo esc_html($item['reason']); ?></li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        
+        <script>
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('bm-toggle-details')) {
+                var index = e.target.getAttribute('data-index');
+                var detailRow = document.getElementById('bm-history-detail-' + index);
+                if (detailRow) {
+                    detailRow.style.display = detailRow.style.display === 'none' ? '' : 'none';
+                }
+            }
+        });
+        </script>
+    <?php endif;
 }
 
 function bm_find_duplicate_book($title,$author,$publisher) {
