@@ -67,6 +67,46 @@ function bm_render_book_details_metabox( $post ) {
     $author_value = get_post_meta($post->ID, '_bm_author', true);
     ?>
     <p>
+        <button type="button" id="bm-classify-genre" class="button" style="margin-top:5px;">
+            🤖 <?php _e('Classificar Gênero', 'book-manager'); ?>
+        </button>
+        <button type="button" id="bm-classify-category" class="button" style="margin-top:5px;margin-left:5px;">
+            🤖 <?php _e('Classificar Categoria', 'book-manager'); ?>
+        </button>
+        <button type="button" id="bm-classify-reading-level" class="button" style="margin-top:5px;margin-left:5px;">
+            🤖 <?php _e('Classificar Nível de Leitura', 'book-manager'); ?>
+        </button>
+        <span id="bm-classify-loading" style="display:none;margin-left:10px;color:#666;"></span>
+        <span id="bm-classify-result" style="display:none;margin-left:10px;"></span>
+
+        <script>
+        jQuery(document).ready(function($) {
+            function bmClassify(action, nonce, label) {
+                var btn = $('#bm-classify-' + action);
+                btn.prop('disabled', true);
+                $('#bm-classify-loading').show().text('Analisando ' + label + '...');
+                $('#bm-classify-result').hide();
+                $.post(ajaxurl, {
+                    action: 'bm_ajax_classify_' + action,
+                    nonce: nonce,
+                    post_id: <?php echo $post->ID; ?>
+                }, function(r) {
+                    $('#bm-classify-loading').hide();
+                    if (r.success) {
+                        $('#bm-classify-result').css('color', 'green').text(r.data).show();
+                        setTimeout(function() { location.reload(); }, 1500);
+                    } else {
+                        $('#bm-classify-result').css('color', 'red').text(r.data).show();
+                        btn.prop('disabled', false);
+                    }
+                });
+            }
+            
+            $('#bm-classify-genre').on('click', function() { bmClassify('genre', '<?php echo wp_create_nonce("bm_ai_classify_nonce"); ?>', 'Gênero'); });
+            $('#bm-classify-category').on('click', function() { bmClassify('category', '<?php echo wp_create_nonce("bm_ai_classify_nonce"); ?>', 'Categoria'); });
+            $('#bm-classify-reading-level').on('click', function() { bmClassify('reading_level', '<?php echo wp_create_nonce("bm_ai_classify_nonce"); ?>', 'Nível de Leitura'); });
+        });
+        </script>
         <button type="button" id="bm-fill-by-isbn" class="button" style="margin-top:5px;" <?php echo empty($isbn_value) ? 'disabled' : ''; ?>>
             📚 <?php _e('Preencher via ISBN', 'book-manager'); ?>
         </button>

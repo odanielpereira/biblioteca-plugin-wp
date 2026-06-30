@@ -740,6 +740,145 @@ function bm_classify_reading_level_with_ai($post_id) {
     return false;
 }
 
+// FASE 49: Classificar Gênero com IA via Groq
+function bm_classify_genre_with_ai($post_id) {
+    $groq_key = bm_get_api_key('groq');
+    if (empty($groq_key)) return false;
+    
+    $title = get_the_title($post_id);
+    $author = get_post_meta($post_id, '_bm_author', true);
+    $sinopse = get_post_meta($post_id, '_bm_dynamic_sinopse', true);
+    $existing_terms = get_terms(array('taxonomy' => 'bm_genre', 'hide_empty' => false));
+    if (empty($existing_terms)) return false;
+    
+    $term_names = array();
+    foreach ($existing_terms as $term) {
+        $term_names[] = $term->name;
+    }
+    $term_list = implode('", "', $term_names);
+    
+    $prompt = "Analise o livro abaixo e escolha o(s) gênero(s) mais adequado(s) entre as opções disponíveis. Você pode escolher mais de um se o livro se encaixar em múltiplos gêneros. Responda SOMENTE com os nomes exatos separados por vírgula, ou \"Desconhecido\" se não souber determinar.\n\n";
+    $prompt .= "Livro: \"" . $title . "\"\n";
+    if ($author) $prompt .= "Autor: " . $author . "\n";
+    if ($sinopse) $prompt .= "Sinopse: " . wp_strip_all_tags($sinopse) . "\n";
+    $prompt .= "\nOpções disponíveis: \"" . $term_list . "\"\n";
+    $prompt .= "Exemplo de resposta: Romance, Aventura\nResponda apenas com os nomes ou Desconhecido.";
+    
+    $url = 'https://api.groq.com/openai/v1/chat/completions';
+    $body = json_encode(array(
+        'model' => 'llama-3.3-70b-versatile',
+        'messages' => array(array('role' => 'user', 'content' => $prompt)),
+        'temperature' => 0.2,
+        'max_tokens' => 50,
+    ));
+    
+    $response = wp_remote_post($url, array(
+        'timeout' => 15,
+        'headers' => array(
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer ' . $groq_key,
+        ),
+        'body' => $body,
+    ));
+    
+    if (is_wp_error($response)) return false;
+    
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+    if (!isset($data['choices'][0]['message']['content'])) return false;
+    
+    $result = trim($data['choices'][0]['message']['content']);
+    if (mb_strtolower($result) === 'desconhecido') return false;
+    
+    $selected_names = array_map('trim', explode(',', $result));
+    $selected_ids = array();
+    
+    foreach ($selected_names as $name) {
+        foreach ($existing_terms as $term) {
+            if (mb_strtolower($name) === mb_strtolower($term->name)) {
+                $selected_ids[] = $term->term_id;
+                break;
+            }
+        }
+    }
+    
+    if (!empty($selected_ids)) {
+        wp_set_post_terms($post_id, $selected_ids, 'bm_genre', false);
+        return count($selected_ids);
+    }
+    
+    return false;
+}
+
+// FASE 49: Classificar Categoria com IA via Groq
+function bm_classify_category_with_ai($post_id) {
+    $groq_key = bm_get_api_key('groq');
+    if (empty($groq_key)) return false;
+    
+    $title = get_the_title($post_id);
+    $author = get_post_meta($post_id, '_bm_author', true);
+    $sinopse = get_post_meta($post_id, '_bm_dynamic_sinopse', true);
+    $existing_terms = get_terms(array('taxonomy' => 'bm_category', 'hide_empty' => false));
+    if (empty($existing_terms)) return false;
+    
+    $term_names = array();
+    foreach ($existing_terms as $term) {
+        $term_names[] = $term->name;
+    }
+    $term_list = implode('", "', $term_names);
+    
+    $prompt = "Analise o livro abaixo e escolha a(s) categoria(s) mais adequada(s) entre as opções disponíveis. Você pode escolher mais de uma se o livro se encaixar em múltiplas categorias. Responda SOMENTE com os nomes exatos separados por vírgula, ou \"Desconhecido\" se não souber determinar.\n\n";
+    $prompt .= "Livro: \"" . $title . "\"\n";
+    if ($author) $prompt .= "Autor: " . $author . "\n";
+    if ($sinopse) $prompt .= "Sinopse: " . wp_strip_all_tags($sinopse) . "\n";
+    $prompt .= "\nOpções disponíveis: \"" . $term_list . "\"\n";
+    $prompt .= "Exemplo de resposta: Ficção, Romance\nResponda apenas com os nomes ou Desconhecido.";
+    
+    $url = 'https://api.groq.com/openai/v1/chat/completions';
+    $body = json_encode(array(
+        'model' => 'llama-3.3-70b-versatile',
+        'messages' => array(array('role' => 'user', 'content' => $prompt)),
+        'temperature' => 0.2,
+        'max_tokens' => 50,
+    ));
+    
+    $response = wp_remote_post($url, array(
+        'timeout' => 15,
+        'headers' => array(
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer ' . $groq_key,
+        ),
+        'body' => $body,
+    ));
+    
+    if (is_wp_error($response)) return false;
+    
+    $data = json_decode(wp_remote_retrieve_body($response), true);
+    if (!isset($data['choices'][0]['message']['content'])) return false;
+    
+    $result = trim($data['choices'][0]['message']['content']);
+    if (mb_strtolower($result) === 'desconhecido') return false;
+    
+    $selected_names = array_map('trim', explode(',', $result));
+    $selected_ids = array();
+    
+    foreach ($selected_names as $name) {
+        foreach ($existing_terms as $term) {
+            if (mb_strtolower($name) === mb_strtolower($term->name)) {
+                $selected_ids[] = $term->term_id;
+                break;
+            }
+        }
+    }
+    
+    if (!empty($selected_ids)) {
+        wp_set_post_terms($post_id, $selected_ids, 'bm_category', false);
+        return count($selected_ids);
+    }
+    
+    return false;
+}
+
+
 function bm_classify_book_with_ai($post_id) {
     $groq_key = bm_get_api_key('groq');
     if (empty($groq_key)) return false;
@@ -866,6 +1005,53 @@ function bm_add_ai_classify_button() {
 add_action('edit_form_after_title', 'bm_add_ai_classify_button');
 
 // Handler AJAX
+
+// FASE 50: Handler AJAX para classificar Gênero
+function bm_ajax_classify_genre() {
+    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(__('Sem permissão.', 'book-manager'));
+    check_ajax_referer('bm_ai_classify_nonce', 'nonce');
+    $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+    if (!$post_id) wp_die(__('Livro inválido.', 'book-manager'));
+    $count = bm_classify_genre_with_ai($post_id);
+    if ($count) {
+        wp_send_json_success(sprintf(__('%d gênero(s) atribuído(s)!', 'book-manager'), $count));
+    } else {
+        wp_send_json_error(__('Não foi possível classificar. Verifique a chave da API Groq.', 'book-manager'));
+    }
+}
+add_action('wp_ajax_bm_ajax_classify_genre', 'bm_ajax_classify_genre');
+
+// FASE 50: Handler AJAX para classificar Categoria
+function bm_ajax_classify_category() {
+    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(__('Sem permissão.', 'book-manager'));
+    check_ajax_referer('bm_ai_classify_nonce', 'nonce');
+    $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+    if (!$post_id) wp_die(__('Livro inválido.', 'book-manager'));
+    $count = bm_classify_category_with_ai($post_id);
+    if ($count) {
+        wp_send_json_success(sprintf(__('%d categoria(s) atribuída(s)!', 'book-manager'), $count));
+    } else {
+        wp_send_json_error(__('Não foi possível classificar. Verifique a chave da API Groq.', 'book-manager'));
+    }
+}
+add_action('wp_ajax_bm_ajax_classify_category', 'bm_ajax_classify_category');
+
+// FASE 50: Handler AJAX para classificar Nível de Leitura
+function bm_ajax_classify_reading_level() {
+    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(__('Sem permissão.', 'book-manager'));
+    check_ajax_referer('bm_ai_classify_nonce', 'nonce');
+    $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+    if (!$post_id) wp_die(__('Livro inválido.', 'book-manager'));
+    $result = bm_classify_reading_level_with_ai($post_id);
+    if ($result) {
+        wp_send_json_success(sprintf(__('Nível de leitura "%s" atribuído!', 'book-manager'), $result));
+    } else {
+        wp_send_json_error(__('Não foi possível classificar. Verifique a chave da API Groq.', 'book-manager'));
+    }
+}
+add_action('wp_ajax_bm_ajax_classify_reading_level', 'bm_ajax_classify_reading_level');
+
+
 function bm_ajax_ai_classify() {
     if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(__('Sem permissão.', 'book-manager'));
     check_ajax_referer('bm_ai_classify_nonce', 'nonce');

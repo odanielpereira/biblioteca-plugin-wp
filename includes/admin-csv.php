@@ -62,7 +62,7 @@ function bm_render_csv_import_page() {
         $skip_duplicates = isset($_POST['skip_duplicates'])&&'1'===$_POST['skip_duplicates'];
         $classify_with_ai = isset($_POST['classify_with_ai']) && '1' === $_POST['classify_with_ai'];
         $generate_call_number = isset($_POST['generate_call_number']) && '1' === $_POST['generate_call_number'];
-        $google_enabled = isset($_POST['google_covers']) || isset($_POST['google_sinopse']) || isset($_POST['google_rating']) || isset($_POST['google_subtitle']) || isset($_POST['google_published_date']) || isset($_POST['google_page_count']) || isset($_POST['google_isbn13']) || isset($_POST['google_isbn10']);
+        $google_enabled = isset($_POST['bm-enable-google-api']) && $_POST['bm-enable-google-api'] === '1';
         $youtube_search = isset($_POST['youtube_search']) && '1' === $_POST['youtube_search'];
         $google_covers = isset($_POST['google_covers']) && '1' === $_POST['google_covers'];
         $google_sinopse = isset($_POST['google_sinopse']) && '1' === $_POST['google_sinopse'];
@@ -194,6 +194,36 @@ function bm_render_csv_import_page() {
                             bm_classify_book_with_ai($post_id);
                         }
                     }
+                    if (isset($_POST['classify_genre_with_ai']) && $_POST['classify_genre_with_ai'] === '1') {
+                        $csv_has_genre = false;
+                        foreach ($mapping as $field => $index) {
+                            if ($field === 'bm_genre' && isset($row[$index]) && !empty(trim($row[$index]))) {
+                                $csv_has_genre = true;
+                                break;
+                            }
+                        }
+                        if (!$csv_has_genre) {
+                            $groq_key = bm_get_api_key('groq');
+                            if (!empty($groq_key)) {
+                                bm_classify_genre_with_ai($post_id);
+                            }
+                        }
+                    }
+                    if (isset($_POST['classify_category_with_ai']) && $_POST['classify_category_with_ai'] === '1') {
+                        $csv_has_category = false;
+                        foreach ($mapping as $field => $index) {
+                            if ($field === 'bm_category' && isset($row[$index]) && !empty(trim($row[$index]))) {
+                                $csv_has_category = true;
+                                break;
+                            }
+                        }
+                        if (!$csv_has_category) {
+                            $groq_key = bm_get_api_key('groq');
+                            if (!empty($groq_key)) {
+                                bm_classify_category_with_ai($post_id);
+                            }
+                        }
+                    }
                     if (isset($_POST['classify_reading_level_with_ai']) && $_POST['classify_reading_level_with_ai'] === '1') {
                         $csv_has_reading_level = false;
                         foreach ($mapping as $field => $index) {
@@ -319,7 +349,8 @@ function bm_render_csv_import_page() {
                 <?php wp_nonce_field('bm_csv_import_action','bm_csv_import_nonce'); ?>
                 <input type="hidden" name="import_stage" value="process">
                 <input type="hidden" name="csv_data" value="<?php echo esc_attr(json_encode(json_decode(stripslashes($_POST['csv_data_preview']),true), JSON_UNESCAPED_UNICODE)); ?>">
-                <h3><?php _e('Mapear colunas','book-manager'); ?></h3>
+                <hr>
+                <h2><?php _e('Mapear colunas','book-manager'); ?></h2>
                 <?php foreach ($headers as $i => $h): ?>
                     <p><strong><?php echo esc_html($h); ?></strong> →
                     <select name="mapping[<?php echo $i; ?>]">
@@ -329,10 +360,16 @@ function bm_render_csv_import_page() {
                         <?php endforeach; ?>
                     </select></p>
                 <?php endforeach; ?>
-                <h3><?php _e('Google Books API', 'book-manager'); ?></h3>
+                        <hr>
+                            <p style="background:#fff3cd;padding:10px;border-radius:4px;border-left:4px solid #ffc107;margin-bottom:15px;">
+                ⚠️ <strong>ATENÇÃO LOGO ABAIXO:</strong> <?php _e('Quanto mais checkboxes forem selecionados, mais lenta será a importação.', 'book-manager'); ?>
+            </p>
+            
+                <hr>
+                <h2><?php _e('Google Books API', 'book-manager'); ?></h2>
                 <p>
                     <label>
-                        <input type="checkbox" id="bm-enable-google-api" onchange="bmToggleGoogleApi()">
+                        <input type="checkbox" id="bm-enable-google-api" name="bm-enable-google-api" value="1" onchange="bmToggleGoogleApi()">
                         <strong><?php _e('Habilitar busca automática via Google Books', 'book-manager'); ?></strong>
                     </label>
                 </p>
@@ -366,23 +403,50 @@ function bm_render_csv_import_page() {
                     document.getElementById('bm-google-api-options').style.display = enabled ? 'block' : 'none';
                 }
                 </script>
-                <h3><?php _e('YouTube', 'book-manager'); ?></h3>
+                <hr>
+                <h2><?php _e('YouTube', 'book-manager'); ?></h2>
                 <p>
                     <label><input type="checkbox" name="youtube_search" value="1"> <strong><?php _e('Buscar vídeo-resenha oficial no YouTube', 'book-manager'); ?></strong></label>
                     <br><small><?php _e('Busca por título + autor + editora e salva como resenha oficial do livro.', 'book-manager'); ?></small>
                 </p>
                 
-                <p><strong><?php _e('Classificação por IA:','book-manager'); ?></strong>
-                <label><input type="checkbox" name="classify_with_ai" value="1" checked> <?php _e('Classificar livros por disciplina (Groq)', 'book-manager'); ?></label></p>
-                <p><strong><?php _e('Nível de Leitura por IA:', 'book-manager'); ?></strong>
-                    <label><input type="checkbox" name="classify_reading_level_with_ai" value="1"> <?php _e('Classificar Nível de Leitura automaticamente (Groq)', 'book-manager'); ?></label>
-                    <br><small><?php _e('Se o CSV não tiver a coluna Nível de Leitura ou o valor estiver vazio, a IA analisará o livro e escolherá entre: Muito fácil, Fácil, Intermediário, Avançado, Muito avançado. Se a IA não souber, o campo ficará vazio.', 'book-manager'); ?></small></p>
-                <p><strong><?php _e('Número de Chamada:','book-manager'); ?></strong>
+                <hr>
+                <h2><?php _e('Classificação por IA', 'book-manager'); ?></h2>
+                <p style="color:#666;font-size:12px;margin-bottom:10px;"><?php _e('A classificação automática deve ser revista pois pode haver erros de julgamento pela IA.', 'book-manager'); ?></p>
+                <?php 
+                $taxonomies = get_option('bm_dynamic_taxonomies', array());
+                $genre_label = isset($taxonomies['bm_genre']['label']) ? $taxonomies['bm_genre']['label'] : __('Gênero', 'book-manager');
+                $category_label = isset($taxonomies['bm_category']['label']) ? $taxonomies['bm_category']['label'] : __('Categoria', 'book-manager');
+                $discipline_label = isset($taxonomies['bm_discipline']['label']) ? $taxonomies['bm_discipline']['label'] : __('Disciplina', 'book-manager');
+                $reading_level_label = isset($taxonomies['bm_reading_level']['label']) ? $taxonomies['bm_reading_level']['label'] : __('Nível de Leitura', 'book-manager');
+                ?>
+                <p>
+                    <label><input type="checkbox" name="classify_genre_with_ai" value="1"> <?php printf(__('Classificar livro por %s', 'book-manager'), $genre_label); ?></label>
+                </p>
+                <p>
+                    <label><input type="checkbox" name="classify_category_with_ai" value="1"> <?php printf(__('Classificar livro por %s', 'book-manager'), $category_label); ?></label>
+                </p>
+                <p>
+                    <label><input type="checkbox" name="classify_reading_level_with_ai" value="1"> <?php printf(__('Classificar livro por %s', 'book-manager'), $reading_level_label); ?></label>
+                    <br><small><?php _e('Se o CSV não tiver a coluna Nível de Leitura ou o valor estiver vazio, a IA analisará o livro e escolherá entre: Muito fácil, Fácil, Intermediário, Avançado, Muito avançado. Se a IA não souber, o campo ficará vazio.', 'book-manager'); ?></small>
+                </p>
+                <p>
+                    <label><input type="checkbox" name="classify_with_ai" value="1" checked> <?php printf(__('Classificar livros por %s', 'book-manager'), $discipline_label); ?></label>
+                </p>
+                
+                <hr>
+                <h2><?php _e('Número de Chamada', 'book-manager'); ?></h2>
+                <p>
                     <label><input type="checkbox" name="generate_call_number" value="1" checked> <?php _e('Gerar Classificação/Cutter via IA (Groq)', 'book-manager'); ?></label>
-                    <br><small><?php _e('Se o CSV já tiver Classificação e Cutter, a IA não será chamada.', 'book-manager'); ?></small></p>
-                <p><strong><?php _e('Duplicados:','book-manager'); ?></strong>
-                    <label><input type="radio" name="skip_duplicates" value="1" checked> <?php _e('Pular','book-manager'); ?></label>
-                    <label><input type="radio" name="skip_duplicates" value="0"> <?php _e('Importar mesmo assim','book-manager'); ?></label></p>
+                    <br><small><?php _e('Se o CSV já tiver Classificação e Cutter, a IA não será chamada.', 'book-manager'); ?></small>
+                </p>
+                
+                <hr>
+                <h2><?php _e('Livros Duplicados', 'book-manager'); ?></h2>
+                <p>
+                    <label><input type="radio" name="skip_duplicates" value="1" checked> <?php _e('Não Importar', 'book-manager'); ?></label>
+                    <label style="margin-left:15px;"><input type="radio" name="skip_duplicates" value="0"> <?php _e('Importar (Os livros ficarão duplicados no seu catálogo)', 'book-manager'); ?></label>
+                </p>
                 <?php submit_button(__('Importar','book-manager')); ?>
             </form>
         <?php else: ?>

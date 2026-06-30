@@ -1,0 +1,304 @@
+# RELATÓRIO PARA O PRÓXIMO CHAT
+
+**Data:** 29 de junho de 2026
+**Elaborado por:** Chat 14
+**Projeto:** Plugin Gestão de Livros (book-manager)
+
+---
+
+## ⚠️ ATENÇÃO — LEIA ANTES DE COMEÇAR
+
+Este relatório é uma documentação de apoio, não uma verdade absoluta. Use seu próprio contexto e análise para tomar decisões. O Chat 14 cometeu erros por confiar cegamente em relatórios de chats anteriores — você terá um contexto mais específico e melhores condições de resolver os problemas. Confira cada informação no código real antes de agir. Os arquivos estão em book-manager/ e includes/.
+
+---
+
+## 1. CORREÇÕES
+
+### 1.1 Google Books API — capa sendo buscada indevidamente
+
+- Problema: A capa do livro é buscada via Google Books mesmo quando o toggle "Habilitar busca automática via Google Books" está desmarcado. Isso ocorre tanto no modo "Baixar para o servidor" quanto no modo "Hotlink".
+- Observação importante: A sinopse está funcionando corretamente (quando desmarcada, não busca). Não altere a lógica da sinopse.
+- Arquivo: includes/admin-csv.php — processamento da importação (estágio 'process')
+- Regra: Se o toggle estiver desmarcado, a API do Google Books simplesmente não deve buscar nada.
+
+### 1.2 Página de importação — reorganização visual
+
+- Problema atual: O checkbox "Classificação por IA" está na mesma linha do título, diferente das outras seções. Falta separação clara entre os elementos.
+- Solução: Reorganizar a página de mapeamento com <hr> como divisória entre seções, títulos em h2 ou h3, e checkboxes abaixo dos títulos. Layout proposto:
+
+ATENÇÃO: Quanto mais checkboxes forem selecionados, mais lenta será a importação.
+
+Google Books API
+  [] Habilitar busca automática via Google Books
+
+YouTube
+  [] Buscar vídeo-resenha oficial no YouTube
+  (Busca por título + autor + editora e salva como resenha oficial do livro)
+
+Classificação por IA
+  (A classificação automática deve ser revista pois pode haver erros de julgamento pela IA)
+  [] Classificar livro por Gênero
+  [] Classificar livro por Categoria
+  [] Classificar livro por Nível de Leitura
+  [] Classificar livros por Disciplina
+
+Gerar Número de Chamada por IA
+  [] Gerar Classificação/Cutter
+  (Se o CSV já tiver Classificação e Cutter, a IA não será chamada)
+
+Livros Duplicados
+  [] Não Importar   [] Importar (Os livros ficarão duplicados no seu catálogo)
+
+---
+
+## 2. LABELS DINÂMICOS NOS CHECKBOXES
+
+- Requisito: Os labels dos checkboxes devem refletir o nome atual da taxonomia. Se o usuário renomeou "Categoria" para "Temas" na página de Taxonomias, o checkbox deve mostrar "Classificar livro por Temas".
+- Como fazer: Consultar get_option('bm_dynamic_taxonomies') para obter o label atual de cada taxonomia (bm_genre, bm_category, bm_discipline, bm_reading_level). Esta é a mesma lógica já aplicada nos filtros da vitrine pública (Fase 41).
+- IA deve se adaptar ao contexto: A IA não deve classificar baseada em nomes fixos como "Gênero". Ela deve consultar os termos reais que existem dentro de cada taxonomia (get_terms()) e decidir se o livro se encaixa em algum deles. Exemplo: se bm_genre foi renomeado para "Ideias para as idades" e contém os termos "12 anos", "15 anos", "18 anos", a IA deve analisar o livro e sugerir "15 anos" — sem se prender ao conceito original de "Gênero". O slug bm_genre permanece, mas a IA classifica pelo contexto.
+
+---
+
+## 3. ADICIONAR FUNCIONALIDADES
+
+### 3.1 Busca por IA na importação CSV — Gênero e Categoria
+
+- Status: Funcionalidades NOVAS. Atualmente a IA só classifica por Disciplina (bm_classify_book_with_ai) e Nível de Leitura (bm_classify_reading_level_with_ai). Gênero e Categoria nunca foram implementados.
+- O que criar: Novas funções bm_classify_genre_with_ai($post_id) e bm_classify_category_with_ai($post_id) em frontend.php, seguindo o mesmo modelo das existentes, mas consultando get_terms('bm_genre') e get_terms('bm_category').
+- Regras de negócio:
+  1. Checkbox marcado + CSV tem valor na coluna → o CSV manda, IA não faz nada
+  2. Checkbox marcado + CSV sem valor → IA analisa título, autor, sinopse e escolhe entre os termos existentes
+  3. Se a IA encontrar correspondência mas não houver termo correspondente criado pelo usuário → fica desmarcado
+  4. Checkbox desmarcado → IA não faz nada
+
+### 3.2 Busca por IA na edição individual do livro
+
+- Status: Gênero e Categoria são NOVOS. Nível de Leitura já tem função (bm_classify_reading_level_with_ai) mas não tem botão na edição.
+- O que criar: Botões na edição do livro para classificar Gênero, Categoria e Nível de Leitura, com handlers AJAX. As funções de IA existentes (Disciplina, Atividades, Número de Chamada) devem permanecer intactas.
+- Regras: As mesmas da importação — IA só sugere entre termos já existentes, via get_terms().
+
+---
+
+## 4. LOG DE IMPORTAÇÃO
+
+- Problema: Se o servidor cair durante uma importação grande (erro 502), perde-se o relatório do que já foi processado.
+- Solução: Salvar um histórico das importações em update_option('bm_import_log', ...). Cada entrada contém: data/hora, status (concluída/interrompida), total de livros processados, listas de importados/duplicados/erros.
+- Onde fica: Uma subaba "Histórico" dentro de wp-admin → Importação/Exportação → Importar Livros via CSV.
+- Para que serve: Se a importação cair no meio, o usuário acessa o Histórico e vê exatamente até onde chegou.
+- Limite: 10 registros, com botão para limpar.
+
+---
+
+## 5. ARQUIVOS PRINCIPAIS AFETADOS
+
+| Arquivo | O que contém |
+|---------|-------------|
+| includes/admin-csv.php | Importação CSV, processamento, mapeamento, Google Books |
+| includes/frontend.php | Funções de IA (bm_classify_*), handlers AJAX |
+| includes/admin-fields.php | Metaboxes, widgets de taxonomia |
+| includes/admin-settings.php | Página de Taxonomias, bm_get_settings() |
+
+
+****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************
+
+
+
+
+
+
+
+
+
+
+# CORREÇÕES
+
+## APIs
+
+1 - Habilitar busca automática via Google Books 
+Mesmo estando desmarcado o csv está buscando as capas de livros. Seja  opção Baixar para o servidor ou via Hotlink do Google Books. Isso viola as regras
+
+obs: quando sinopse=desmarcado está funcionando como deveria. Portanto cuidado para não alterar essa funcionalidade
+
+Se estiver desmarcado a api do google books simplesmente não busca nada
+
+## Página de Importação
+
+1 - Na página de importação tem os seguintes títulos com suas respectivas chebox:
+1.1 Google Books API
+1.2 YouTube
+
+Porém em ""Classificação por IA" o chebox já está na mesma linha e isto não deve acontecer. O tamanho desse título desse ser o mesmo em 1.1 e 1.2 
+E abaixo de classificação por IA deve ter os checbox para ativar ou não a busca por IA. Deve-se tb ter uma separação mais clara entre os elementos pois causa confunsão, acredito que um ------------- pode ser suficiente. 
+
+A organização de fica assim:
+
+---------------------
+
+ATENÇÃO: Quanto mais checkbox forem selecionados, mais lenta será a importanção
+
+
+---------------------
+
+Google Books API >> h2 ou h3
+ 
+[] Habilitar busca automática via Google Books
+
+ ---------------------
+
+YouTube >> h2 ou h3
+[] Buscar vídeo-resenha oficial no YouTube 
+Busca por título + autor + editora e salva como resenha oficial do livro.
+
+ ---------------------
+
+Classificação por IA >> h2 ou h3
+
+A calssificação automática deve ser revista pois pode haver erros de julgamentos pela IA
+
+[] Classificar livro por Gênero
+[] Classificar livro por Categoria
+[] Classificar livro por Nível de leitura
+[] Classificar livros por disciplina
+
+ ---------------------
+
+Gerar Número de Chamada por IA >> h2 ou h3
+
+[] Gerar Classificação/Cutter
+Se o CSV já tiver Classificação e Cutter, a IA não será chamada.
+
+ ---------------------
+
+Livros Duplicados >> h2 ou h3
+
+[]Não Importar   [] Importar (Os livros ficarão duplicados no seu catálogo)
+
+
+
+
+# Ao renomear taxonomia renomeia também aqui.
+
+[] Classificar livro por Gênero
+[] Classificar livro por Categoria
+[] Classificar livro por Nível de leitura
+[] Classificar livros por disciplina
+
+um exmplo. Se eu renomear Categoria para Temas ficaria assim:
+
+[] Classificar livro por Gênero
+[] Classificar livro por Temas
+[] Classificar livro por Nível de leitura
+[] Classificar livros por disciplina
+
+Então seria uma mudança dinâmica
+
+Se eu renomear lá em taxonomias para X Y Z W ficaria assim:
+
+[] Classificar livro por X
+[] Classificar livro por Y
+[] Classificar livro por Z
+[] Classificar livros por W
+
+Você conseguiu entender o que quero dizer. Eu sei que isso é um html, mas seria interessante pois caminharia no sentido de universalização do plugins e a IA deverá entender o contexto dessa mudança também.
+
+A IA sabe que é GENERO  e deve se manteer bm_genre, mas se o usuario colocar "Ideia para as idades," e gernciando termos como 12 anos 15 anos por ex, a IA deverá entedenter o contexto e classificar segundo essas informações. o bm_genre continua, mas a IA classifica oeklo contexto e não por uma predeterminação. 
+
+Vc conseguiu entender o que eu disse?
+
+
+# Adicionar Funcionalidade
+
+## Busca Por IA na importação CSV
+
+1 - Gênero e Categoria serão buscados pela IA na importação CSV (por isso eu coloquei checkbox em Classificação por IA). A importação deve funcionar assim tanto para gênero quanto para categoria:
+
+
+1.1 checkbox de gênro e/ou categoria = marcados para busca na importação, mas no csv tiver essas colunas e nas células possuir conteúdo dessas colunas, então é o CSV que manda e IA não faz nada.
+1.2 A IA vai selecionar apenas Gêneros ou Categorias que o usuaário já tenha criado se houver correspondencia. Para achar a correspondecia a IA usará como critério o título, autor, sinopse e tudo o que a ia souber sobre o livro. 
+1.3 Se a Ia achar correspondencia mas o usuário não tiver criado nem genero ou categorias corresppondentes então os checkbox ficarão desmarcados. 
+1.4 checkbox de gênro e/ou categoria = desmarcado, então ia não faz nada.
+
+## Busca Por IA no admin da página individual do livro.
+
+As ações de IA que ja tem no admin individual devem pernanecer do jeito que já estão funcionando e deve-se adicionar as seguintes funcionalidades.
+
+1 - Gênero, Categoria e niveis de leitura serão buscados pela IA ao clicar nos respectivos botões segundo as seguintes regras:
+
+
+1.1 A IA vai selecionar apenas Gêneros ou Categorias que o usuaário já tenha criado se houver correspondencia. Para achar a correspondecia a IA usará como critério o título, autor, sinopse e tudo o que a ia souber sobre o livro. 
+1.2 Se a Ia achar correspondencia mas o usuário não tiver criado nem genero ou categorias corresppondentes então os checkbox ficarão desmarcados. 
+1.3 Se selecionar níveis de leitura, vai escolher um dos 5 níveis que nós deteminamos anteriormente.
+
+# LOG DE IMPORTAÇÃO 
+
+Problema: Se o servidor cair durante uma importação grande de livros (erro 502), perde-se o relatório do que já foi processado. O Gestor não sabe o que entrou e o que ficou de fora.
+
+Solução proposta: Salvar um histórico das importações. Cada vez que uma importação termina (ou é interrompida), o sistema guarda um resumo com:
+
+Data e hora
+
+Se terminou ou foi interrompida
+
+Quantos livros foram processados
+
+A lista do que foi importado, duplicado ou deu erro
+
+Onde ficaria: Em uma nova aba chamada "Histórico" dentro da própria página de importação de livros (ao lado de "Importar Livros CSV", "Exportar Livros CSV", etc.).
+
+Para que serve: Se a importação cair no meio, você acessa o Histórico e vê exatamente até onde chegou.
+
+
+
+
+
+****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************
+
+Analisei seu documento com cuidado. Está bem estruturado e claro. Tenho algumas perguntas e observações para garantir que nada fique ambíguo para o próximo chat:
+
+---
+
+## Perguntas e Observações
+
+### 1. Google Books — checkbox ignorado
+REPOSTA: Só a capa está buscando mesmo que esteja desmarcada
+
+### 2. Separação visual entre seções
+RESPOSTA: eu coloquei ----------- por não saber como mencionar isso de maneira tecnica, na prática quero uma divisória que funcione. apenas isso.
+
+### 3. Checkbox "Classificar livro por Gênero" e "Classificar livro por Categoria"
+São funcionalidades **novas**. Atualmente a IA só classifica por Disciplina e Nível de Leitura. Gênero e Categoria nunca foram implementados. Está correto que são novas? Ou você acredita que já existiam e estão quebradas?
+
+RESPOSTA: Não sei afrimar com 100% de precisão, eu acho que são novas mas deverá ser verificada pelo prosimo chat ou até mesmo por vc já que vc tem acesso ao code (vc só vai analisar, não vai editar)
+
+
+### 4. Busca por IA na página individual do livro
+Você menciona botões para Gênero, Categoria e Nível de Leitura na edição do livro. Hoje já existe:
+- Botão "Classificar com IA" (para Disciplinas)
+- Botão "Gerar Atividades"
+- Botão "Gerar Número de Chamada"
+
+Não existem botões para Gênero, Categoria ou Nível de Leitura. Isso são funcionalidades novas, correto?
+
+RESPOSTA: Não sei afrimar com 100% de precisão, eu acho que são novas mas deverá ser verificada pelo prosimo chat ou até mesmo por vc já que vc tem acesso ao code (vc só vai analisar, não vai editar)
+
+### 5. Log de importação
+Está claro. Só confirmo: a aba "Histórico" seria dentro da página `Importação/Exportação`, junto com as abas já existentes (Importar Livros CSV, Exportar Livros CSV, etc.)?
+
+RESPOSTA: acredito que seria melhor ficar aqui: /wp-admin/Importação-Exportação/Importar Livros via CSV/logs-de-importação
+
+### 6. Aviso "Quanto mais checkboxes selecionados, mais lenta será a importação"
+É uma informação visual nova. Onde exatamente ela deve aparecer? No topo da página de mapeamento, antes de todas as seções?
+
+RESPOSTA: ficaria logo acima de "Google Books API"
+
+---
+
+
+
+
+
+
+
+
+
+****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************

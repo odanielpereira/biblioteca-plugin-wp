@@ -982,3 +982,76 @@ Todo dado exibido em HTML deve ser escapado no contexto correto.
 - **Descrição:** Adicionar um checkbox "Classificar Nível de Leitura" na tela de mapeamento da importação CSV. Se marcado e o CSV não tiver a coluna `bm_reading_level` preenchida, o sistema chamará a nova função `bm_classify_reading_level_with_ai($post_id)` em `frontend.php`, que enviará um prompt para a API Groq com título, autor e sinopse do livro, solicitando a classificação entre os 5 termos pré-criados. Se o CSV tiver valor, o CSV prevalece (CSV manda). Se a IA não souber determinar, nenhum termo é atribuído. A resposta da IA deve ser validada — apenas 1 dos 5 termos exatos é aceito. O checkbox é opcional e fica na mesma seção dos demais checkboxes (Classificar por IA, Número de Chamada, etc.).
 - **Barreiras:** ❌ IA não pode inventar termos fora dos 5 existentes. ❌ Não sobrescrever valor do CSV. ❌ Usar apenas Groq via `wp_remote_post`. ❌ Não usar bibliotecas externas de IA. ❌ Se a IA não souber, deixar vazio — não gerar aviso no relatório.
 - **Funções obrigatórias:** `wp_remote_post()`, `wp_set_post_terms()`, `get_post_meta()`, `wp_strip_all_tags()`
+## 21. CICLO 11 — CORREÇÕES, IA E LOG (VERSÃO 8.2.0)
+
+### 21.1 Correções na Página de Importação CSV (Fase 47)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `includes/admin-csv.php`
+- **Descrição:** Corrigir o toggle do Google Books que busca capas mesmo quando desmarcado e reorganizar visualmente a página de mapeamento.
+- **Tarefas:**
+    1. Corrigir Google Books API: adicionar verificação do toggle `bm-enable-google-api` antes de buscar capa. Se desmarcado, `$google_covers` deve ser falso.
+    2. Reorganizar a página de mapeamento com `<hr>` entre seções, títulos em `h2`/`h3` e checkboxes abaixo dos títulos.
+    3. Adicionar aviso "ATENÇÃO: Quanto mais checkboxes forem selecionados, mais lenta será a importação" acima de Google Books API.
+    4. Separar "Classificação por IA" em checkboxes individuais (Gênero, Categoria, Nível de Leitura, Disciplina).
+- **Barreiras:** ❌ Não alterar a lógica da sinopse (já funciona). ❌ Não quebrar o fluxo de 3 estágios (Upload → Mapeamento → Processamento).
+
+### 21.2 Labels Dinâmicos nos Checkboxes de IA (Fase 48)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `includes/admin-csv.php`
+- **Descrição:** Os labels dos checkboxes de classificação por IA devem refletir o nome atual da taxonomia, conforme renomeado na página de Taxonomias.
+- **Tarefas:**
+    1. Consultar `get_option('bm_dynamic_taxonomies')` para obter o label atual de `bm_genre`, `bm_category`, `bm_discipline` e `bm_reading_level`.
+    2. Exibir os labels dinâmicos nos checkboxes (ex: "Classificar livro por Temas" se Categoria foi renomeada para Temas).
+- **Barreiras:** ❌ Não alterar slugs internos. ❌ Apenas exibição — não afeta salvamento.
+
+### 21.3 IA para Gênero e Categoria na Importação CSV (Fase 49)
+- **Acesso:** Admin e Gestor (importação), Admin (API Groq)
+- **Arquivos:** `includes/frontend.php`, `includes/admin-csv.php`
+- **Descrição:** Criar funções de IA para classificar Gênero e Categoria durante a importação CSV, nos mesmos moldes da classificação por Disciplina e Nível de Leitura.
+- **Tarefas:**
+    1. Criar `bm_classify_genre_with_ai($post_id)` em `frontend.php`: consultar `get_terms('bm_genre')`, enviar prompt para Groq com título, autor e sinopse, validar resposta contra termos existentes.
+    2. Criar `bm_classify_category_with_ai($post_id)` em `frontend.php`: mesma lógica para `bm_category`.
+    3. Integrar no processamento em `admin-csv.php`: se checkbox marcado e CSV sem valor na coluna, chamar a IA. Se CSV tiver valor, o CSV prevalece.
+    4. Validar resposta da IA: apenas aceitar termos que já existem na taxonomia. Se não souber, deixar vazio sem erro.
+- **Regras de negócio:**
+    - Checkbox marcado + CSV tem valor → CSV manda, IA ignorada
+    - Checkbox marcado + CSV sem valor → IA analisa e sugere entre termos existentes
+    - Checkbox desmarcado → IA não faz nada
+    - IA não cria novos termos — apenas seleciona entre os já cadastrados
+- **Barreiras:** ❌ IA não pode criar termos inexistentes. ❌ Não sobrescrever valor do CSV. ❌ Usar apenas Groq via `wp_remote_post`.
+
+### 21.4 IA na Edição Individual do Livro (Fase 50)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `includes/admin-fields.php`, `includes/frontend.php`
+- **Descrição:** Adicionar botões de classificação por IA para Gênero, Categoria e Nível de Leitura na tela de edição do livro, mantendo as funções existentes intactas.
+- **Tarefas:**
+    1. Criar botão "Classificar Gênero" com handler AJAX, usando `bm_classify_genre_with_ai()`.
+    2. Criar botão "Classificar Categoria" com handler AJAX, usando `bm_classify_category_with_ai()`.
+    3. Criar botão "Classificar Nível de Leitura" com handler AJAX, usando `bm_classify_reading_level_with_ai()` (já existente).
+    4. Garantir que funções existentes (Classificar Disciplina, Gerar Atividades, Número de Chamada) não sejam alteradas.
+- **Regras:** As mesmas da importação — IA só sugere entre termos já existentes, via `get_terms()`.
+- **Barreiras:** ❌ Não alterar funções existentes. ❌ Não remover botões atuais. ❌ Handlers AJAX devem verificar nonce e capability.
+
+### 21.5 Log de Importação (Fase 51)
+- **Acesso:** Admin e Gestor
+- **Arquivos:** `includes/admin-csv.php`
+- **Descrição:** Criar um sistema de histórico que salva o resultado de cada importação, permitindo consulta posterior em caso de timeout ou interrupção.
+- **Tarefas:**
+    1. Salvar log em `update_option('bm_import_log', ...)` ao final de cada importação, contendo: data/hora, status (`concluída`/`interrompida`), total processado, listas de importados/duplicados/erros.
+    2. Adicionar subaba "Histórico" na página de importação (`bm_render_csv_import_page()`) com `nav-tab-wrapper`.
+    3. Exibir tabela com últimas importações: data, status, total, botão "Ver detalhes" (expande listas) e botão "Excluir".
+    4. Limitar a 10 registros, com botão "Limpar histórico".
+    5. Salvar parcialmente durante a importação para detectar interrupções e exibir aviso "Uma importação anterior foi interrompida".
+- **Armazenamento:** `bm_import_log` (option, array com últimas 10 entradas)
+- **Barreiras:** ❌ Não criar tabelas customizadas. ❌ Não alterar a lógica de processamento da importação. ❌ Não usar serviços externos.
+
+### 21.6 Premissas de Performance (Ciclo 11)
+- Aviso sobre lentidão com múltiplos checkboxes visa conscientizar o usuário
+- Log de importação usa `update_option` (leve, sem consultas pesadas)
+- Funções de IA reutilizam o modelo Groq já integrado (sem novas dependências)
+- Consultas `get_terms()` são leves e já utilizadas em outras partes do plugin
+
+### 21.7 Segurança (Ciclo 11)
+- Handlers AJAX dos novos botões devem verificar nonce e capability
+- Log de importação acessível apenas para Admin e Gestor
+- Dados do log não contêm informações sensíveis de alunos
