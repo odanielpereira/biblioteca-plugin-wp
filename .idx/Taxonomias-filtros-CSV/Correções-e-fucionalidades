@@ -1,102 +1,118 @@
-# RELATÓRIO PARA O PRÓXIMO CHAT
 
-**Data:** 29 de junho de 2026
-**Elaborado por:** Chat 14
-**Projeto:** Plugin Gestão de Livros (book-manager)
 
----
 
-## ⚠️ ATENÇÃO — LEIA ANTES DE COMEÇAR
+## RELATÓRIO 1 — Visão Geral do Projeto e Diretrizes
 
-Este relatório é uma documentação de apoio, não uma verdade absoluta. Use seu próprio contexto e análise para tomar decisões. O Chat 14 cometeu erros por confiar cegamente em relatórios de chats anteriores — você terá um contexto mais específico e melhores condições de resolver os problemas. Confira cada informação no código real antes de agir. Os arquivos estão em book-manager/ e includes/.
+**Para:** Próximo agente de IA (Chat 16+)
+**Assunto:** O que é o projeto, o que foi feito, o que o usuário quer e não quer
+**Data:** 30 de junho de 2026
 
 ---
 
-## 1. CORREÇÕES
+### 1. O QUE É O PROJETO
 
-### 1.1 Google Books API — capa sendo buscada indevidamente
+**Nome:** Gestão de Livros (Book Manager)
+**Slug:** `book-manager`
+**Versão:** 10.7
+**Autor:** Daniel Pereira
+**Propósito:** Sistema completo de gestão de bibliotecas escolares brasileiras dentro do WordPress. Gerencia livros, alunos, empréstimos, reservas, multas, gamificação (XP/medalhas), importação/exportação CSV, classificação por IA (Groq), etiquetas, carteirinhas, relatórios interativos e vitrine pública do acervo.
 
-- Problema: A capa do livro é buscada via Google Books mesmo quando o toggle "Habilitar busca automática via Google Books" está desmarcado. Isso ocorre tanto no modo "Baixar para o servidor" quanto no modo "Hotlink".
-- Observação importante: A sinopse está funcionando corretamente (quando desmarcada, não busca). Não altere a lógica da sinopse.
-- Arquivo: includes/admin-csv.php — processamento da importação (estágio 'process')
-- Regra: Se o toggle estiver desmarcado, a API do Google Books simplesmente não deve buscar nada.
-
-### 1.2 Página de importação — reorganização visual
-
-- Problema atual: O checkbox "Classificação por IA" está na mesma linha do título, diferente das outras seções. Falta separação clara entre os elementos.
-- Solução: Reorganizar a página de mapeamento com <hr> como divisória entre seções, títulos em h2 ou h3, e checkboxes abaixo dos títulos. Layout proposto:
-
-ATENÇÃO: Quanto mais checkboxes forem selecionados, mais lenta será a importação.
-
-Google Books API
-  [] Habilitar busca automática via Google Books
-
-YouTube
-  [] Buscar vídeo-resenha oficial no YouTube
-  (Busca por título + autor + editora e salva como resenha oficial do livro)
-
-Classificação por IA
-  (A classificação automática deve ser revista pois pode haver erros de julgamento pela IA)
-  [] Classificar livro por Gênero
-  [] Classificar livro por Categoria
-  [] Classificar livro por Nível de Leitura
-  [] Classificar livros por Disciplina
-
-Gerar Número de Chamada por IA
-  [] Gerar Classificação/Cutter
-  (Se o CSV já tiver Classificação e Cutter, a IA não será chamada)
-
-Livros Duplicados
-  [] Não Importar   [] Importar (Os livros ficarão duplicados no seu catálogo)
+**Tamanho:** ~16 arquivos PHP, ~8.000+ linhas de código, 9 módulos em `includes/`.
 
 ---
 
-## 2. LABELS DINÂMICOS NOS CHECKBOXES
+### 2. ESTRUTURA DE ARQUIVOS
 
-- Requisito: Os labels dos checkboxes devem refletir o nome atual da taxonomia. Se o usuário renomeou "Categoria" para "Temas" na página de Taxonomias, o checkbox deve mostrar "Classificar livro por Temas".
-- Como fazer: Consultar get_option('bm_dynamic_taxonomies') para obter o label atual de cada taxonomia (bm_genre, bm_category, bm_discipline, bm_reading_level). Esta é a mesma lógica já aplicada nos filtros da vitrine pública (Fase 41).
-- IA deve se adaptar ao contexto: A IA não deve classificar baseada em nomes fixos como "Gênero". Ela deve consultar os termos reais que existem dentro de cada taxonomia (get_terms()) e decidir se o livro se encaixa em algum deles. Exemplo: se bm_genre foi renomeado para "Ideias para as idades" e contém os termos "12 anos", "15 anos", "18 anos", a IA deve analisar o livro e sugerir "15 anos" — sem se prender ao conceito original de "Gênero". O slug bm_genre permanece, mas a IA classifica pelo contexto.
-
----
-
-## 3. ADICIONAR FUNCIONALIDADES
-
-### 3.1 Busca por IA na importação CSV — Gênero e Categoria
-
-- Status: Funcionalidades NOVAS. Atualmente a IA só classifica por Disciplina (bm_classify_book_with_ai) e Nível de Leitura (bm_classify_reading_level_with_ai). Gênero e Categoria nunca foram implementados.
-- O que criar: Novas funções bm_classify_genre_with_ai($post_id) e bm_classify_category_with_ai($post_id) em frontend.php, seguindo o mesmo modelo das existentes, mas consultando get_terms('bm_genre') e get_terms('bm_category').
-- Regras de negócio:
-  1. Checkbox marcado + CSV tem valor na coluna → o CSV manda, IA não faz nada
-  2. Checkbox marcado + CSV sem valor → IA analisa título, autor, sinopse e escolhe entre os termos existentes
-  3. Se a IA encontrar correspondência mas não houver termo correspondente criado pelo usuário → fica desmarcado
-  4. Checkbox desmarcado → IA não faz nada
-
-### 3.2 Busca por IA na edição individual do livro
-
-- Status: Gênero e Categoria são NOVOS. Nível de Leitura já tem função (bm_classify_reading_level_with_ai) mas não tem botão na edição.
-- O que criar: Botões na edição do livro para classificar Gênero, Categoria e Nível de Leitura, com handlers AJAX. As funções de IA existentes (Disciplina, Atividades, Número de Chamada) devem permanecer intactas.
-- Regras: As mesmas da importação — IA só sugere entre termos já existentes, via get_terms().
+```
+book-manager/
+├── includes/
+│   ├── admin-settings.php   ← Configurações, APIs, White Label, Virada de Ano, Status, Taxonomias
+│   ├── admin-fields.php     ← Metaboxes, campos dinâmicos, widgets de taxonomia
+│   ├── admin-csv.php        ← Importação/Exportação CSV, ZIP, Nº Chamada, Histórico de importação
+│   ├── admin-service.php    ← Balcão de Atendimento, Alunos, Empréstimos, Etiquetas, Carteirinhas, Relatórios
+│   ├── frontend.php         ← Templates, vitrine, filtros, capas, sinopse, IA (chatbot, classificação)
+│   ├── reports.php          ← Motor de relatórios, endpoint JSON, gráficos
+│   ├── users-circulacao.php ← Roles, autocadastro, reservas, empréstimos, estoque, multas, WhatsApp
+│   ├── users-dashboard.php  ← Dashboards do Aluno, Professor e Gestor
+│   └── users-gamificacao.php← Ranking, fichas de leitura, XP, medalhas, perfil público
+├── book-manager.php         ← Arquivo principal: CPT, taxonomias, capabilities, activation hooks
+├── single-bm_book.php       ← Template público do livro individual
+├── archive-bm_book.php      ← Template público do catálogo (vitrine)
+├── claude.md                ← Diretrizes comportamentais para IA (CONSTITUIÇÃO)
+├── escopo.md                ← Especificações técnicas e barreiras
+├── roadmap.md               ← Fases de desenvolvimento
+├── changelog.md             ← Histórico imutável (209 entradas)
+```
 
 ---
 
-## 4. LOG DE IMPORTAÇÃO
+### 3. O QUE FOI FEITO (CICLOS 1 A 11)
 
-- Problema: Se o servidor cair durante uma importação grande (erro 502), perde-se o relatório do que já foi processado.
-- Solução: Salvar um histórico das importações em update_option('bm_import_log', ...). Cada entrada contém: data/hora, status (concluída/interrompida), total de livros processados, listas de importados/duplicados/erros.
-- Onde fica: Uma subaba "Histórico" dentro de wp-admin → Importação/Exportação → Importar Livros via CSV.
-- Para que serve: Se a importação cair no meio, o usuário acessa o Histórico e vê exatamente até onde chegou.
-- Limite: 10 registros, com botão para limpar.
+O plugin passou por 11 ciclos de desenvolvimento, totalizando **51 fases** e **209 entradas de changelog**. Resumo dos principais marcos:
+
+| Ciclo | Versão | Principais funcionalidades |
+|-------|--------|---------------------------|
+| 1 | 1.0.0 | CPT `bm_book`, metaboxes, ativação/desinstalação |
+| 2 | 2.0.0 | Importação e exportação CSV |
+| 3 | 3.0.0 | Campos dinâmicos, taxonomias, capa do livro, auditoria |
+| 4 | 4.0.0 | Vitrine pública, página individual, sinopse, IA (Gemini) |
+| 5 | 5.0.0 | Usuários (roles), autocadastro, reservas, empréstimos |
+| 6 | 6.0.0 | Gamificação (XP, medalhas, ranking, fichas de leitura) |
+| 7 | 7.0.0 | Ferramentas pedagógicas (IA Groq, CDU/Cutter, etiquetas, chatbot) |
+| 8 | 8.0.0 | Infraestrutura (configurações, white label, virada de ano, campos de alunos, importação de alunos, atendimento no balcão) |
+| 9 | 10.0.0 | Polimento (relatórios, multas, exportar/importar tudo, dashboards, carteirinhas) |
+| 10 | 10.0.0 | Reestruturação interna (taxonomias dinâmicas, Diva com contexto, XP configurável, lista de leitura) |
+| 11 | 10.1.0 | Correções finais (filtros, taxonomias, CSV, log de importação) |
 
 ---
 
-## 5. ARQUIVOS PRINCIPAIS AFETADOS
+### 4. O QUE O USUÁRIO QUER
 
-| Arquivo | O que contém |
-|---------|-------------|
-| includes/admin-csv.php | Importação CSV, processamento, mapeamento, Google Books |
-| includes/frontend.php | Funções de IA (bm_classify_*), handlers AJAX |
-| includes/admin-fields.php | Metaboxes, widgets de taxonomia |
-| includes/admin-settings.php | Página de Taxonomias, bm_get_settings() |
+1. **Segurança em primeiro lugar** — qualquer alteração não pode quebrar funcionalidades existentes
+2. **Explicações simples** — não é programador, usa linguagem do dia a dia
+3. **1 passo por vez** — jamais apresentar mais de um par de código simultaneamente
+4. **Localizadores CTRL+F únicos** — verificar antes de enviar
+5. **Não gerar changelog sem solicitação explícita**
+6. **Não alterar código sem autorização** — apresentar o passo e aguardar o "ok"
+7. **Seguir estritamente o guia de interação** (formatos: substituir, ADICIONAR EXATAMENTE ANTES/DEPOIS, REMOVER)
+8. **Publicar o plugin** no repositório WordPress.org e eventualmente no CodeCanyon
+
+---
+
+### 5. O QUE O USUÁRIO NÃO QUER
+
+1. **Código duplicado** — já houve problemas graves com funções duplicadas quebrando o site
+2. **Alterações em cascata** — mudar uma função e quebrar outras que dependem dela
+3. **Jargão técnico** — explicar em linguagem simples, didática
+4. **Pressa** — prefere fazer devagar e certo do que rápido e quebrado
+5. **Soluções complexas** para problemas simples — seguir o princípio da simplicidade do `claude.md`
+
+---
+
+### 6. PRÓXIMAS FASES PLANEJADAS
+
+| Fase | Descrição | Prioridade |
+|------|-----------|------------|
+| Segurança | Auditoria completa, nonces, sanitização, escape | **Alta** |
+| Enxugamento | Remover comentários, espaços, CSS/JS inline | Média |
+| WordPress.org | Internacionalização completa, documentação | Média |
+| CodeCanyon | Documentação profissional, licenciamento | Baixa |
+
+---
+
+### 7. ⚠️ AVISO IMPORTANTE AO PRÓXIMO CHAT
+
+**Este relatório é uma orientação, não uma verdade absoluta.** O código-fonte real nos arquivos PHP é a referência definitiva. Verifique cada informação antes de agir. Consulte o `changelog.md` (209 entradas) para entender o histórico de cada alteração. Siga a pirâmide de documentos: `claude.md` → `escopo.md` → `changelog.md`/`roadmap.md`.
+
+**O Chat 14 cometeu erros por seguir relatórios sem verificar o código real. Não repita esse erro. Use seu próprio contexto e análise.**
+
+---
+
+Fim do Relatório 2. Posso prosseguir para o Relatório 3?
+
+
+
+
 
 
 ****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************
@@ -104,195 +120,193 @@ Livros Duplicados
 
 
 
+## RELATÓRIO 2 — Estratégia Geral de Segurança
 
+**Para:** Próximo agente de IA (Chat 16+)
+**Assunto:** Estratégia para auditoria e correção de segurança do plugin book-manager
+**Data:** 30 de junho de 2026
 
+---
 
+### Estado atual da segurança
 
+O plugin está funcionalmente seguro para uso em produção. As principais práticas de segurança do WordPress já são aplicadas:
 
+- **Nonces** estão presentes em 95% dos formulários e handlers AJAX
+- **Capabilities** são verificadas em todas as funções administrativas
+- **Sanitização** usa `sanitize_text_field()`, `sanitize_email()`, `absint()` na entrada de dados
+- **Escape** usa `esc_html()`, `esc_attr()`, `esc_url()` na saída de dados
+- **Banco de dados** usa abstrações WordPress (`WP_Query`, `get_posts()`, `get_users()`) — sem queries SQL manuais
 
-# CORREÇÕES
+### Vulnerabilidades conhecidas (já mapeadas)
 
-## APIs
+| Local | Problema | Risco |
+|-------|----------|-------|
+| `bm_toggle_label` (AJAX) | Sem nonce | Baixo — não altera dados sensíveis |
+| `bm_print_labels` (AJAX) | Sem nonce, verifica capability | Baixo |
+| `bm_quick_search` (AJAX) | Sem nonce, é apenas busca | Muito baixo |
+| `admin-service.php` — mensagens de relatório | Escape inconsistente — alguns `echo` escapam, outros não | Médio-baixo |
+| `users-circulacao.php` — modais JavaScript | Strings PHP concatenadas sem `esc_js()` | Baixo — são strings fixas, não input do usuário |
 
-1 - Habilitar busca automática via Google Books 
-Mesmo estando desmarcado o csv está buscando as capas de livros. Seja  opção Baixar para o servidor ou via Hotlink do Google Books. Isso viola as regras
+### Abordagem recomendada
 
-obs: quando sinopse=desmarcado está funcionando como deveria. Portanto cuidado para não alterar essa funcionalidade
+**Fase 1 — Mapeamento:** Analisar cada arquivo PHP e gerar inventário completo de vulnerabilidades (nonces faltantes, sanitização ausente, escape inconsistente).
 
-Se estiver desmarcado a api do google books simplesmente não busca nada
+**Fase 2 — Correção dos nonces:** Adicionar `check_ajax_referer()` e `wp_create_nonce()` nos 3 handlers restantes. **Risco de quebra: nenhum.** Nonce é verificação adicional — não altera fluxo.
 
-## Página de Importação
+**Fase 3 — Correção de escape:** Uniformizar `esc_html()`/`esc_attr()`/`esc_url()` nos arquivos com inconsistências. **Risco de quebra: baixíssimo.** Escape é "envolver" o texto — o conteúdo permanece igual, apenas seguro.
 
-1 - Na página de importação tem os seguintes títulos com suas respectivas chebox:
-1.1 Google Books API
-1.2 YouTube
+**Fase 4 — Verificação final:** Testar cada funcionalidade do plugin após as alterações.
 
-Porém em ""Classificação por IA" o chebox já está na mesma linha e isto não deve acontecer. O tamanho desse título desse ser o mesmo em 1.1 e 1.2 
-E abaixo de classificação por IA deve ter os checbox para ativar ou não a busca por IA. Deve-se tb ter uma separação mais clara entre os elementos pois causa confunsão, acredito que um ------------- pode ser suficiente. 
+### Regras para o próximo chat
 
-A organização de fica assim:
+1. **Não altere a lógica** — apenas adicione verificações de segurança (nonces, escape, sanitização)
+2. **Teste após cada passo** — o usuário testa em produção imediatamente
+3. **Use o `escopo.md` §16 como checklist** — ele lista todos os nonces, capabilities e funções de sanitização/escape
+4. **Siga a pirâmide de documentos:** `claude.md` → `escopo.md` → `changelog.md`/`roadmap.md`
+5. **1 passo = 1 par de código** — jamais envie mais de um passo por vez
 
----------------------
+### O que o usuário quer
 
-ATENÇÃO: Quanto mais checkbox forem selecionados, mais lenta será a importanção
+- Aumentar a segurança do plugin
+- Não quebrar nenhuma funcionalidade existente
+- Não é programador — precisa de explicações simples e didáticas
 
+### ⚠️ Aviso importante
 
----------------------
-
-Google Books API >> h2 ou h3
- 
-[] Habilitar busca automática via Google Books
-
- ---------------------
-
-YouTube >> h2 ou h3
-[] Buscar vídeo-resenha oficial no YouTube 
-Busca por título + autor + editora e salva como resenha oficial do livro.
-
- ---------------------
-
-Classificação por IA >> h2 ou h3
-
-A calssificação automática deve ser revista pois pode haver erros de julgamentos pela IA
-
-[] Classificar livro por Gênero
-[] Classificar livro por Categoria
-[] Classificar livro por Nível de leitura
-[] Classificar livros por disciplina
-
- ---------------------
-
-Gerar Número de Chamada por IA >> h2 ou h3
-
-[] Gerar Classificação/Cutter
-Se o CSV já tiver Classificação e Cutter, a IA não será chamada.
-
- ---------------------
-
-Livros Duplicados >> h2 ou h3
-
-[]Não Importar   [] Importar (Os livros ficarão duplicados no seu catálogo)
-
-
-
-
-# Ao renomear taxonomia renomeia também aqui.
-
-[] Classificar livro por Gênero
-[] Classificar livro por Categoria
-[] Classificar livro por Nível de leitura
-[] Classificar livros por disciplina
-
-um exmplo. Se eu renomear Categoria para Temas ficaria assim:
-
-[] Classificar livro por Gênero
-[] Classificar livro por Temas
-[] Classificar livro por Nível de leitura
-[] Classificar livros por disciplina
-
-Então seria uma mudança dinâmica
-
-Se eu renomear lá em taxonomias para X Y Z W ficaria assim:
-
-[] Classificar livro por X
-[] Classificar livro por Y
-[] Classificar livro por Z
-[] Classificar livros por W
-
-Você conseguiu entender o que quero dizer. Eu sei que isso é um html, mas seria interessante pois caminharia no sentido de universalização do plugins e a IA deverá entender o contexto dessa mudança também.
-
-A IA sabe que é GENERO  e deve se manteer bm_genre, mas se o usuario colocar "Ideia para as idades," e gernciando termos como 12 anos 15 anos por ex, a IA deverá entedenter o contexto e classificar segundo essas informações. o bm_genre continua, mas a IA classifica oeklo contexto e não por uma predeterminação. 
-
-Vc conseguiu entender o que eu disse?
-
-
-# Adicionar Funcionalidade
-
-## Busca Por IA na importação CSV
-
-1 - Gênero e Categoria serão buscados pela IA na importação CSV (por isso eu coloquei checkbox em Classificação por IA). A importação deve funcionar assim tanto para gênero quanto para categoria:
-
-
-1.1 checkbox de gênro e/ou categoria = marcados para busca na importação, mas no csv tiver essas colunas e nas células possuir conteúdo dessas colunas, então é o CSV que manda e IA não faz nada.
-1.2 A IA vai selecionar apenas Gêneros ou Categorias que o usuaário já tenha criado se houver correspondencia. Para achar a correspondecia a IA usará como critério o título, autor, sinopse e tudo o que a ia souber sobre o livro. 
-1.3 Se a Ia achar correspondencia mas o usuário não tiver criado nem genero ou categorias corresppondentes então os checkbox ficarão desmarcados. 
-1.4 checkbox de gênro e/ou categoria = desmarcado, então ia não faz nada.
-
-## Busca Por IA no admin da página individual do livro.
-
-As ações de IA que ja tem no admin individual devem pernanecer do jeito que já estão funcionando e deve-se adicionar as seguintes funcionalidades.
-
-1 - Gênero, Categoria e niveis de leitura serão buscados pela IA ao clicar nos respectivos botões segundo as seguintes regras:
-
-
-1.1 A IA vai selecionar apenas Gêneros ou Categorias que o usuaário já tenha criado se houver correspondencia. Para achar a correspondecia a IA usará como critério o título, autor, sinopse e tudo o que a ia souber sobre o livro. 
-1.2 Se a Ia achar correspondencia mas o usuário não tiver criado nem genero ou categorias corresppondentes então os checkbox ficarão desmarcados. 
-1.3 Se selecionar níveis de leitura, vai escolher um dos 5 níveis que nós deteminamos anteriormente.
-
-# LOG DE IMPORTAÇÃO 
-
-Problema: Se o servidor cair durante uma importação grande de livros (erro 502), perde-se o relatório do que já foi processado. O Gestor não sabe o que entrou e o que ficou de fora.
-
-Solução proposta: Salvar um histórico das importações. Cada vez que uma importação termina (ou é interrompida), o sistema guarda um resumo com:
-
-Data e hora
-
-Se terminou ou foi interrompida
-
-Quantos livros foram processados
-
-A lista do que foi importado, duplicado ou deu erro
-
-Onde ficaria: Em uma nova aba chamada "Histórico" dentro da própria página de importação de livros (ao lado de "Importar Livros CSV", "Exportar Livros CSV", etc.).
-
-Para que serve: Se a importação cair no meio, você acessa o Histórico e vê exatamente até onde chegou.
-
+**Este relatório é uma orientação, não uma verdade absoluta.** O código-fonte real é a referência definitiva. Verifique cada informação no código antes de agir. O Chat 14 cometeu erros por confiar cegamente em relatórios anteriores — não repita esse erro.
 
 
 
 
 ****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************
 
-Analisei seu documento com cuidado. Está bem estruturado e claro. Tenho algumas perguntas e observações para garantir que nada fique ambíguo para o próximo chat:
+
+
+## RELATÓRIO 3 — Fase de Segurança Estruturada
+
+**Para:** Próximo agente de IA (Chat 16+)
+**Assunto:** Fase 52 — Tarefas detalhadas de segurança, prontas para execução
+**Data:** 30 de junho de 2026
 
 ---
 
-## Perguntas e Observações
+### Estrutura da Fase 52 — Segurança
 
-### 1. Google Books — checkbox ignorado
-REPOSTA: Só a capa está buscando mesmo que esteja desmarcada
-
-### 2. Separação visual entre seções
-RESPOSTA: eu coloquei ----------- por não saber como mencionar isso de maneira tecnica, na prática quero uma divisória que funcione. apenas isso.
-
-### 3. Checkbox "Classificar livro por Gênero" e "Classificar livro por Categoria"
-São funcionalidades **novas**. Atualmente a IA só classifica por Disciplina e Nível de Leitura. Gênero e Categoria nunca foram implementados. Está correto que são novas? Ou você acredita que já existiam e estão quebradas?
-
-RESPOSTA: Não sei afrimar com 100% de precisão, eu acho que são novas mas deverá ser verificada pelo prosimo chat ou até mesmo por vc já que vc tem acesso ao code (vc só vai analisar, não vai editar)
-
-
-### 4. Busca por IA na página individual do livro
-Você menciona botões para Gênero, Categoria e Nível de Leitura na edição do livro. Hoje já existe:
-- Botão "Classificar com IA" (para Disciplinas)
-- Botão "Gerar Atividades"
-- Botão "Gerar Número de Chamada"
-
-Não existem botões para Gênero, Categoria ou Nível de Leitura. Isso são funcionalidades novas, correto?
-
-RESPOSTA: Não sei afrimar com 100% de precisão, eu acho que são novas mas deverá ser verificada pelo prosimo chat ou até mesmo por vc já que vc tem acesso ao code (vc só vai analisar, não vai editar)
-
-### 5. Log de importação
-Está claro. Só confirmo: a aba "Histórico" seria dentro da página `Importação/Exportação`, junto com as abas já existentes (Importar Livros CSV, Exportar Livros CSV, etc.)?
-
-RESPOSTA: acredito que seria melhor ficar aqui: /wp-admin/Importação-Exportação/Importar Livros via CSV/logs-de-importação
-
-### 6. Aviso "Quanto mais checkboxes selecionados, mais lenta será a importação"
-É uma informação visual nova. Onde exatamente ela deve aparecer? No topo da página de mapeamento, antes de todas as seções?
-
-RESPOSTA: ficaria logo acima de "Google Books API"
+**Total de etapas:** 4 etapas
+**Total de tarefas:** 11 tarefas
 
 ---
 
+## Etapa 52.1 — Mapeamento de vulnerabilidades
+
+**Tarefa 52.1.1 — Inventário de segurança**
+- **Descrição:** Analisar cada arquivo PHP e gerar uma tabela com todas as vulnerabilidades encontradas.
+- **Arquivos:** Todos os 12 arquivos PHP do plugin.
+- **O que verificar:**
+  - Handlers AJAX sem `check_ajax_referer()` e sem `wp_create_nonce()`
+  - Formulários sem `wp_nonce_field()`
+  - `$_POST`/`$_GET` sem sanitização (`sanitize_text_field`, `sanitize_email`, `absint`)
+  - `echo` sem escape (`esc_html`, `esc_attr`, `esc_url`)
+  - Funções sem verificação de `current_user_can()`
+  - Arquivos sem `defined('ABSPATH') || exit;`
+- **Resultado esperado:** Uma tabela completa com: Arquivo, Linha aproximada, Tipo de vulnerabilidade, Risco (Alto/Médio/Baixo), Ação necessária.
+- **Risco de quebra:** Nenhum — é apenas análise, sem alteração de código.
+
+---
+
+## Etapa 52.2 — Correção de nonces faltantes
+
+**Tarefa 52.2.1 — Adicionar nonce ao handler `bm_toggle_label`**
+- **Arquivo:** `includes/admin-service.php`
+- **Descrição:** Adicionar `check_ajax_referer()` no handler AJAX `bm_ajax_toggle_label` e `wp_create_nonce()` no script JavaScript que chama a ação.
+- **Risco de quebra:** Nenhum. Nonce é verificação adicional.
+- **Critério de saída:** Função de adicionar/remover etiquetas continua funcionando.
+
+**Tarefa 52.2.2 — Adicionar nonce ao handler `bm_print_labels`**
+- **Arquivo:** `includes/admin-service.php`
+- **Descrição:** Adicionar `check_ajax_referer()` no handler AJAX `bm_ajax_print_labels`. O JavaScript já abre em nova aba — o nonce pode ser passado via URL.
+- **Risco de quebra:** Baixo. Verificar se a impressão em nova aba continua funcionando.
+- **Critério de saída:** Impressão de etiquetas funciona.
+
+**Tarefa 52.2.3 — Adicionar nonce ao handler `bm_quick_search`**
+- **Arquivo:** `includes/frontend.php` e `includes/users-dashboard.php`
+- **Descrição:** Adicionar `check_ajax_referer()` no handler `bm_ajax_quick_search` e `wp_create_nonce()` localizado no script do dashboard do aluno.
+- **Risco de quebra:** Nenhum. Busca rápida é somente leitura.
+- **Critério de saída:** Busca rápida no dashboard do aluno funciona.
+
+---
+
+## Etapa 52.3 — Correção de escape de saída
+
+**Tarefa 52.3.1 — Uniformizar escape em `admin-service.php`**
+- **Descrição:** Revisar todas as ocorrências de `echo` em mensagens de relatório e garantir que usam `esc_html()` ou `wp_kses_post()` quando apropriado.
+- **Seções principais:**
+  - `bm_render_loan_detail_page()` — mensagens de resultado
+  - `bm_render_student_detail_page()` — mensagens de resultado
+  - `bm_render_service_desk_page()` — mensagens de resultado
+- **Risco de quebra:** Baixíssimo. Escape apenas envolve o texto.
+- **Critério de saída:** Mensagens continuam aparecendo normalmente.
+
+**Tarefa 52.3.2 — Uniformizar escape em `users-circulacao.php`**
+- **Descrição:** Revisar `echo` em mensagens de resultado de empréstimos, reservas, devoluções.
+- **Seções principais:**
+  - Mensagens de retorno de `bm_confirm_loan()`, `bm_return_book()`, `bm_reserve_book()`
+- **Risco de quebra:** Baixíssimo.
+- **Critério de saída:** Mensagens de empréstimo/reserva/devolução funcionam.
+
+**Tarefa 52.3.3 — Uniformizar escape em `admin-csv.php`**
+- **Descrição:** Revisar mensagens do relatório de importação (listas de importados, duplicados, erros).
+- **Risco de quebra:** Baixíssimo.
+- **Critério de saída:** Relatório de importação continua exibindo listas nominais corretamente.
+
+**Tarefa 52.3.4 — Revisar escape nos templates públicos**
+- **Arquivos:** `single-bm_book.php`, `archive-bm_book.php`
+- **Descrição:** Verificar se `echo` de dados dinâmicos (título, autor, editora, etc.) usam `esc_html()` ou `esc_attr()`.
+- **Risco de quebra:** Baixíssimo.
+- **Critério de saída:** Páginas públicas da vitrine continuam exibindo os dados corretamente.
+
+---
+
+## Etapa 52.4 — Verificação final e testes
+
+**Tarefa 52.4.1 — Checklist de verificação**
+- **Descrição:** Percorrer cada funcionalidade do plugin e confirmar que nada quebrou.
+- **Itens a testar:**
+  - Importação CSV com e sem Google Books/IA
+  - Exportação CSV
+  - Edição de livro (salvar, classificar com IA, buscar capa)
+  - Empréstimo, devolução, reserva, renovação
+  - Balcão de atendimento (buscar livro, buscar aluno, emprestar, devolver)
+  - Dashboard do aluno, professor e gestor
+  - Vitrine pública (archive e single)
+  - Ficha de leitura, ranking, medalhas
+  - Chatbot
+  - Relatórios
+  - Etiquetas e carteirinhas
+  - Gerenciar campos e taxonomias
+- **Risco de quebra:** Nenhum — é apenas teste.
+- **Critério de saída:** Todas as funcionalidades funcionam como antes.
+
+**Tarefa 52.4.2 — Gerar relatório final de segurança**
+- **Descrição:** Documentar todas as alterações feitas, vulnerabilidades corrigidas e testes realizados.
+- **Resultado esperado:** Um resumo para o usuário do que foi feito e o que melhorou na segurança.
+
+---
+
+### ⚠️ AVISO IMPORTANTE
+
+**Este relatório é uma orientação, não uma verdade absoluta.** O código-fonte real é a referência definitiva. Verifique cada informação nos arquivos PHP antes de agir. Consulte o `changelog.md` para histórico completo. Siga a pirâmide de documentos: `claude.md` → `escopo.md` → `changelog.md`/`roadmap.md`.
+
+**Regras de ouro para execução:**
+- 1 passo = 1 par de código
+- Localizadores CTRL+F devem ser únicos no arquivo
+- Testar após cada passo
+- Não alterar lógica — apenas adicionar verificações de segurança
+
+---
+
+Fim do Relatório 3. Os três relatórios estão concluídos.
 
 
 
@@ -301,4 +315,3 @@ RESPOSTA: ficaria logo acima de "Google Books API"
 
 
 
-****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************

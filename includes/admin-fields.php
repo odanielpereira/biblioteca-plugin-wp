@@ -394,6 +394,11 @@ add_action('pre_get_posts','bm_filter_books_by_metadata');
 // ==========================================
 // FASE 7B/7H: GERENCIAMENTO DE CAMPOS DINÂMICOS
 // ==========================================
+function bm_add_dynamic_fields_page() {
+    add_submenu_page('edit.php?post_type=bm_book', 'Gerenciar Campos', 'Gerenciar Campos', 'edit_bm_books', 'bm_dynamic_fields', 'bm_render_dynamic_fields_page');
+}
+add_action('admin_menu', 'bm_add_dynamic_fields_page');
+
 function bm_render_dynamic_fields_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     $message = '';

@@ -1231,7 +1231,7 @@ function bm_render_library_cards_page() {
         previewCardsBtn.addEventListener('click', function() {
             var cart = <?php echo json_encode(array_values($cart)); ?>;
             if (cart.length === 0) { alert('<?php _e("Nenhuma carteirinha selecionada.", "book-manager"); ?>'); return; }
-            var url = '<?php echo admin_url("admin-ajax.php"); ?>?action=bm_print_library_cards_bulk&ids=' + cart.join(',');
+            var url = '<?php echo admin_url("admin-ajax.php"); ?>?action=bm_print_library_cards_bulk&nonce=<?php echo wp_create_nonce("bm_library_cards_bulk_nonce"); ?>&ids=' + cart.join(',');
             window.open(url, '_blank');
         });
     }
@@ -1246,6 +1246,7 @@ function bm_labels_init_session() {
 add_action('init', 'bm_labels_init_session');
 
 function bm_ajax_toggle_label() {
+    check_ajax_referer('bm_toggle_label_nonce', 'nonce');
     if (!session_id()) session_start();
     if (!isset($_SESSION['bm_labels_cart'])) $_SESSION['bm_labels_cart'] = array();
     
@@ -1315,7 +1316,7 @@ function bm_label_button() {
                 }
                 btn.disabled = false;
             };
-            xhr.send('action=bm_toggle_label&book_id=' + bookId);
+            xhr.send('action=bm_toggle_label&nonce=<?php echo wp_create_nonce("bm_toggle_label_nonce"); ?>&book_id=' + bookId);
         }
     });
     </script>
@@ -1460,7 +1461,7 @@ function bm_render_labels_page() {
         previewBtn.addEventListener('click', function() {
             var cart = <?php echo json_encode(array_values($cart)); ?>;
             if (cart.length === 0) { alert('<?php _e("Nenhuma etiqueta selecionada.", "book-manager"); ?>'); return; }
-            var url = '<?php echo admin_url("admin-ajax.php"); ?>?action=bm_print_labels&ids=' + cart.join(',');
+            var url = '<?php echo admin_url("admin-ajax.php"); ?>?action=bm_print_labels&nonce=<?php echo wp_create_nonce("bm_print_labels_nonce"); ?>&ids=' + cart.join(',');
             window.open(url, '_blank');
         });
     }
@@ -1469,6 +1470,8 @@ function bm_render_labels_page() {
 }
 
 function bm_ajax_print_labels() {
+    if (!session_id()) session_start();
+    check_ajax_referer('bm_print_labels_nonce', 'nonce');
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die('Sem permissão.');
     
     $ids = isset($_GET['ids']) ? explode(',', sanitize_text_field($_GET['ids'])) : array();

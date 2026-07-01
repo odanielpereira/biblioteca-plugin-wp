@@ -1055,3 +1055,48 @@ Todo dado exibido em HTML deve ser escapado no contexto correto.
 - Handlers AJAX dos novos botões devem verificar nonce e capability
 - Log de importação acessível apenas para Admin e Gestor
 - Dados do log não contêm informações sensíveis de alunos
+
+## 22. CICLO 11 — FASE 52: SEGURANÇA (NONCES, SANITIZAÇÃO E ESCAPE)
+
+### 22.1 Abordagem Técnica
+
+#### 22.1.1 Nonces em Handlers AJAX
+- Todo handler AJAX administrativo deve iniciar com `check_ajax_referer('bm_<acao>_nonce', 'nonce')` antes de qualquer lógica.
+- O nome do nonce deve seguir o padrão já usado no plugin: `bm_<acao>_nonce`.
+- O JavaScript que chama o handler deve incluir o parâmetro `nonce` no corpo da requisição, usando `wp_create_nonce('bm_<acao>_nonce')` injetado via PHP no script inline ou via `wp_localize_script`.
+- **Handlers identificados sem nonce:** `bm_toggle_label`, `bm_print_labels`, `bm_quick_search`, `bm_ajax_print_library_card`, `bm_ajax_print_library_cards_bulk`.
+
+#### 22.1.2 Escape de Saída
+- Todo `echo` de dado dinâmico deve usar a função de escape adequada ao contexto:
+  - Texto em HTML → `esc_html()`
+  - Atributo HTML → `esc_attr()`
+  - URL → `esc_url()`
+  - Textarea → `esc_textarea()`
+- Antes de adicionar escape, verificar se o dado já está escapado — **não aplicar duplo escape**.
+- Strings estáticas (ex: `__('Texto', 'book-manager')`) já são seguras e não precisam de escape adicional.
+
+#### 22.1.3 Sanitização de Entrada
+- Todo `$_POST` e `$_GET` deve passar por `wp_unslash()` antes da sanitização.
+- Usar a função de sanitização correta para cada tipo:
+  - Texto simples → `sanitize_text_field()`
+  - E-mail → `sanitize_email()`
+  - Inteiros → `absint()`
+  - Texto longo → `sanitize_textarea_field()`
+  - URL para banco → `esc_url_raw()`
+
+### 22.2 Barreiras do Escopo (Proibido)
+- ❌ Alterar a lógica de negócio — apenas adicionar verificações de segurança
+- ❌ Aplicar duplo escape (ex: `esc_html(esc_html($x))`)
+- ❌ Remover escape existente
+- ❌ Alterar o comportamento de handlers AJAX — apenas adicionar `check_ajax_referer()` no início
+- ❌ Modificar a assinatura de funções existentes
+- ❌ Criar novos arquivos ou módulos — todas as alterações são nos arquivos existentes
+
+### 22.3 Ordem de Execução
+- Os arquivos devem ser corrigidos do menor para o maior, conforme estabelecido no roadmap:
+  `archive-bm_book.php` → `single-bm_book.php` → `users-dashboard.php` → `users-gamificacao.php` → `reports.php` → `admin-fields.php` → `admin-settings.php` → `admin-csv.php` → `users-circulacao.php` → `admin-service.php` → `frontend.php`
+
+### 22.4 Teste e Validação
+- Após cada tarefa, testar a funcionalidade afetada para confirmar que nada quebrou.
+- O teste completo (52.13) percorre todas as funcionalidades do plugin ao final.
+- O relatório final (52.14) documenta todas as alterações realizadas.

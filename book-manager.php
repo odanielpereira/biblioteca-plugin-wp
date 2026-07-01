@@ -323,6 +323,7 @@ function bm_reorder_submenus() {
         'bm_students' => 'Alunos',
         'bm_reports' => 'Relatórios',
         'bm_taxonomias' => 'Taxonomias',
+        'bm_dynamic_fields' => 'Gerenciar Campos',
         'bm_labels' => 'Etiquetas',
         'bm_data_io' => 'Importação/Exportação',
         'bm_settings' => 'Configurações',

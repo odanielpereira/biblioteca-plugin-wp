@@ -1546,6 +1546,7 @@ add_action('wp_ajax_nopriv_bm_chatbot', 'bm_ajax_chatbot');
 // FASE 12I-T5: BUSCA RÁPIDA NO DASHBOARD
 // ==========================================
 function bm_ajax_quick_search() {
+    check_ajax_referer('bm_quick_search_nonce', 'nonce');
     $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
     if (empty($query)) wp_die(json_encode(array('success' => false)));
     
@@ -1849,6 +1850,7 @@ function bm_ajax_print_receipt() {
 add_action('wp_ajax_bm_print_receipt', 'bm_ajax_print_receipt');
 
 function bm_ajax_print_library_card() {
+    check_ajax_referer('bm_library_card_nonce', 'nonce');
     if (!is_user_logged_in()) wp_die(__('Faça login.', 'book-manager'));
     
     $user_id = get_current_user_id();
@@ -1958,6 +1960,7 @@ function bm_ajax_print_library_card() {
 }
 add_action('wp_ajax_bm_print_library_card', 'bm_ajax_print_library_card');
 function bm_ajax_print_library_cards_bulk() {
+    check_ajax_referer('bm_library_cards_bulk_nonce', 'nonce');
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(__('Sem permissão.', 'book-manager'));
     
     $ids = isset($_GET['ids']) ? explode(',', sanitize_text_field($_GET['ids'])) : array();

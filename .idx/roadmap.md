@@ -707,3 +707,23 @@ CHAT 14
     3.  [x] **51.3 — Exibir tabela com as últimas importações:** data, status (concluída/interrompida), total de livros, botão "Ver detalhes" (expande listas) e botão "Excluir".
     4.  [x] **51.4 — Limitar a 10 registros**, com botão "Limpar histórico" para remover todos.
     5.  [x] **51.5 — Salvar parcialmente** durante a importação para detectar importações interrompidas e exibir aviso "Uma importação anterior foi interrompida".
+
+    ### Fase 52: Segurança — Nonces, Sanitização e Escape
+*   **Descrição:** Fechar as vulnerabilidades de segurança restantes, começando pelos arquivos menores. Adicionar nonces nos handlers AJAX desprotegidos, verificar sanitização de entrada em `$_POST`/`$_GET` e uniformizar escape de saída em todos os arquivos.
+*   **Critério de saída:** Todos os handlers AJAX com `check_ajax_referer()`. Nenhum `$_POST`/`$_GET` sem sanitização. `echo` de dados dinâmicos com escape adequado. Todas as funcionalidades do plugin operando normalmente.
+
+*   **Tarefas:**
+    1.  [ ] **52.1 — Inventário de segurança:** Analisar os arquivos PHP do plugin e gerar tabela com todas as vulnerabilidades encontradas (handlers AJAX sem nonce, formulários sem `wp_nonce_field`, `$_POST`/`$_GET` sem sanitização, `echo` sem escape, funções sem `current_user_can()`, arquivos sem `defined('ABSPATH')`). Apenas análise — sem alteração de código.
+    2.  [ ] **52.2 — Corrigir `archive-bm_book.php`:** Revisar escape nos `echo` de dados dinâmicos e sanitização de `$_GET` nos filtros. ⚠️ Verificar se o escape já existe antes de adicionar — não aplicar duplo escape.
+    3.  [ ] **52.3 — Corrigir `single-bm_book.php`:** Revisar escape nos `echo` de metadados, capas, resenhas e campos dinâmicos. ⚠️ Verificar se o escape já existe antes de adicionar — não aplicar duplo escape.
+    4.  [ ] **52.4 — Corrigir `users-dashboard.php`:** Adicionar nonce na busca rápida (`bmQuickSearch()`) e revisar escape nos dashboards. ⚠️ Verificar se o escape já existe antes de adicionar.
+    5.  [ ] **52.5 — Corrigir `users-gamificacao.php`:** Revisar escape nas fichas de leitura, ranking, perfil público e sanitização de `$_POST` nos formulários. ⚠️ Verificar se o escape já existe antes de adicionar.
+    6.  [ ] **52.6 — Corrigir `reports.php`:** Revisar sanitização dos parâmetros no endpoint JSON e escape nos relatórios. ⚠️ Verificar se o escape já existe antes de adicionar.
+    7.  [ ] **52.7 — Corrigir `admin-fields.php`:** Revisar escape nos campos da metabox e sanitização nos salvamentos. ⚠️ Verificar se o escape já existe antes de adicionar.
+    8.  [ ] **52.8 — Corrigir `admin-settings.php`:** Revisar escape nas páginas de configuração e sanitização nos salvamentos de options. ⚠️ Verificar se o escape já existe antes de adicionar.
+    9.  [ ] **52.9 — Corrigir `admin-csv.php`:** Revisar escape no relatório de importação e sanitização nos dados do CSV. ⚠️ Verificar se o escape já existe antes de adicionar.
+    10. [ ] **52.10 — Corrigir `users-circulacao.php`:** Revisar escape nas mensagens de empréstimo/reserva/devolução e sanitização nos handlers AJAX. ⚠️ Verificar se o escape já existe antes de adicionar.
+    11. [ ] **52.11 — Corrigir `admin-service.php`:** Adicionar nonces em `bm_toggle_label` e `bm_print_labels`, revisar escape nas páginas de alunos, empréstimos, etiquetas e carteirinhas. ⚠️ Verificar se o escape já existe antes de adicionar.
+    12. [ ] **52.12 — Corrigir `frontend.php`:** Adicionar nonces em `bm_quick_search`, `bm_ajax_print_library_card` e `bm_ajax_print_library_cards_bulk`; revisar escape nas funções de exibição e sanitização nos handlers AJAX. ⚠️ Verificar se o escape já existe antes de adicionar.
+    13. [ ] **52.13 — Teste completo:** Percorrer cada funcionalidade do plugin (importação/exportação CSV, edição de livro, empréstimo/devolução/reserva, balcão de atendimento, dashboards, vitrine pública, fichas/ranking/medalhas, chatbot, relatórios, etiquetas/carteirinhas, gerenciar campos/taxonomias) para confirmar que nada quebrou.
+    14. [ ] **52.14 — Relatório final:** Documentar todas as alterações feitas, vulnerabilidades corrigidas e testes realizados.

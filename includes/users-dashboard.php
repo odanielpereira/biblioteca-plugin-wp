@@ -264,7 +264,7 @@ function bm_student_dashboard_content() {
                     results.innerHTML = '<p style="color:red;">Erro na busca.</p>';
                 }
             };
-            xhr.send('action=bm_quick_search&query=' + encodeURIComponent(query));
+            xhr.send('action=bm_quick_search&nonce=<?php echo wp_create_nonce("bm_quick_search_nonce"); ?>&query=' + encodeURIComponent(query));
         }
         </script>
         
