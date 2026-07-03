@@ -1100,3 +1100,40 @@ Todo dado exibido em HTML deve ser escapado no contexto correto.
 - Após cada tarefa, testar a funcionalidade afetada para confirmar que nada quebrou.
 - O teste completo (52.13) percorre todas as funcionalidades do plugin ao final.
 - O relatório final (52.14) documenta todas as alterações realizadas.
+
+## 23. CICLO 12 — FASE 53: ENXUGAMENTO DE CÓDIGO
+
+### 23.1 Abordagem Técnica
+
+#### 23.1.1 Comentários e Documentação
+- Todos os comentários no código devem ser escritos em **inglês**.
+- Funções devem ser documentadas com blocos **PHPDoc** (`/** ... */`) contendo descrição, parâmetros (`@param`) e retorno (`@return`), conforme exigido pelo WordPress.org e CodeCanyon.
+- Comentários decorativos de fase/seção (`// ===== FASE X =====`) devem ser removidos — não agregam valor funcional e não fazem parte do padrão PHPDoc.
+- Comentários inline que explicam lógica de negócio devem ser mantidos, mas traduzidos para inglês e formatados de forma concisa.
+
+#### 23.1.2 CSS e JavaScript
+- Todo CSS inline (`<style>`) deve ser extraído para um novo arquivo `assets/css/book-manager.css`, carregado via `wp_enqueue_style('bm-book-manager', ...)`.
+- Todo JavaScript inline (`<script>`) deve ser extraído para um novo arquivo `assets/js/book-manager.js`, carregado via `wp_enqueue_script('bm-book-manager', ...)`.
+- Variáveis PHP necessárias ao JavaScript (nonces, `admin_url()`, etc.) devem ser passadas via `wp_localize_script('bm-book-manager', 'bmData', array(...))`.
+- Os arquivos existentes `assets/css/tailwind-custom.css` e `assets/js/reports-dashboard.js` **não devem ser alterados** — são específicos do Dashboard de Relatórios.
+- Comentários nos novos arquivos CSS/JS devem estar em inglês.
+
+#### 23.1.3 Espaços e Linhas em Branco
+- Linhas em branco múltiplas consecutivas (mais de 2) devem ser reduzidas a no máximo 1 linha em branco.
+- Espaços em branco no final de linhas devem ser removidos.
+
+### 23.2 Barreiras do Escopo (Proibido)
+- ❌ Alterar qualquer lógica de negócio — o comportamento do plugin deve permanecer idêntico.
+- ❌ Remover comentários que expliquem a lógica de funcionamento — apenas traduzi-los para inglês.
+- ❌ Misturar CSS inline extraído com o `tailwind-custom.css` — são contextos diferentes.
+- ❌ Misturar JS inline extraído com o `reports-dashboard.js` — são contextos diferentes.
+- ❌ Criar dependências externas ou CDN — todos os arquivos devem ser locais.
+- ❌ Alterar a ordem de carregamento dos scripts que possa afetar a funcionalidade.
+
+### 23.3 Ordem de Execução
+1. Remover comentários de fase/seção dos arquivos PHP (do menor para o maior).
+2. Remover espaços e linhas em branco excessivos.
+3. Traduzir comentários essenciais para inglês e adicionar PHPDoc.
+4. Extrair CSS inline para `assets/css/book-manager.css`.
+5. Extrair JS inline para `assets/js/book-manager.js`.
+6. Teste completo de todas as funcionalidades.

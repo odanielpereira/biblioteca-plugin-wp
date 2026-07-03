@@ -713,17 +713,29 @@ CHAT 14
 *   **Critério de saída:** Todos os handlers AJAX com `check_ajax_referer()`. Nenhum `$_POST`/`$_GET` sem sanitização. `echo` de dados dinâmicos com escape adequado. Todas as funcionalidades do plugin operando normalmente.
 
 *   **Tarefas:**
-    1.  [ ] **52.1 — Inventário de segurança:** Analisar os arquivos PHP do plugin e gerar tabela com todas as vulnerabilidades encontradas (handlers AJAX sem nonce, formulários sem `wp_nonce_field`, `$_POST`/`$_GET` sem sanitização, `echo` sem escape, funções sem `current_user_can()`, arquivos sem `defined('ABSPATH')`). Apenas análise — sem alteração de código.
-    2.  [ ] **52.2 — Corrigir `archive-bm_book.php`:** Revisar escape nos `echo` de dados dinâmicos e sanitização de `$_GET` nos filtros. ⚠️ Verificar se o escape já existe antes de adicionar — não aplicar duplo escape.
-    3.  [ ] **52.3 — Corrigir `single-bm_book.php`:** Revisar escape nos `echo` de metadados, capas, resenhas e campos dinâmicos. ⚠️ Verificar se o escape já existe antes de adicionar — não aplicar duplo escape.
-    4.  [ ] **52.4 — Corrigir `users-dashboard.php`:** Adicionar nonce na busca rápida (`bmQuickSearch()`) e revisar escape nos dashboards. ⚠️ Verificar se o escape já existe antes de adicionar.
-    5.  [ ] **52.5 — Corrigir `users-gamificacao.php`:** Revisar escape nas fichas de leitura, ranking, perfil público e sanitização de `$_POST` nos formulários. ⚠️ Verificar se o escape já existe antes de adicionar.
-    6.  [ ] **52.6 — Corrigir `reports.php`:** Revisar sanitização dos parâmetros no endpoint JSON e escape nos relatórios. ⚠️ Verificar se o escape já existe antes de adicionar.
-    7.  [ ] **52.7 — Corrigir `admin-fields.php`:** Revisar escape nos campos da metabox e sanitização nos salvamentos. ⚠️ Verificar se o escape já existe antes de adicionar.
-    8.  [ ] **52.8 — Corrigir `admin-settings.php`:** Revisar escape nas páginas de configuração e sanitização nos salvamentos de options. ⚠️ Verificar se o escape já existe antes de adicionar.
-    9.  [ ] **52.9 — Corrigir `admin-csv.php`:** Revisar escape no relatório de importação e sanitização nos dados do CSV. ⚠️ Verificar se o escape já existe antes de adicionar.
-    10. [ ] **52.10 — Corrigir `users-circulacao.php`:** Revisar escape nas mensagens de empréstimo/reserva/devolução e sanitização nos handlers AJAX. ⚠️ Verificar se o escape já existe antes de adicionar.
-    11. [ ] **52.11 — Corrigir `admin-service.php`:** Adicionar nonces em `bm_toggle_label` e `bm_print_labels`, revisar escape nas páginas de alunos, empréstimos, etiquetas e carteirinhas. ⚠️ Verificar se o escape já existe antes de adicionar.
-    12. [ ] **52.12 — Corrigir `frontend.php`:** Adicionar nonces em `bm_quick_search`, `bm_ajax_print_library_card` e `bm_ajax_print_library_cards_bulk`; revisar escape nas funções de exibição e sanitização nos handlers AJAX. ⚠️ Verificar se o escape já existe antes de adicionar.
-    13. [ ] **52.13 — Teste completo:** Percorrer cada funcionalidade do plugin (importação/exportação CSV, edição de livro, empréstimo/devolução/reserva, balcão de atendimento, dashboards, vitrine pública, fichas/ranking/medalhas, chatbot, relatórios, etiquetas/carteirinhas, gerenciar campos/taxonomias) para confirmar que nada quebrou.
-    14. [ ] **52.14 — Relatório final:** Documentar todas as alterações feitas, vulnerabilidades corrigidas e testes realizados.
+    1.  [x] **52.1 — Inventário de segurança:** Analisar os arquivos PHP do plugin e gerar tabela com todas as vulnerabilidades encontradas (handlers AJAX sem nonce, formulários sem `wp_nonce_field`, `$_POST`/`$_GET` sem sanitização, `echo` sem escape, funções sem `current_user_can()`, arquivos sem `defined('ABSPATH')`). Apenas análise — sem alteração de código.
+    2.  [x] **52.2 — Corrigir `archive-bm_book.php`:** Revisar escape nos `echo` de dados dinâmicos e sanitização de `$_GET` nos filtros. ⚠️ Verificar se o escape já existe antes de adicionar — não aplicar duplo escape.
+    3.  [x] **52.3 — Corrigir `single-bm_book.php`:** Revisar escape nos `echo` de metadados, capas, resenhas e campos dinâmicos. ⚠️ Verificar se o escape já existe antes de adicionar — não aplicar duplo escape.
+    4.  [x] **52.4 — Corrigir `users-dashboard.php`:** Adicionar nonce na busca rápida (`bmQuickSearch()`) e revisar escape nos dashboards. ⚠️ Verificar se o escape já existe antes de adicionar.
+    5.  [x] **52.5 — Corrigir `users-gamificacao.php`:** Revisar escape nas fichas de leitura, ranking, perfil público e sanitização de `$_POST` nos formulários. ⚠️ Verificar se o escape já existe antes de adicionar.
+    6.  [x] **52.6 — Corrigir `reports.php`:** Revisar sanitização dos parâmetros no endpoint JSON e escape nos relatórios. ⚠️ Verificar se o escape já existe antes de adicionar.
+    7.  [x] **52.7 — Corrigir `admin-fields.php`:** Revisar escape nos campos da metabox e sanitização nos salvamentos. ⚠️ Verificar se o escape já existe antes de adicionar.
+    8.  [x] **52.8 — Corrigir `admin-settings.php`:** Revisar escape nas páginas de configuração e sanitização nos salvamentos de options. ⚠️ Verificar se o escape já existe antes de adicionar.
+    9.  [x] **52.9 — Corrigir `admin-csv.php`:** Revisar escape no relatório de importação e sanitização nos dados do CSV. ⚠️ Verificar se o escape já existe antes de adicionar.
+    10. [x] **52.10 — Corrigir `users-circulacao.php`:** Revisar escape nas mensagens de empréstimo/reserva/devolução e sanitização nos handlers AJAX. ⚠️ Verificar se o escape já existe antes de adicionar.
+    11. [x] **52.11 — Corrigir `admin-service.php`:** Adicionar nonces em `bm_toggle_label` e `bm_print_labels`, revisar escape nas páginas de alunos, empréstimos, etiquetas e carteirinhas. ⚠️ Verificar se o escape já existe antes de adicionar.
+    12. [x] **52.12 — Corrigir `frontend.php`:** Adicionar nonces em `bm_quick_search`, `bm_ajax_print_library_card` e `bm_ajax_print_library_cards_bulk`; revisar escape nas funções de exibição e sanitização nos handlers AJAX. ⚠️ Verificar se o escape já existe antes de adicionar.
+    13. [x] **52.13 — Teste completo:** Percorrer cada funcionalidade do plugin (importação/exportação CSV, edição de livro, empréstimo/devolução/reserva, balcão de atendimento, dashboards, vitrine pública, fichas/ranking/medalhas, chatbot, relatórios, etiquetas/carteirinhas, gerenciar campos/taxonomias) para confirmar que nada quebrou.
+    14. [x] **52.14 — Relatório final:** Documentar todas as alterações feitas, vulnerabilidades corrigidas e testes realizados.
+
+    ### Fase 53: Enxugamento de Código
+*   **Descrição:** Limpar o código-fonte do plugin sem alterar nenhuma funcionalidade. Remover comentários de fase/seção, eliminar linhas em branco excessivas, traduzir comentários essenciais para inglês seguindo o padrão PHPDoc do WordPress.org/CodeCanyon, e extrair CSS e JavaScript inline para arquivos externos em `assets/`.
+*   **Critério de saída:** Código PHP mais limpo, comentários essenciais em inglês no formato PHPDoc, CSS e JS inline movidos para `assets/css/book-manager.css` e `assets/js/book-manager.js`, carregados via `wp_enqueue_style()` e `wp_enqueue_script()`. Todas as funcionalidades operando exatamente como antes.
+
+*   **Tarefas:**
+    1.  [ ] **53.1 — Remover comentários de fase/seção** de todos os arquivos PHP: Remover linhas como `// ========================================== FASE X: TÍTULO ==========================================` e `// ========================================== MÓDULOS DO PLUGIN ==========================================`.
+    2.  [ ] **53.2 — Remover espaços e linhas em branco excessivos** em todos os arquivos PHP: Reduzir linhas em branco múltiplas consecutivas (mais de 2) a no máximo 1.
+    3.  [ ] **53.3 — Traduzir comentários essenciais para inglês** e adicionar blocos PHPDoc (`/** ... */`) acima das funções principais, descrevendo parâmetros e retorno, conforme exigido pelo WordPress.org e CodeCanyon.
+    4.  [ ] **53.4 — Extrair CSS inline para `assets/css/book-manager.css`:** Mover todos os estilos `<style>` repetidos dos arquivos PHP para um novo arquivo CSS externo. Carregar via `wp_enqueue_style()` em `book-manager.php`. Não alterar `assets/css/tailwind-custom.css`.
+    5.  [ ] **53.5 — Extrair JS inline para `assets/js/book-manager.js`:** Mover todos os scripts `<script>` repetidos dos arquivos PHP para um novo arquivo JS externo. Usar `wp_localize_script()` para passar variáveis PHP (nonces, `admin_url()`) e carregar via `wp_enqueue_script()` em `book-manager.php`. Não alterar `assets/js/reports-dashboard.js`.
+    6.  [ ] **53.6 — Teste completo:** Percorrer cada funcionalidade do plugin para confirmar que nada quebrou após o enxugamento.

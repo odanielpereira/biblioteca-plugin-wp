@@ -1203,8 +1203,12 @@ function bm_chatbot_scripts() {
     <style>
     #bm-chatbot-toggle {
         position:fixed; bottom:20px; right:20px; width:60px; height:60px;
-        background:#111; color:#fff; border:none; border-radius:50%; font-size:28px;
+        background:#111; color:#fff; border:none; border-radius:50%;
         cursor:pointer; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.3);
+        display:flex; align-items:center; justify-content:center; padding:0;
+    }
+    #bm-chatbot-toggle img.emoji {
+        width:28px !important; height:28px !important; filter:invert(1) !important;
     }
     #bm-chatbot-box {
         position:fixed; bottom:90px; right:20px; width:350px; max-height:450px;
@@ -1225,7 +1229,7 @@ function bm_chatbot_scripts() {
     @media (max-width:400px) { #bm-chatbot-box { width:90%; right:5%; } }
     </style>
 
-    <button id="bm-chatbot-toggle" onclick="bmToggleChat()">💬</button>
+    <button id="bm-chatbot-toggle" onclick="bmToggleChat()" title="Chat da Biblioteca"><span class="dashicons dashicons-format-chat" style="font-size:28px;color:#fff;"></span></button>
     <div id="bm-chatbot-box">
         <?php $keys = bm_get_api_keys(); $chatbot_name = !empty($keys['chatbot_name']) ? $keys['chatbot_name'] : 'Bibliotecária Virtual'; ?>
         <div id="bm-chatbot-header">📚  <?php echo esc_html($chatbot_name); ?> <span style="float:right;cursor:pointer;" onclick="bmToggleChat()">✕</span></div>
