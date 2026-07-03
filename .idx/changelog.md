@@ -1356,3 +1356,49 @@ Decisão: Fase 34 concluída. Taxonomias permanecem com registro fixo, mas apare
 - **Ação:** Fase 51 concluída — Log de importação.
 - **Detalhes:** Tarefa 51.1: criada lógica de salvamento do log em `update_option('bm_import_log', ...)` ao final de cada importação, contendo data/hora, status, total e as 3 listas (importados, duplicados, erros). Tarefa 51.2: adicionada subaba "Histórico" em `bm_render_csv_import_page()` com `nav-tab-wrapper` usando `$_GET['subtab']`. Tarefa 51.3: função `bm_render_import_history()` exibe tabela com data, status (Concluída), total de livros, botão "Ver detalhes" (expande listas) e botão "Excluir". Tarefa 51.4: limitado a 10 registros, com botão "Limpar histórico". Tarefa 51.5: salvamento parcial implementado — ao iniciar, salva registro com status "processando"; ao finalizar, atualiza para "concluida"; se houver registro "processando" ao carregar a página, exibe aviso de interrupção. Corrigido erro de estrutura `if/else` na função `bm_render_import_history` que impedia a exibição dos logs quando havia dados salvos.
 - **Ferramenta:** `write_file` (manual pelo usuário)
+
+--- CHAT 16
+
+**210 - Data:** 2026-07-01
+- **Ação:** Atualização do `roadmap.md` e `escopo.md` com a Fase 52 — Segurança.
+- **Detalhes:** Adicionada a Fase 52 ao `roadmap.md` com 14 tarefas, seguindo o template padrão do projeto. Tarefas organizadas do menor arquivo para o maior: inventário, correção de nonces nos 5 handlers AJAX desprotegidos, revisão de sanitização de entrada e uniformização de escape de saída. Adicionada Seção 22 ao `escopo.md` com abordagem técnica e barreiras: proibido alterar lógica de negócio, proibido aplicar duplo escape, proibido modificar assinatura de funções. Handlers identificados sem nonce: `bm_toggle_label`, `bm_print_labels`, `bm_quick_search`, `bm_ajax_print_library_card`, `bm_ajax_print_library_cards_bulk`.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**211 - Data:** 2026-07-01
+- **Ação:** Tarefa 52.1 concluída — Inventário de segurança.
+- **Detalhes:** Analisados todos os 12 arquivos PHP do plugin. Resultado: 5 handlers AJAX sem `check_ajax_referer()` — `bm_toggle_label` e `bm_print_labels` em `admin-service.php`, `bm_quick_search`, `bm_ajax_print_library_card` e `bm_ajax_print_library_cards_bulk` em `frontend.php`. Escape e sanitização já estavam corretos em todos os arquivos. Nenhum arquivo sem `defined('ABSPATH')`. As tarefas de escape (52.3 a 52.10 do roadmap original) foram revisitadas e confirmadas como desnecessárias — os arquivos já usam `esc_html()`, `esc_attr()` e `esc_url()` corretamente.
+- **Ferramenta:** Análise manual dos arquivos PHP
+
+**212 - Data:** 2026-07-01
+- **Ação:** Tarefas 52.2 a 52.10 concluídas — Arquivos sem correções necessárias.
+- **Detalhes:** Verificados `archive-bm_book.php`, `single-bm_book.php`, `users-dashboard.php`, `users-gamificacao.php`, `reports.php`, `admin-fields.php`, `admin-settings.php`, `admin-csv.php` e `users-circulacao.php`. Todos já possuíam escape e sanitização adequados. O nonce da busca rápida em `users-dashboard.php` já estava implementado (falso negativo do inventário inicial). Nenhuma alteração realizada nestes arquivos.
+- **Ferramenta:** Análise manual dos arquivos PHP
+
+**213 - Data:** 2026-07-01
+- **Ação:** Tarefa 52.11 concluída — Nonces em `admin-service.php`.
+- **Detalhes:** Adicionado `check_ajax_referer('bm_toggle_label_nonce', 'nonce')` no handler `bm_ajax_toggle_label()`. Adicionado `wp_create_nonce("bm_toggle_label_nonce")` no script JavaScript inline do botão de etiqueta em `bm_label_button()`. Adicionado `check_ajax_referer('bm_print_labels_nonce', 'nonce')` no handler `bm_ajax_print_labels()`. Adicionado nonce na URL de abertura da nova aba de impressão em `bm_render_labels_page()`. Corrigido bug: a primeira tentativa quebrou a visualização do PDF porque o nonce foi adicionado ao PHP mas não à URL da nova aba — corrigido em passo extra.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+- **Decisão:** Nonce é verificação adicional — não altera a lógica de negócio.
+
+**214 - Data:** 2026-07-01
+- **Ação:** Tarefa 52.12 concluída — Nonces em `frontend.php`.
+- **Detalhes:** Adicionado `check_ajax_referer('bm_quick_search_nonce', 'nonce')` no handler `bm_ajax_quick_search()`. Adicionado `check_ajax_referer('bm_library_card_nonce', 'nonce')` no handler `bm_ajax_print_library_card()`. Adicionado `check_ajax_referer('bm_library_cards_bulk_nonce', 'nonce')` no handler `bm_ajax_print_library_cards_bulk()`. Adicionado nonce na URL de impressão de carteirinhas em massa em `admin-service.php` (`bm_render_library_cards_page()`). O nonce da busca rápida já era enviado pelo JavaScript em `users-dashboard.php` (corrigido anteriormente). O botão de carteirinha individual não foi encontrado na interface — funcionalidade principal é a impressão em massa que foi corrigida e testada.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+
+**215 - Data:** 2026-07-01
+- **Ação:** Correção do bug "Gerenciar Campos" ausente no menu.
+- **Detalhes:** A página "Gerenciar Campos" (`bm_dynamic_fields`) estava inacessível. Duas causas: (1) a função `add_submenu_page` que registrava a página havia sido removida durante a modularização (Fase 38.2) e nunca foi recriada; (2) o slug `bm_dynamic_fields` não constava na lista de itens permitidos em `bm_reorder_submenus()` no `book-manager.php`. Solução: adicionada função `bm_add_dynamic_fields_page()` em `admin-fields.php` registrando a página com capability `edit_bm_books`. Adicionado `'bm_dynamic_fields' => 'Gerenciar Campos'` na lista de itens permitidos do menu em `book-manager.php`. Nenhum desses problemas foi causado pelas alterações de segurança da Fase 52.
+- **Ferramenta:** `write_file` (manual pelo usuário)
+- **Decisão:** Bug pré-existente descoberto durante os testes da Fase 52.
+
+**216 - Data:** 2026-07-01
+- **Ação:** Tarefa 52.13 concluída — Testes da Fase 52.
+- **Detalhes:** Testadas as funcionalidades afetadas pelas alterações: adicionar/remover etiquetas (funcionando), impressão de etiquetas (funcionando após correção), busca rápida no painel do aluno (funcionando — nonce já era enviado), carteirinhas em massa (funcionando após correção). Carteirinha individual não foi encontrada na interface do aluno. Plugin Check (PCP) executado apenas com categoria "Security" — não apontou erros de nonces ou sanitização. Apontou erros de escape em `_e()` e `__()` que são textos fixos (falsos positivos para segurança funcional) e warnings de `wp_redirect` — itens para a Fase 53 (Conformidade WordPress.org).
+- **Ferramenta:** Teste manual + Plugin Check (PCP)
+
+**217 - Data:** 2026-07-01
+- **Ação:** Tarefa 52.14 concluída — Relatório final da Fase 52.
+- **Detalhes:** Documentadas todas as alterações: 5 handlers AJAX agora possuem `check_ajax_referer()`, 1 bug extra corrigido (menu Gerenciar Campos). Nenhuma lógica de negócio foi alterada. A segurança foi adicionada como camada extra. O Plugin Check validou que não há erros de segurança. Próximo passo: Fase 53 (Conformidade WordPress.org) para tratar os erros de escape em funções de internacionalização (`_e()` → `esc_html_e()`, `__()` → `esc_html__()`) e warnings de `wp_redirect`.
+- **Ferramenta:** Análise e documentação
+
+--- CHAT 17

@@ -1101,6 +1101,7 @@ Todo dado exibido em HTML deve ser escapado no contexto correto.
 - O teste completo (52.13) percorre todas as funcionalidades do plugin ao final.
 - O relatório final (52.14) documenta todas as alterações realizadas.
 
+
 ## 23. CICLO 12 — FASE 53: ENXUGAMENTO DE CÓDIGO
 
 ### 23.1 Abordagem Técnica
@@ -1108,32 +1109,66 @@ Todo dado exibido em HTML deve ser escapado no contexto correto.
 #### 23.1.1 Comentários e Documentação
 - Todos os comentários no código devem ser escritos em **inglês**.
 - Funções devem ser documentadas com blocos **PHPDoc** (`/** ... */`) contendo descrição, parâmetros (`@param`) e retorno (`@return`), conforme exigido pelo WordPress.org e CodeCanyon.
-- Comentários decorativos de fase/seção (`// ===== FASE X =====`) devem ser removidos — não agregam valor funcional e não fazem parte do padrão PHPDoc.
+- Comentários decorativos de fase/seção (`// ===== FASE X =====`) devem ser removidos, **com exceção** daqueles que servem como marcadores de localização para manutenção (ex: `// Import log system`). Estes devem ser preservados e traduzidos para inglês.
 - Comentários inline que explicam lógica de negócio devem ser mantidos, mas traduzidos para inglês e formatados de forma concisa.
+- **Recomendação:** Apenas 1 bloco PHPDoc por função principal. Funções internas (closures) não precisam de comentário próprio. Evitar comentários no meio do corpo da função, a menos que a lógica seja realmente complexa.
 
 #### 23.1.2 CSS e JavaScript
-- Todo CSS inline (`<style>`) deve ser extraído para um novo arquivo `assets/css/book-manager.css`, carregado via `wp_enqueue_style('bm-book-manager', ...)`.
-- Todo JavaScript inline (`<script>`) deve ser extraído para um novo arquivo `assets/js/book-manager.js`, carregado via `wp_enqueue_script('bm-book-manager', ...)`.
+- **Apenas** CSS e JavaScript inline **puramente estáticos** (sem variáveis PHP) devem ser extraídos.
+- Scripts e estilos com valores PHP dinâmicos (ex: `<?php echo $post->ID; ?>`, `<?php echo admin_url('...'); ?>`, `<?php echo wp_create_nonce('...'); ?>`) devem **permanecer inline** ou, quando aplicável, serem adaptados para usar `wp_localize_script()` e `wp_add_inline_style()`.
+- O CSS extraído deve ir para `assets/css/book-manager.css`, carregado via `wp_enqueue_style('bm-book-manager', ...)`.
+- O JS extraído deve ir para `assets/js/book-manager.js`, carregado via `wp_enqueue_script('bm-book-manager', ...)` com dependência `array('jquery')` onde necessário.
 - Variáveis PHP necessárias ao JavaScript (nonces, `admin_url()`, etc.) devem ser passadas via `wp_localize_script('bm-book-manager', 'bmData', array(...))`.
-- Os arquivos existentes `assets/css/tailwind-custom.css` e `assets/js/reports-dashboard.js` **não devem ser alterados** — são específicos do Dashboard de Relatórios.
-- Comentários nos novos arquivos CSS/JS devem estar em inglês.
+- Os arquivos existentes `assets/css/tailwind-custom.css` e `assets/js/reports-dashboard.js` **não devem ser alterados**.
 
 #### 23.1.3 Espaços e Linhas em Branco
 - Linhas em branco múltiplas consecutivas (mais de 2) devem ser reduzidas a no máximo 1 linha em branco.
 - Espaços em branco no final de linhas devem ser removidos.
+- Indentação e alinhamento devem ser mantidos consistentes para facilitar a leitura humana.
+
+#### 23.1.4 Correções de Escape (Plugin Check)
+- Aproveitar a geração dos arquivos completos para corrigir erros de escape detectados pelo Plugin Check do WordPress.org.
+- Principais trocas a serem aplicadas:
+  - `_e('texto', 'book-manager')` → `esc_html_e('texto', 'book-manager')`
+  - `__('texto', 'book-manager')` em contexto de echo → `esc_html__('texto', 'book-manager')`
+  - Variáveis em atributos HTML → envolver com `esc_attr($var)`
+  - URLs em links → envolver com `esc_url($url)`
+- Essas trocas são **seguras** — apenas adicionam escape, não alteram lógica de negócio.
+- As correções devem ser aplicadas durante a limpeza de cada arquivo PHP, não como etapa separada.
+
+#### 23.1.5 Método de Execução: Arquivo Completo
+- **Não** editar trechos do arquivo com localizadores e substituições.
+- Para cada arquivo PHP:
+  1. **Mapear** todas as funções, hooks, dependências e blocos `<style>`/`<script>` do arquivo original
+  2. **Gerar** o arquivo PHP completo e limpo com todas as correções aplicadas
+  3. **Entregar** o arquivo completo para o usuário substituir e testar
+- Este método elimina erros de localizador, duplicação acidental e sintaxe quebrada.
 
 ### 23.2 Barreiras do Escopo (Proibido)
 - ❌ Alterar qualquer lógica de negócio — o comportamento do plugin deve permanecer idêntico.
-- ❌ Remover comentários que expliquem a lógica de funcionamento — apenas traduzi-los para inglês.
+- ❌ Extrair scripts ou estilos inline que contenham variáveis PHP dinâmicas.
+- ❌ Remover comentários que servem como marcadores de localização para manutenção — apenas traduzi-los para inglês.
 - ❌ Misturar CSS inline extraído com o `tailwind-custom.css` — são contextos diferentes.
 - ❌ Misturar JS inline extraído com o `reports-dashboard.js` — são contextos diferentes.
 - ❌ Criar dependências externas ou CDN — todos os arquivos devem ser locais.
 - ❌ Alterar a ordem de carregamento dos scripts que possa afetar a funcionalidade.
+- ❌ Editar trechos do arquivo com substituições parciais — cada arquivo deve ser gerado completo.
 
 ### 23.3 Ordem de Execução
-1. Remover comentários de fase/seção dos arquivos PHP (do menor para o maior).
-2. Remover espaços e linhas em branco excessivos.
-3. Traduzir comentários essenciais para inglês e adicionar PHPDoc.
-4. Extrair CSS inline para `assets/css/book-manager.css`.
-5. Extrair JS inline para `assets/js/book-manager.js`.
-6. Teste completo de todas as funcionalidades.
+1. Realizar inventário de scripts e estilos inline (53.1).
+2. Limpar `uninstall.php` (53.2).
+3. Limpar `archive-bm_book.php` (53.3).
+4. Limpar `single-bm_book.php` (53.4).
+5. Limpar `includes/users-dashboard.php` (53.5).
+6. Limpar `includes/users-gamificacao.php` (53.6).
+7. Limpar `includes/reports.php` (53.7).
+8. Limpar `includes/admin-fields.php` (53.8).
+9. Limpar `includes/admin-settings.php` (53.9).
+10. Limpar `includes/admin-csv.php` (53.10).
+11. Limpar `includes/users-circulacao.php` (53.11).
+12. Limpar `includes/admin-service.php` (53.12).
+13. Limpar `includes/frontend.php` (53.13).
+14. Limpar `book-manager.php` (53.14).
+15. Criar `assets/css/book-manager.css` (53.15).
+16. Criar `assets/js/book-manager.js` (53.16).
+17. Teste completo de todas as funcionalidades (53.17).
