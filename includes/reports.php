@@ -1,10 +1,10 @@
 <?php
+/**
+ * Book Manager — Reports Module
+ * Report engine, dashboard overview, sparklines, JSON endpoint
+ */
 
 defined('ABSPATH') || exit;
-
-// ==========================================
-// FASE 31: MOTOR DE RELATÓRIOS
-// ==========================================
 
 function bm_generate_report($args = array()) {
     $defaults = array(
@@ -28,22 +28,12 @@ function bm_generate_report($args = array()) {
         $until = strtotime($args['date_end'] . ' 23:59:59');
     } else {
         switch ($args['period']) {
-            case 'week':
-                $since = strtotime('-7 days', $now);
-                break;
-            case 'bimester':
-                $since = strtotime('-60 days', $now);
-                break;
-            case 'semester':
-                $since = strtotime('-180 days', $now);
-                break;
-            case 'year':
-                $since = strtotime('-365 days', $now);
-                break;
+            case 'week': $since = strtotime('-7 days', $now); break;
+            case 'bimester': $since = strtotime('-60 days', $now); break;
+            case 'semester': $since = strtotime('-180 days', $now); break;
+            case 'year': $since = strtotime('-365 days', $now); break;
             case 'month':
-            default:
-                $since = strtotime('-30 days', $now);
-                break;
+            default: $since = strtotime('-30 days', $now); break;
         }
         $until = $now;
     }
@@ -69,13 +59,10 @@ function bm_generate_report($args = array()) {
         case 'custom':
             return bm_report_custom($args, $since, $until);
         default:
-            return array('error' => __('Tipo de relatório inválido.', 'book-manager'));
+            return array('error' => esc_html__('Tipo de relatório inválido.', 'book-manager'));
     }
 }
 
-// ==========================================
-// FUNÇÃO AUXILIAR: TEMPO RELATIVO (6.4)
-// ==========================================
 function bm_time_ago($datetime) {
     $time = strtotime($datetime);
     $diff = current_time('timestamp') - $time;
@@ -84,10 +71,6 @@ function bm_time_ago($datetime) {
     if ($diff < 86400) return 'há ' . round($diff / 3600) . 'h';
     return 'há ' . round($diff / 86400) . 'd';
 }
-
-// ==========================================
-// FUNÇÕES DE RELATÓRIO
-// ==========================================
 
 function bm_report_overview($since, $until) {
     $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'any'));
@@ -159,7 +142,7 @@ function bm_report_overview($since, $until) {
     }
     
     return array(
-        'title' => __('Visão Geral', 'book-manager'),
+        'title' => esc_html__('Visão Geral', 'book-manager'),
         'total_loans' => $total_loans,
         'total_returns' => $total_returns,
         'total_overdue' => $total_overdue,
@@ -167,28 +150,18 @@ function bm_report_overview($since, $until) {
         'total_loans_prev' => $prev_total_loans,
         'total_returns_prev' => $prev_total_returns,
         'inactive_students' => $inactive_students,
-        'period_start' => date('d/m/Y', $since),
-        'period_end' => date('d/m/Y', $until),
+        'period_start' => esc_html(date('d/m/Y', $since)),
+        'period_end' => esc_html(date('d/m/Y', $until)),
     );
 }
 
 function bm_report_dashboard_overview($since, $until) {
-    // KPIs básicos
     $overview = bm_report_overview($since, $until);
-    
-    // Desempenho dos alunos
     $performance = bm_report_all_students_performance($since, $until);
-    
-    // Ranking por gênero
     $genre_ranking = bm_report_genre_ranking($since, $until);
-    
-    // Livros mais emprestados
     $top_books = bm_report_top_books($since, $until);
-    
-    // Tendência de leitura
     $reading_trend = bm_report_reading_trend('', $since, $until);
     
-    // Top resenhadores
     $top_reviewers = array();
     if (!empty($performance['students'])) {
         $reviewers = $performance['students'];
@@ -200,7 +173,6 @@ function bm_report_dashboard_overview($since, $until) {
         }
     }
     
-    // Top video-resenhadores
     $top_video_reviewers = array();
     if (!empty($performance['students'])) {
         $video_reviewers = $performance['students'];
@@ -212,12 +184,11 @@ function bm_report_dashboard_overview($since, $until) {
         }
     }
     
-    // Top autores
     $top_authors = array();
     if (!empty($top_books['books'])) {
         $author_counts = array();
         foreach ($top_books['books'] as $book) {
-            $author = $book['author'] ?: __('Desconhecido', 'book-manager');
+            $author = $book['author'] ?: esc_html__('Desconhecido', 'book-manager');
             if (!isset($author_counts[$author])) $author_counts[$author] = 0;
             $author_counts[$author] += $book['loans'];
         }
@@ -227,7 +198,6 @@ function bm_report_dashboard_overview($since, $until) {
         }
     }
     
-    // Dados auxiliares
     $most_reviewed_books = bm_report_most_reviewed_books($since, $until, 5);
     $most_video_books = bm_report_most_video_reviewed_books($since, $until, 5);
     $never_borrowed = bm_report_never_borrowed_books();
@@ -236,7 +206,6 @@ function bm_report_dashboard_overview($since, $until) {
     $all_books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => -1, 'post_status' => 'publish'));
     $all_students = get_users(array('role' => 'bm_student', 'number' => 200));
     
-    // Livros com fila de espera
     $books_with_queue = array();
     foreach ($all_books as $book) {
         $reservations = get_post_meta($book->ID, '_bm_reservations', true) ?: array();
@@ -249,7 +218,6 @@ function bm_report_dashboard_overview($since, $until) {
         }
     }
     
-    // Alunos com atraso +7 dias
     $overdue_students = array();
     foreach ($all_students as $student) {
         $loan_history = get_user_meta($student->ID, '_bm_loan_history', true) ?: array();
@@ -266,7 +234,6 @@ function bm_report_dashboard_overview($since, $until) {
         }
     }
     
-    // Ranking de turmas
     $class_ranking = array();
     $groups = array();
     foreach ($all_students as $student) {
@@ -281,17 +248,14 @@ function bm_report_dashboard_overview($since, $until) {
     }
     usort($class_ranking, function($a, $b) { return ($b['average'] ?? 0) - ($a['average'] ?? 0); });
     
-    // Sugestões de aquisição
     $suggestions = get_option('bm_acquisition_suggestions', array());
     $acquisition_count = count($suggestions);
     
-    // Meta de leitura
     $reading_goal = array(
         'current' => $performance['total_books'] ?? 0,
         'target' => 500,
     );
 
-    // Sparklines (6.1)
     $spark_loans = bm_get_sparkline_data('loans', $since, $until);
     $spark_returns = bm_get_sparkline_data('returns', $since, $until);
     $spark_overdue = bm_get_sparkline_data('overdue', $since, $until);
@@ -530,7 +494,6 @@ function bm_report_radar_data($since, $until, $user_id = 0) {
     return $result;
 }
 
-
 function bm_report_all_students_performance($since, $until) {
     $students = get_users(array('role' => 'bm_student', 'number' => 200));
     $all_data = array();
@@ -562,13 +525,13 @@ function bm_report_all_students_performance($since, $until) {
     usort($all_data, function($a, $b) { return $b['books_read'] - $a['books_read']; });
     $inactive_students = array();
     foreach ($all_data as $s) { if ($s['books_read'] === 0) $inactive_students[] = $s['name']; }
-    return array('title' => __('Desempenho de Todos os Alunos', 'book-manager'), 'total_students' => count($students), 'total_books' => $total_books, 'total_reviews' => $total_reviews, 'total_videos' => $total_videos, 'total_penalties' => $total_penalties, 'students' => $all_data, 'inactive_students' => $inactive_students, 'period_start' => date('d/m/Y', $since), 'period_end' => date('d/m/Y', $until));
+    return array('title' => esc_html__('Desempenho de Todos os Alunos', 'book-manager'), 'total_students' => count($students), 'total_books' => $total_books, 'total_reviews' => $total_reviews, 'total_videos' => $total_videos, 'total_penalties' => $total_penalties, 'students' => $all_data, 'inactive_students' => $inactive_students, 'period_start' => esc_html(date('d/m/Y', $since)), 'period_end' => esc_html(date('d/m/Y', $until)));
 }
 
 function bm_report_student_performance($user_id, $since, $until) {
-    if (!$user_id) return array('error' => __('Aluno não encontrado.', 'book-manager'));
+    if (!$user_id) return array('error' => esc_html__('Aluno não encontrado.', 'book-manager'));
     $student = get_userdata($user_id);
-    if (!$student) return array('error' => __('Aluno não encontrado.', 'book-manager'));
+    if (!$student) return array('error' => esc_html__('Aluno não encontrado.', 'book-manager'));
     $loan_history = get_user_meta($user_id, '_bm_loan_history', true) ?: array();
     $reading_log = get_user_meta($user_id, '_bm_reading_log', true) ?: array();
     $xp = bm_get_xp($user_id);
@@ -579,7 +542,7 @@ function bm_report_student_performance($user_id, $since, $until) {
         $loan_time = isset($loan['loan_date']) ? strtotime($loan['loan_date']) : 0;
         if ($loan['status'] === 'returned' && $loan_time >= $since && $loan_time <= $until) {
             $books_read++;
-            $books_read_list[] = array('title' => get_the_title($loan['book_id']) ?: __('Livro #', 'book-manager') . $loan['book_id'], 'author' => get_post_meta($loan['book_id'], '_bm_author', true), 'returned_date' => isset($loan['returned_date']) ? date('d/m/Y', strtotime($loan['returned_date'])) : '');
+            $books_read_list[] = array('title' => get_the_title($loan['book_id']) ?: esc_html__('Livro #', 'book-manager') . $loan['book_id'], 'author' => get_post_meta($loan['book_id'], '_bm_author', true), 'returned_date' => isset($loan['returned_date']) ? esc_html(date('d/m/Y', strtotime($loan['returned_date']))) : '');
         }
         if ($loan['status'] === 'active') { $active_loans++; if (isset($loan['due_date']) && strtotime($loan['due_date']) < current_time('timestamp')) $overdue_loans++; }
     }
@@ -589,18 +552,18 @@ function bm_report_student_performance($user_id, $since, $until) {
     }
     $penalty_count = 0;
     foreach ($penalties as $p) { $p_time = isset($p['date']) ? strtotime($p['date']) : 0; if ($p_time >= $since && $p_time <= $until) $penalty_count++; }
-    return array('title' => sprintf(__('Desempenho: %s', 'book-manager'), $student->display_name), 'student_name' => $student->display_name, 'books_read' => $books_read, 'books_read_list' => $books_read_list, 'active_loans' => $active_loans, 'overdue_loans' => $overdue_loans, 'reviews' => $total_reviews, 'videos' => $total_videos, 'xp' => $xp, 'badges' => count($badges), 'penalties' => $penalty_count, 'period_start' => date('d/m/Y', $since), 'period_end' => date('d/m/Y', $until));
+    return array('title' => sprintf(esc_html__('Desempenho: %s', 'book-manager'), $student->display_name), 'student_name' => $student->display_name, 'books_read' => $books_read, 'books_read_list' => $books_read_list, 'active_loans' => $active_loans, 'overdue_loans' => $overdue_loans, 'reviews' => $total_reviews, 'videos' => $total_videos, 'xp' => $xp, 'badges' => count($badges), 'penalties' => $penalty_count, 'period_start' => esc_html(date('d/m/Y', $since)), 'period_end' => esc_html(date('d/m/Y', $until)));
 }
 
 function bm_report_class_reading($group, $since, $until) {
-    if (empty($group)) return array('error' => __('Informe uma turma.', 'book-manager'));
+    if (empty($group)) return array('error' => esc_html__('Informe uma turma.', 'book-manager'));
     $students = get_users(array('role' => 'bm_student', 'number' => 200));
     $class_students = array();
     foreach ($students as $student) {
         $student_group = get_user_meta($student->ID, '_bm_user_' . sanitize_key('Turma'), true);
         if (mb_strtolower(trim($student_group)) === mb_strtolower(trim($group))) $class_students[] = $student;
     }
-    if (empty($class_students)) return array('error' => __('Nenhum aluno nesta turma.', 'book-manager'));
+    if (empty($class_students)) return array('error' => esc_html__('Nenhum aluno nesta turma.', 'book-manager'));
     $student_data = array(); $total_books = 0; $overdue_count = 0; $never_read = array();
     foreach ($class_students as $student) {
         $loan_history = get_user_meta($student->ID, '_bm_loan_history', true) ?: array();
@@ -615,7 +578,7 @@ function bm_report_class_reading($group, $since, $until) {
     }
     usort($student_data, function($a, $b) { return $b['books_read'] - $a['books_read']; });
     $average = count($class_students) > 0 ? round($total_books / count($class_students), 1) : 0;
-    return array('title' => sprintf(__('Leitura: %s', 'book-manager'), $group), 'group' => $group, 'total_students' => count($class_students), 'total_books' => $total_books, 'average' => $average, 'overdue_count' => $overdue_count, 'never_read' => $never_read, 'students' => $student_data, 'period_start' => date('d/m/Y', $since), 'period_end' => date('d/m/Y', $until));
+    return array('title' => sprintf(esc_html__('Leitura: %s', 'book-manager'), $group), 'group' => $group, 'total_students' => count($class_students), 'total_books' => $total_books, 'average' => $average, 'overdue_count' => $overdue_count, 'never_read' => $never_read, 'students' => $student_data, 'period_start' => esc_html(date('d/m/Y', $since)), 'period_end' => esc_html(date('d/m/Y', $until)));
 }
 
 function bm_report_active_penalties() {
@@ -629,7 +592,7 @@ function bm_report_active_penalties() {
             $active_penalties[] = array('student_name' => $student->display_name, 'student_id' => $student->ID, 'type' => isset($last['type']) ? $last['type'] : '', 'value' => isset($last['value']) ? $last['value'] : '', 'note' => isset($last['note']) ? $last['note'] : '', 'date' => isset($last['date']) ? $last['date'] : '', 'until' => get_user_meta($student->ID, '_bm_penalty_until', true));
         }
     }
-    return array('title' => __('Multas Ativas', 'book-manager'), 'total' => count($active_penalties), 'penalties' => $active_penalties);
+    return array('title' => esc_html__('Multas Ativas', 'book-manager'), 'total' => count($active_penalties), 'penalties' => $active_penalties);
 }
 
 function bm_report_genre_ranking($since, $until) {
@@ -651,7 +614,7 @@ function bm_report_genre_ranking($since, $until) {
         }
     }
     arsort($genre_counts);
-    return array('title' => __('Ranking por Gênero', 'book-manager'), 'genres' => $genre_counts, 'period_start' => date('d/m/Y', $since), 'period_end' => date('d/m/Y', $until));
+    return array('title' => esc_html__('Ranking por Gênero', 'book-manager'), 'genres' => $genre_counts, 'period_start' => esc_html(date('d/m/Y', $since)), 'period_end' => esc_html(date('d/m/Y', $until)));
 }
 
 function bm_report_top_books($since, $until, $genre = '') {
@@ -677,7 +640,7 @@ function bm_report_top_books($since, $until, $genre = '') {
         }
     }
     usort($book_data, function($a, $b) { return $b['loans'] - $a['loans']; });
-    return array('title' => __('Livros Mais Emprestados', 'book-manager'), 'books' => array_slice($book_data, 0, 20), 'period_start' => date('d/m/Y', $since), 'period_end' => date('d/m/Y', $until));
+    return array('title' => esc_html__('Livros Mais Emprestados', 'book-manager'), 'books' => array_slice($book_data, 0, 20), 'period_start' => esc_html(date('d/m/Y', $since)), 'period_end' => esc_html(date('d/m/Y', $until)));
 }
 
 function bm_report_reading_trend($group, $since, $until) {
@@ -695,7 +658,7 @@ function bm_report_reading_trend($group, $since, $until) {
             }
         }
     }
-    return array('title' => __('Tendência de Leitura', 'book-manager'), 'months' => $months, 'period_start' => date('d/m/Y', $since), 'period_end' => date('d/m/Y', $until));
+    return array('title' => esc_html__('Tendência de Leitura', 'book-manager'), 'months' => $months, 'period_start' => esc_html(date('d/m/Y', $since)), 'period_end' => esc_html(date('d/m/Y', $until)));
 }
 
 function bm_report_custom($args, $since, $until) {
@@ -731,12 +694,9 @@ function bm_report_custom($args, $since, $until) {
     if ($sort_by === 'xp') usort($rows, function($a, $b) { return ($b['xp'] ?? 0) - ($a['xp'] ?? 0); });
     elseif ($sort_by === 'books_read') usort($rows, function($a, $b) { return ($b['books_read'] ?? 0) - ($a['books_read'] ?? 0); });
     else usort($rows, function($a, $b) { return strcmp($a['name'] ?? '', $b['name'] ?? ''); });
-    return array('title' => __('Relatório Configurável', 'book-manager'), 'columns' => $columns, 'rows' => $rows, 'period_start' => date('d/m/Y', $since), 'period_end' => date('d/m/Y', $until));
+    return array('title' => esc_html__('Relatório Configurável', 'book-manager'), 'columns' => $columns, 'rows' => $rows, 'period_start' => esc_html(date('d/m/Y', $since)), 'period_end' => esc_html(date('d/m/Y', $until)));
 }
 
-// ==========================================
-// SPARKLINES (6.1)
-// ==========================================
 function bm_get_sparkline_data($metric, $since, $until) {
     $interval = ($until - $since) / 6;
     $data = array();
@@ -854,26 +814,20 @@ function bm_calculate_metric($metric, $since, $until) {
     return $total;
 }
 
-// ==========================================
-// SHORTCODE RELATÓRIO DE TURMA
-// ==========================================
 function bm_class_report_shortcode($atts) {
-    if (!is_user_logged_in()) return '<p>' . __('Faça login para acessar.', 'book-manager') . '</p>';
+    if (!is_user_logged_in()) return '<p>' . esc_html__('Faça login para acessar.', 'book-manager') . '</p>';
     $atts = shortcode_atts(array('group' => '', 'period' => 'year'), $atts);
     $now = current_time('timestamp');
     switch ($atts['period']) { case 'month': $since = strtotime('-30 days', $now); break; case 'bimester': $since = strtotime('-60 days', $now); break; case 'year': $since = strtotime('-365 days', $now); break; default: $since = strtotime('-365 days', $now); }
     $group = $atts['group'] ?: get_user_meta(get_current_user_id(), '_bm_user_' . sanitize_key('Turma'), true);
-    if (empty($group)) return '<p>' . __('Turma não informada.', 'book-manager') . '</p>';
+    if (empty($group)) return '<p>' . esc_html__('Turma não informada.', 'book-manager') . '</p>';
     return bm_render_report_html(bm_report_class_reading($group, $since, current_time('timestamp')));
 }
 add_shortcode('bm_class_report', 'bm_class_report_shortcode');
 
-// ==========================================
-// ENDPOINT JSON
-// ==========================================
 function bm_ajax_get_report_data() {
     check_ajax_referer('bm_reports_nonce', 'nonce');
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_send_json_error(array('message' => __('Sem permissão.', 'book-manager')));
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_send_json_error(array('message' => esc_html__('Sem permissão.', 'book-manager')));
     $args = array(
         'type' => isset($_POST['bm_report_type']) ? sanitize_text_field($_POST['bm_report_type']) : 'overview',
         'period' => isset($_POST['bm_period']) ? sanitize_text_field($_POST['bm_period']) : 'month',
@@ -894,7 +848,7 @@ add_action('wp_ajax_bm_get_report_data', 'bm_ajax_get_report_data');
 
 function bm_ajax_save_dashboard_order() {
     check_ajax_referer('bm_reports_nonce', 'nonce');
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(__('Sem permissão.', 'book-manager'));
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(esc_html__('Sem permissão.', 'book-manager'));
     $order = isset($_POST['order']) ? sanitize_text_field(wp_unslash($_POST['order'])) : '';
     if (!empty($order)) {
         update_user_meta(get_current_user_id(), '_bm_dashboard_order', $order);
@@ -907,7 +861,7 @@ add_action('wp_ajax_bm_save_dashboard_order', 'bm_ajax_save_dashboard_order');
 function bm_ajax_get_radar_data() {
     check_ajax_referer('bm_reports_nonce', 'nonce');
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) {
-        wp_send_json_error(array('message' => __('Sem permissão.', 'book-manager')));
+        wp_send_json_error(array('message' => esc_html__('Sem permissão.', 'book-manager')));
     }
     $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
     $period = isset($_POST['period']) ? sanitize_text_field($_POST['period']) : 'month';
@@ -926,7 +880,7 @@ function bm_ajax_get_radar_data() {
 add_action('wp_ajax_bm_get_radar_data', 'bm_ajax_get_radar_data');
 
 function bm_ajax_export_report_pdf() {
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(__('Sem permissão.', 'book-manager'));
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(esc_html__('Sem permissão.', 'book-manager'));
     $args = array('type' => $_GET['type'] ?? 'overview', 'period' => $_GET['period'] ?? 'month', 'date_start' => $_GET['date_start'] ?? '', 'date_end' => $_GET['date_end'] ?? '', 'subject_id' => intval($_GET['subject_id'] ?? 0), 'group' => $_GET['group'] ?? '');
     $report = bm_generate_report($args);
     ?><!DOCTYPE html><html><head><meta charset="UTF-8"><title><?php echo esc_html($report['title']); ?></title><style>body{font-family:Arial;margin:20px;color:#333}.no-print{text-align:center;margin:20px 0}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{padding:8px;border:1px solid #ddd;font-size:13px}th{background:#f5f5f5}@media print{.no-print{display:none}body{margin:0}}</style></head><body><div class="no-print"><h2>Exportar Relatório</h2><p>Pressione Ctrl+P para imprimir ou salvar como PDF.</p><button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ Imprimir / Salvar PDF</button></div><?php echo bm_render_report_html($report); ?></body></html><?php exit;
@@ -940,41 +894,41 @@ function bm_render_report_html($report) {
     
     if (isset($report['total_loans'])) {
         $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-bottom:20px;">';
-        $html .= bm_render_stat_card(__('Empréstimos', 'book-manager'), $report['total_loans'], '#0073aa');
-        $html .= bm_render_stat_card(__('Devoluções', 'book-manager'), $report['total_returns'], '#46b450');
-        $html .= bm_render_stat_card(__('Em Atraso', 'book-manager'), $report['total_overdue'], '#dc3545');
-        $html .= bm_render_stat_card(__('Reservas Pendentes', 'book-manager'), $report['total_reservations'], '#f0ad4e');
+        $html .= bm_render_stat_card(esc_html__('Empréstimos', 'book-manager'), $report['total_loans'], '#0073aa');
+        $html .= bm_render_stat_card(esc_html__('Devoluções', 'book-manager'), $report['total_returns'], '#46b450');
+        $html .= bm_render_stat_card(esc_html__('Em Atraso', 'book-manager'), $report['total_overdue'], '#dc3545');
+        $html .= bm_render_stat_card(esc_html__('Reservas Pendentes', 'book-manager'), $report['total_reservations'], '#f0ad4e');
         $html .= '</div>';
     }
     
     if (isset($report['total_students']) && !isset($report['student_name']) && !isset($report['group'])) {
         $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-bottom:20px;">';
-        $html .= bm_render_stat_card(__('Alunos', 'book-manager'), $report['total_students'], '#0073aa');
-        $html .= bm_render_stat_card(__('Livros Lidos', 'book-manager'), $report['total_books'], '#46b450');
-        $html .= bm_render_stat_card(__('Resenhas', 'book-manager'), $report['total_reviews'], '#f0ad4e');
-        $html .= bm_render_stat_card(__('Vídeos', 'book-manager'), $report['total_videos'], '#e4405f');
-        $html .= bm_render_stat_card(__('Multas', 'book-manager'), $report['total_penalties'], '#dc3545');
+        $html .= bm_render_stat_card(esc_html__('Alunos', 'book-manager'), $report['total_students'], '#0073aa');
+        $html .= bm_render_stat_card(esc_html__('Livros Lidos', 'book-manager'), $report['total_books'], '#46b450');
+        $html .= bm_render_stat_card(esc_html__('Resenhas', 'book-manager'), $report['total_reviews'], '#f0ad4e');
+        $html .= bm_render_stat_card(esc_html__('Vídeos', 'book-manager'), $report['total_videos'], '#e4405f');
+        $html .= bm_render_stat_card(esc_html__('Multas', 'book-manager'), $report['total_penalties'], '#dc3545');
         $html .= '</div>';
         if (!empty($report['students'])) {
-            $html .= '<table class="wp-list-table widefat fixed striped"><thead><tr><th>' . __('Aluno', 'book-manager') . '</th><th>' . __('Livros Lidos', 'book-manager') . '</th><th>' . __('Resenhas', 'book-manager') . '</th><th>' . __('Vídeos', 'book-manager') . '</th><th>' . __('XP', 'book-manager') . '</th><th>' . __('Medalhas', 'book-manager') . '</th><th>' . __('Multas', 'book-manager') . '</th></tr></thead><tbody>';
-            foreach ($report['students'] as $s) $html .= '<tr><td>' . esc_html($s['name']) . '</td><td>' . $s['books_read'] . '</td><td>' . $s['reviews'] . '</td><td>' . $s['videos'] . '</td><td>' . $s['xp'] . '</td><td>' . $s['badges'] . '</td><td>' . $s['penalties'] . '</td></tr>';
+            $html .= '<table class="wp-list-table widefat fixed striped"><thead><tr><th>' . esc_html__('Aluno', 'book-manager') . '</th><th>' . esc_html__('Livros Lidos', 'book-manager') . '</th><th>' . esc_html__('Resenhas', 'book-manager') . '</th><th>' . esc_html__('Vídeos', 'book-manager') . '</th><th>XP</th><th>' . esc_html__('Medalhas', 'book-manager') . '</th><th>' . esc_html__('Multas', 'book-manager') . '</th></tr></thead><tbody>';
+            foreach ($report['students'] as $s) $html .= '<tr><td>' . esc_html($s['name']) . '</td><td>' . esc_html($s['books_read']) . '</td><td>' . esc_html($s['reviews']) . '</td><td>' . esc_html($s['videos']) . '</td><td>' . esc_html($s['xp']) . '</td><td>' . esc_html($s['badges']) . '</td><td>' . esc_html($s['penalties']) . '</td></tr>';
             $html .= '</tbody></table>';
         }
     }
     
     if (isset($report['student_name'])) {
         $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-bottom:20px;">';
-        $html .= bm_render_stat_card(__('Livros Lidos', 'book-manager'), $report['books_read'], '#46b450');
-        $html .= bm_render_stat_card(__('Empréstimos Ativos', 'book-manager'), $report['active_loans'], '#0073aa');
-        $html .= bm_render_stat_card(__('Em Atraso', 'book-manager'), $report['overdue_loans'], '#dc3545');
-        $html .= bm_render_stat_card(__('Resenhas', 'book-manager'), $report['reviews'], '#f0ad4e');
-        $html .= bm_render_stat_card(__('Vídeos', 'book-manager'), $report['videos'], '#e4405f');
-        $html .= bm_render_stat_card(__('XP', 'book-manager'), $report['xp'], '#ffc107');
-        $html .= bm_render_stat_card(__('Medalhas', 'book-manager'), $report['badges'], '#ffc107');
-        $html .= bm_render_stat_card(__('Multas', 'book-manager'), $report['penalties'], '#dc3545');
+        $html .= bm_render_stat_card(esc_html__('Livros Lidos', 'book-manager'), $report['books_read'], '#46b450');
+        $html .= bm_render_stat_card(esc_html__('Empréstimos Ativos', 'book-manager'), $report['active_loans'], '#0073aa');
+        $html .= bm_render_stat_card(esc_html__('Em Atraso', 'book-manager'), $report['overdue_loans'], '#dc3545');
+        $html .= bm_render_stat_card(esc_html__('Resenhas', 'book-manager'), $report['reviews'], '#f0ad4e');
+        $html .= bm_render_stat_card(esc_html__('Vídeos', 'book-manager'), $report['videos'], '#e4405f');
+        $html .= bm_render_stat_card('XP', $report['xp'], '#ffc107');
+        $html .= bm_render_stat_card(esc_html__('Medalhas', 'book-manager'), $report['badges'], '#ffc107');
+        $html .= bm_render_stat_card(esc_html__('Multas', 'book-manager'), $report['penalties'], '#dc3545');
         $html .= '</div>';
         if (!empty($report['books_read_list'])) {
-            $html .= '<h3>' . __('Livros Lidos', 'book-manager') . '</h3><table class="wp-list-table widefat fixed striped"><thead><tr><th>' . __('Livro', 'book-manager') . '</th><th>' . __('Autor', 'book-manager') . '</th><th>' . __('Devolvido em', 'book-manager') . '</th></tr></thead><tbody>';
+            $html .= '<h3>' . esc_html__('Livros Lidos', 'book-manager') . '</h3><table class="wp-list-table widefat fixed striped"><thead><tr><th>' . esc_html__('Livro', 'book-manager') . '</th><th>' . esc_html__('Autor', 'book-manager') . '</th><th>' . esc_html__('Devolvido em', 'book-manager') . '</th></tr></thead><tbody>';
             foreach ($report['books_read_list'] as $book) $html .= '<tr><td><strong>' . esc_html($book['title']) . '</strong></td><td>' . esc_html($book['author']) . '</td><td>' . esc_html($book['returned_date']) . '</td></tr>';
             $html .= '</tbody></table>';
         }
@@ -982,26 +936,26 @@ function bm_render_report_html($report) {
     
     if (isset($report['group'])) {
         $html .= '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-bottom:20px;">';
-        $html .= bm_render_stat_card(__('Alunos', 'book-manager'), $report['total_students'], '#0073aa');
-        $html .= bm_render_stat_card(__('Livros Lidos', 'book-manager'), $report['total_books'], '#46b450');
-        $html .= bm_render_stat_card(__('Média por Aluno', 'book-manager'), $report['average'], '#f0ad4e');
-        $html .= bm_render_stat_card(__('Em Atraso', 'book-manager'), $report['overdue_count'], '#dc3545');
+        $html .= bm_render_stat_card(esc_html__('Alunos', 'book-manager'), $report['total_students'], '#0073aa');
+        $html .= bm_render_stat_card(esc_html__('Livros Lidos', 'book-manager'), $report['total_books'], '#46b450');
+        $html .= bm_render_stat_card(esc_html__('Média por Aluno', 'book-manager'), $report['average'], '#f0ad4e');
+        $html .= bm_render_stat_card(esc_html__('Em Atraso', 'book-manager'), $report['overdue_count'], '#dc3545');
         $html .= '</div>';
         if (!empty($report['students'])) {
-            $html .= '<table class="wp-list-table widefat fixed striped"><thead><tr><th>' . __('Aluno', 'book-manager') . '</th><th>' . __('Livros Lidos', 'book-manager') . '</th><th>' . __('Status', 'book-manager') . '</th></tr></thead><tbody>';
-            foreach ($report['students'] as $s) $html .= '<tr><td>' . esc_html($s['name']) . '</td><td>' . $s['books_read'] . '</td><td>' . (isset($s['has_overdue']) && $s['has_overdue'] ? '🔴 ' . __('Atrasado', 'book-manager') : '✅ ' . __('Em dia', 'book-manager')) . '</td></tr>';
+            $html .= '<table class="wp-list-table widefat fixed striped"><thead><tr><th>' . esc_html__('Aluno', 'book-manager') . '</th><th>' . esc_html__('Livros Lidos', 'book-manager') . '</th><th>' . esc_html__('Status', 'book-manager') . '</th></tr></thead><tbody>';
+            foreach ($report['students'] as $s) $html .= '<tr><td>' . esc_html($s['name']) . '</td><td>' . esc_html($s['books_read']) . '</td><td>' . (isset($s['has_overdue']) && $s['has_overdue'] ? '🔴 ' . esc_html__('Atrasado', 'book-manager') : '✅ ' . esc_html__('Em dia', 'book-manager')) . '</td></tr>';
             $html .= '</tbody></table>';
         }
-        if (!empty($report['never_read'])) $html .= '<p style="margin-top:10px;color:#dc3545;"><strong>' . __('Alunos que nunca leram:', 'book-manager') . '</strong> ' . esc_html(implode(', ', $report['never_read'])) . '</p>';
+        if (!empty($report['never_read'])) $html .= '<p style="margin-top:10px;color:#dc3545;"><strong>' . esc_html__('Alunos que nunca leram:', 'book-manager') . '</strong> ' . esc_html(implode(', ', $report['never_read'])) . '</p>';
     }
     
     if (isset($report['total']) && isset($report['penalties']) && !isset($report['total_students'])) {
-        $html .= bm_render_stat_card(__('Total de Multas Ativas', 'book-manager'), $report['total'], '#dc3545');
+        $html .= bm_render_stat_card(esc_html__('Total de Multas Ativas', 'book-manager'), $report['total'], '#dc3545');
         if (!empty($report['penalties'])) {
-            $html .= '<table class="wp-list-table widefat fixed striped" style="margin-top:15px;"><thead><tr><th>' . __('Aluno', 'book-manager') . '</th><th>' . __('Tipo', 'book-manager') . '</th><th>' . __('Descrição', 'book-manager') . '</th><th>' . __('Data', 'book-manager') . '</th><th>' . __('Até', 'book-manager') . '</th></tr></thead><tbody>';
+            $html .= '<table class="wp-list-table widefat fixed striped" style="margin-top:15px;"><thead><tr><th>' . esc_html__('Aluno', 'book-manager') . '</th><th>' . esc_html__('Tipo', 'book-manager') . '</th><th>' . esc_html__('Descrição', 'book-manager') . '</th><th>' . esc_html__('Data', 'book-manager') . '</th><th>' . esc_html__('Até', 'book-manager') . '</th></tr></thead><tbody>';
             foreach ($report['penalties'] as $p) {
-                $type_label = $p['type'] === 'warning' ? __('Advertência', 'book-manager') : ($p['type'] === 'suspension' ? __('Suspensão', 'book-manager') : __('Multa', 'book-manager'));
-                $html .= '<tr><td>' . esc_html($p['student_name']) . '</td><td>' . $type_label . '</td><td>' . esc_html($p['note']) . '</td><td>' . date('d/m/Y', strtotime($p['date'])) . '</td><td>' . (!empty($p['until']) ? date('d/m/Y', strtotime($p['until'])) : '—') . '</td></tr>';
+                $type_label = $p['type'] === 'warning' ? esc_html__('Advertência', 'book-manager') : ($p['type'] === 'suspension' ? esc_html__('Suspensão', 'book-manager') : esc_html__('Multa', 'book-manager'));
+                $html .= '<tr><td>' . esc_html($p['student_name']) . '</td><td>' . $type_label . '</td><td>' . esc_html($p['note']) . '</td><td>' . esc_html(date('d/m/Y', strtotime($p['date']))) . '</td><td>' . (!empty($p['until']) ? esc_html(date('d/m/Y', strtotime($p['until']))) : '—') . '</td></tr>';
             }
             $html .= '</tbody></table>';
         }
@@ -1009,50 +963,50 @@ function bm_render_report_html($report) {
     
     if (isset($report['genres'])) {
         if (!empty($report['genres'])) {
-            $html .= '<h3>' . __('Empréstimos por Gênero', 'book-manager') . '</h3><div style="max-width:600px;margin-bottom:20px;">';
+            $html .= '<h3>' . esc_html__('Empréstimos por Gênero', 'book-manager') . '</h3><div style="max-width:600px;margin-bottom:20px;">';
             $max = max($report['genres']);
             foreach ($report['genres'] as $label => $value) {
                 $pct = $max > 0 ? round(($value / $max) * 100) : 0;
-                $html .= '<div style="display:flex;align-items:center;margin:8px 0;"><div style="width:120px;font-size:12px;text-align:right;padding-right:10px;">' . esc_html($label) . '</div><div style="flex:1;background:#eee;border-radius:4px;height:24px;overflow:hidden;"><div style="background:#0073aa;height:100%;width:' . $pct . '%;border-radius:4px;display:flex;align-items:center;padding-left:8px;"><span style="color:#fff;font-size:11px;font-weight:bold;">' . $value . '</span></div></div></div>';
+                $html .= '<div style="display:flex;align-items:center;margin:8px 0;"><div style="width:120px;font-size:12px;text-align:right;padding-right:10px;">' . esc_html($label) . '</div><div style="flex:1;background:#eee;border-radius:4px;height:24px;overflow:hidden;"><div style="background:#0073aa;height:100%;width:' . $pct . '%;border-radius:4px;display:flex;align-items:center;padding-left:8px;"><span style="color:#fff;font-size:11px;font-weight:bold;">' . esc_html($value) . '</span></div></div></div>';
             }
             $html .= '</div>';
-        } else $html .= '<p>' . __('Nenhum empréstimo no período.', 'book-manager') . '</p>';
+        } else $html .= '<p>' . esc_html__('Nenhum empréstimo no período.', 'book-manager') . '</p>';
     }
     
     if (isset($report['books'])) {
         if (!empty($report['books'])) {
-            $html .= '<table class="wp-list-table widefat fixed striped"><thead><tr><th>#</th><th>' . __('Livro', 'book-manager') . '</th><th>' . __('Autor', 'book-manager') . '</th><th>' . __('Empréstimos', 'book-manager') . '</th><th>' . __('Tempo Médio', 'book-manager') . '</th></tr></thead><tbody>';
-            foreach ($report['books'] as $i => $book) $html .= '<tr><td>' . ($i + 1) . '</td><td><strong>' . esc_html($book['title']) . '</strong></td><td>' . esc_html($book['author']) . '</td><td>' . $book['loans'] . '</td><td>' . ($book['avg_days'] > 0 ? $book['avg_days'] . ' ' . __('dias', 'book-manager') : '—') . '</td></tr>';
+            $html .= '<table class="wp-list-table widefat fixed striped"><thead><tr><th>#</th><th>' . esc_html__('Livro', 'book-manager') . '</th><th>' . esc_html__('Autor', 'book-manager') . '</th><th>' . esc_html__('Empréstimos', 'book-manager') . '</th><th>' . esc_html__('Tempo Médio', 'book-manager') . '</th></tr></thead><tbody>';
+            foreach ($report['books'] as $i => $book) $html .= '<tr><td>' . ($i + 1) . '</td><td><strong>' . esc_html($book['title']) . '</strong></td><td>' . esc_html($book['author']) . '</td><td>' . esc_html($book['loans']) . '</td><td>' . ($book['avg_days'] > 0 ? $book['avg_days'] . ' ' . esc_html__('dias', 'book-manager') : '—') . '</td></tr>';
             $html .= '</tbody></table>';
-        } else $html .= '<p>' . __('Nenhum empréstimo no período.', 'book-manager') . '</p>';
+        } else $html .= '<p>' . esc_html__('Nenhum empréstimo no período.', 'book-manager') . '</p>';
     }
     
     if (isset($report['months'])) {
         if (!empty($report['months']) && array_sum($report['months']) > 0) {
-            $html .= '<h3>' . __('Empréstimos por Mês', 'book-manager') . '</h3><div style="max-width:600px;margin-bottom:20px;">';
+            $html .= '<h3>' . esc_html__('Empréstimos por Mês', 'book-manager') . '</h3><div style="max-width:600px;margin-bottom:20px;">';
             $max = max($report['months']);
             foreach ($report['months'] as $label => $value) {
                 $pct = $max > 0 ? round(($value / $max) * 100) : 0;
-                $html .= '<div style="display:flex;align-items:center;margin:8px 0;"><div style="width:120px;font-size:12px;text-align:right;padding-right:10px;">' . esc_html($label) . '</div><div style="flex:1;background:#eee;border-radius:4px;height:24px;overflow:hidden;"><div style="background:#0073aa;height:100%;width:' . $pct . '%;border-radius:4px;display:flex;align-items:center;padding-left:8px;"><span style="color:#fff;font-size:11px;font-weight:bold;">' . $value . '</span></div></div></div>';
+                $html .= '<div style="display:flex;align-items:center;margin:8px 0;"><div style="width:120px;font-size:12px;text-align:right;padding-right:10px;">' . esc_html($label) . '</div><div style="flex:1;background:#eee;border-radius:4px;height:24px;overflow:hidden;"><div style="background:#0073aa;height:100%;width:' . $pct . '%;border-radius:4px;display:flex;align-items:center;padding-left:8px;"><span style="color:#fff;font-size:11px;font-weight:bold;">' . esc_html($value) . '</span></div></div></div>';
             }
             $html .= '</div>';
-        } else $html .= '<p>' . __('Nenhum empréstimo no período.', 'book-manager') . '</p>';
+        } else $html .= '<p>' . esc_html__('Nenhum empréstimo no período.', 'book-manager') . '</p>';
     }
     
     if (isset($report['columns']) && isset($report['rows'])) {
         if (!empty($report['rows'])) {
-            $col_labels = array('name' => __('Nome', 'book-manager'), 'group' => __('Turma', 'book-manager'), 'books_read' => __('Livros Lidos', 'book-manager'), 'reviews' => __('Resenhas', 'book-manager'), 'videos' => __('Vídeos', 'book-manager'), 'xp' => __('XP', 'book-manager'), 'badges' => __('Medalhas', 'book-manager'), 'penalties' => __('Multas', 'book-manager'));
+            $col_labels = array('name' => esc_html__('Nome', 'book-manager'), 'group' => esc_html__('Turma', 'book-manager'), 'books_read' => esc_html__('Livros Lidos', 'book-manager'), 'reviews' => esc_html__('Resenhas', 'book-manager'), 'videos' => esc_html__('Vídeos', 'book-manager'), 'xp' => 'XP', 'badges' => esc_html__('Medalhas', 'book-manager'), 'penalties' => esc_html__('Multas', 'book-manager'));
             $html .= '<table class="wp-list-table widefat fixed striped"><thead><tr>';
             foreach ($report['columns'] as $col) $html .= '<th>' . (isset($col_labels[$col]) ? $col_labels[$col] : $col) . '</th>';
             $html .= '</tr></thead><tbody>';
             foreach ($report['rows'] as $row) { $html .= '<tr>'; foreach ($report['columns'] as $col) $html .= '<td>' . esc_html($row[$col] ?? '—') . '</td>'; $html .= '</tr>'; }
             $html .= '</tbody></table>';
-        } else $html .= '<p>' . __('Nenhum aluno encontrado.', 'book-manager') . '</p>';
+        } else $html .= '<p>' . esc_html__('Nenhum aluno encontrado.', 'book-manager') . '</p>';
     }
     
     return $html;
 }
 
 function bm_render_stat_card($label, $value, $color) {
-    return '<div style="background:#fff;padding:15px;border-radius:6px;text-align:center;border-left:4px solid ' . $color . ';box-shadow:0 1px 4px rgba(0,0,0,0.08);"><div style="font-size:28px;font-weight:bold;color:' . $color . ';">' . esc_html($value) . '</div><div style="font-size:13px;color:#666;">' . esc_html($label) . '</div></div>';
+    return '<div style="background:#fff;padding:15px;border-radius:6px;text-align:center;border-left:4px solid ' . esc_attr($color) . ';box-shadow:0 1px 4px rgba(0,0,0,0.08);"><div style="font-size:28px;font-weight:bold;color:' . esc_attr($color) . ';">' . esc_html($value) . '</div><div style="font-size:13px;color:#666;">' . esc_html($label) . '</div></div>';
 }

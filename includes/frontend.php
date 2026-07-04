@@ -1,14 +1,13 @@
 <?php
 /**
- * Book Manager — Módulo Frontend
- * Templates, vitrine, filtros, capas, sinopse, IA
+ * Book Manager — Frontend Module
+ * Templates, vitrine, filters, covers, synopsis, AI
  */
 
 defined('ABSPATH') || exit;
 
-
 // ==========================================
-// FASE 35.5: MEMÓRIA DE CONVERSA DO CHATBOT
+// CHATBOT SESSION INIT
 // ==========================================
 function bm_chatbot_init_session() {
     if (session_id() || headers_sent()) return;
@@ -19,9 +18,8 @@ function bm_chatbot_init_session() {
 add_action('wp_loaded', 'bm_chatbot_init_session');
 
 // ==========================================
-// FASE 8B: FORÇAR TEMPLATES DO PLUGIN (SINGLE E ARCHIVE)
+// FORCE PLUGIN TEMPLATES (SINGLE AND ARCHIVE)
 // ==========================================
-
 function bm_catalog_shortcode() {
     ob_start();
     ?>
@@ -64,29 +62,29 @@ function bm_catalog_shortcode() {
     $wl = function_exists('bm_get_white_label') ? bm_get_white_label() : array();
     ?>
     <div class="bm-catalog">
-        <h1><?php echo ($wl['enabled'] === '1' && !empty($wl['school_name'])) ? esc_html($wl['school_name']) : __('Catálogo de Livros', 'book-manager'); ?></h1>
+        <h1><?php echo ($wl['enabled'] === '1' && !empty($wl['school_name'])) ? esc_html($wl['school_name']) : esc_html__('Catálogo de Livros', 'book-manager'); ?></h1>
 
         <form method="get" class="bm-filters">
             <div>
-                <label><?php _e('Buscar', 'book-manager'); ?></label>
-                <input type="text" name="bm_search" value="<?php echo isset($_GET['bm_search']) ? esc_attr($_GET['bm_search']) : ''; ?>" placeholder="<?php _e('Título ou autor', 'book-manager'); ?>" />
+                <label><?php esc_html_e('Buscar', 'book-manager'); ?></label>
+                <input type="text" name="bm_search" value="<?php echo isset($_GET['bm_search']) ? esc_attr($_GET['bm_search']) : ''; ?>" placeholder="<?php esc_attr_e('Título ou autor', 'book-manager'); ?>" />
             </div>
             <?php 
             $taxonomies = get_option('bm_dynamic_taxonomies', array());
             $settings = function_exists('bm_get_settings') ? bm_get_settings() : array();
             $visibility = isset($settings['taxonomy_visibility']) ? $settings['taxonomy_visibility'] : array();
             
-            $genre_label = isset($taxonomies['bm_genre']['label']) ? $taxonomies['bm_genre']['label'] : __('Gênero', 'book-manager');
-            $category_label = isset($taxonomies['bm_category']['label']) ? $taxonomies['bm_category']['label'] : __('Categoria', 'book-manager');
-            $discipline_label = isset($taxonomies['bm_discipline']['label']) ? $taxonomies['bm_discipline']['label'] : __('Disciplina', 'book-manager');
-            $reading_level_label = isset($taxonomies['bm_reading_level']['label']) ? $taxonomies['bm_reading_level']['label'] : __('Nível de Leitura', 'book-manager');
+            $genre_label = isset($taxonomies['bm_genre']['label']) ? $taxonomies['bm_genre']['label'] : esc_html__('Gênero', 'book-manager');
+            $category_label = isset($taxonomies['bm_category']['label']) ? $taxonomies['bm_category']['label'] : esc_html__('Categoria', 'book-manager');
+            $discipline_label = isset($taxonomies['bm_discipline']['label']) ? $taxonomies['bm_discipline']['label'] : esc_html__('Disciplina', 'book-manager');
+            $reading_level_label = isset($taxonomies['bm_reading_level']['label']) ? $taxonomies['bm_reading_level']['label'] : esc_html__('Nível de Leitura', 'book-manager');
             ?>
             <?php if (!isset($visibility['bm_genre']) || $visibility['bm_genre']): ?>
             <div>
                 <label><?php echo esc_html($genre_label); ?></label>
                 <?php
                 wp_dropdown_categories(array(
-                    'show_option_all' => sprintf(__('Todos os %s', 'book-manager'), $genre_label),
+                    'show_option_all' => sprintf(esc_html__('Todos os %s', 'book-manager'), $genre_label),
                     'taxonomy' => 'bm_genre',
                     'name' => 'bm_genre',
                     'selected' => isset($_GET['bm_genre']) ? $_GET['bm_genre'] : '',
@@ -100,7 +98,7 @@ function bm_catalog_shortcode() {
                 <label><?php echo esc_html($category_label); ?></label>
                 <?php
                 wp_dropdown_categories(array(
-                    'show_option_all' => sprintf(__('Todas as %s', 'book-manager'), $category_label),
+                    'show_option_all' => sprintf(esc_html__('Todas as %s', 'book-manager'), $category_label),
                     'taxonomy' => 'bm_category',
                     'name' => 'bm_category',
                     'selected' => isset($_GET['bm_category']) ? $_GET['bm_category'] : '',
@@ -114,7 +112,7 @@ function bm_catalog_shortcode() {
                 <label><?php echo esc_html($discipline_label); ?></label>
                 <?php
                 wp_dropdown_categories(array(
-                    'show_option_all' => sprintf(__('Todas as %s', 'book-manager'), $discipline_label),
+                    'show_option_all' => sprintf(esc_html__('Todas as %s', 'book-manager'), $discipline_label),
                     'taxonomy' => 'bm_discipline',
                     'name' => 'bm_discipline',
                     'selected' => isset($_GET['bm_discipline']) ? $_GET['bm_discipline'] : '',
@@ -128,7 +126,7 @@ function bm_catalog_shortcode() {
                 <label><?php echo esc_html($reading_level_label); ?></label>
                 <?php
                 wp_dropdown_categories(array(
-                    'show_option_all' => sprintf(__('Todos os %s', 'book-manager'), $reading_level_label),
+                    'show_option_all' => sprintf(esc_html__('Todos os %s', 'book-manager'), $reading_level_label),
                     'taxonomy' => 'bm_reading_level',
                     'name' => 'bm_reading_level',
                     'selected' => isset($_GET['bm_reading_level']) ? $_GET['bm_reading_level'] : '',
@@ -140,8 +138,8 @@ function bm_catalog_shortcode() {
             <input type="hidden" name="page_id" value="<?php echo get_the_ID(); ?>" />
 
             <div>
-                <button type="submit" class="bm-btn-filter"><?php _e('Filtrar', 'book-manager'); ?></button>
-                <a href="<?php the_permalink(); ?>" class="bm-btn-clear"><?php _e('Limpar', 'book-manager'); ?></a>
+                <button type="submit" class="bm-btn-filter"><?php esc_html_e('Filtrar', 'book-manager'); ?></button>
+                <a href="<?php the_permalink(); ?>" class="bm-btn-clear"><?php esc_html_e('Limpar', 'book-manager'); ?></a>
             </div>
         </form>
     <?php
@@ -191,11 +189,11 @@ function bm_catalog_shortcode() {
                                 </div>
                             <?php elseif (!empty($hotlink)): ?>
                                 <div class="bm-card-cover">
-                                    <img src="<?php echo esc_url($hotlink); ?>" style="width:100%;height:220px;object-fit:cover;" alt="<?php the_title(); ?>" />
+                                    <img src="<?php echo esc_url($hotlink); ?>" style="width:100%;height:220px;object-fit:cover;" alt="<?php the_title_attribute(); ?>" />
                                 </div>
                             <?php else: ?>
                                 <div class="bm-card-no-cover">
-                                    <?php _e('Sem capa', 'book-manager'); ?>
+                                    <?php esc_html_e('Sem capa', 'book-manager'); ?>
                                 </div>
                             <?php endif; ?>
                             <div class="bm-card-info">
@@ -227,7 +225,7 @@ function bm_catalog_shortcode() {
             </div>
             <?php wp_reset_postdata(); ?>
         <?php else: ?>
-            <p><?php _e('Nenhum livro encontrado.', 'book-manager'); ?></p>
+            <p><?php esc_html_e('Nenhum livro encontrado.', 'book-manager'); ?></p>
         <?php endif; ?>
     </div>
     <?php
@@ -235,7 +233,7 @@ function bm_catalog_shortcode() {
 }
 add_shortcode('bm_catalog', 'bm_catalog_shortcode');
 
-// FASE 43: Desativar redirecionamento canônico na página do shortcode [bm_catalog]
+// Disable canonical redirect on [bm_catalog] pages
 function bm_disable_canonical_redirect_for_catalog($redirect_url, $requested_url) {
     if (is_singular() && has_shortcode(get_post()->post_content, 'bm_catalog')) {
         return false;
@@ -243,7 +241,6 @@ function bm_disable_canonical_redirect_for_catalog($redirect_url, $requested_url
     return $redirect_url;
 }
 add_filter('redirect_canonical', 'bm_disable_canonical_redirect_for_catalog', 10, 2);
-
 
 function bm_force_templates($template) {
     if (is_singular('bm_book')) {
@@ -263,7 +260,7 @@ function bm_force_templates($template) {
 add_filter('template_include', 'bm_force_templates', 99);
 
 // ==========================================
-// FASE 8D: FILTROS INTELIGENTES NO FRONT-END
+// FRONTEND SMART FILTERS
 // ==========================================
 function bm_filter_books_frontend($query) {
     if (is_admin() || !$query->is_main_query() || !$query->is_post_type_archive('bm_book')) return;
@@ -292,7 +289,6 @@ function bm_filter_books_frontend($query) {
         $tax_query['relation'] = 'AND';
     }
 
-
     $bm_discipline = isset($_GET['bm_discipline']) ? $_GET['bm_discipline'] : '';
     if ($bm_discipline !== '' && $bm_discipline !== '0') {
         $tax_query[] = array(
@@ -314,16 +310,14 @@ function bm_filter_books_frontend($query) {
 add_action('pre_get_posts', 'bm_filter_books_frontend');
 
 // ==========================================
-// FASE 8E: HOOK PARA CARROSSEL FUTURO (MAIS LIDOS)
+// HOOK FOR FUTURE CAROUSEL (MOST READ)
 // ==========================================
 function bm_after_catalog_grid() {
     do_action('bm_after_catalog_grid');
 }
 
 // ==========================================
-// FASE 7D: BUSCA DE CAPA VIA GOOGLE BOOKS API (NÚCLEO COMUM)
-// FASE 8C-B: UNIFICADA
-// FASE 8E: RESOLUÇÃO DE CAPA ALTERADA PARA ZOOM=2
+// GOOGLE BOOKS API COVER SEARCH (CORE)
 // ==========================================
 function bm_google_books_search($title, $author, $publisher, $isbn = '') {
     $queries = array();
@@ -394,7 +388,6 @@ function bm_fetch_cover_from_google($title, $author, $publisher, $isbn = '') {
     
     if (!$cover_url) return false;
     
-    // Se hotlink, retorna a URL direta sem baixar
     if ($cover_mode === 'hotlink') {
         return array('mode' => 'hotlink', 'url' => $cover_url);
     }
@@ -403,20 +396,13 @@ function bm_fetch_cover_from_google($title, $author, $publisher, $isbn = '') {
 }
 
 // ==========================================
-// FASE 19: BUSCA COMPLETA DE DADOS VIA GOOGLE BOOKS API
-// ==========================================
-
-
-
-// ==========================================
-// FASE 19: BUSCA DE VÍDEO NO YOUTUBE
+// YOUTUBE VIDEO SEARCH
 // ==========================================
 function bm_search_youtube_video($title, $author = '', $publisher = '') {
     $keys = bm_get_api_keys();
     $youtube_key = isset($keys['youtube_key']) ? $keys['youtube_key'] : '';
     if (empty($youtube_key)) return false;
     
-    // Tentar na ordem: título + autor + editora → título + autor → título
     $queries = array();
     if (!empty($title) && !empty($author) && !empty($publisher)) $queries[] = $title . ' ' . $author . ' ' . $publisher . ' livro resenha';
     if (!empty($title) && !empty($author)) $queries[] = $title . ' ' . $author . ' livro';
@@ -444,9 +430,8 @@ function bm_search_youtube_video($title, $author = '', $publisher = '') {
     return false;
 }
 
-
 // ==========================================
-// FASE 19: BUSCA COMPLETA DE DADOS VIA GOOGLE BOOKS API
+// GOOGLE BOOKS FULL DATA FETCH
 // ==========================================
 function bm_fetch_google_book_data($title, $author = '', $publisher = '', $isbn = '') {
     $queries = array();
@@ -490,7 +475,6 @@ function bm_fetch_google_book_data($title, $author = '', $publisher = '', $isbn 
             if ($pct >= $min || strpos($mt, $st) !== false || strpos($st, $mt) !== false) {
                 $data = array();
                 
-                // Capa
                 if (isset($info['imageLinks']['thumbnail'])) {
                     $thumb = str_replace('http://', 'https://', $info['imageLinks']['thumbnail']);
                     $thumb = str_replace('&zoom=1', '&zoom=2', $thumb);
@@ -498,32 +482,26 @@ function bm_fetch_google_book_data($title, $author = '', $publisher = '', $isbn 
                     $data['cover_url'] = $thumb;
                 }
                 
-                // Sinopse
                 if (isset($info['description'])) {
                     $data['description'] = wp_kses_post($info['description']);
                 }
                 
-                // Avaliação
                 if (isset($info['averageRating'])) {
                     $data['rating'] = floatval($info['averageRating']);
                 }
                 
-                // Subtítulo
                 if (isset($info['subtitle'])) {
                     $data['subtitle'] = sanitize_text_field($info['subtitle']);
                 }
                 
-                // Data de publicação
                 if (isset($info['publishedDate'])) {
                     $data['published_date'] = sanitize_text_field($info['publishedDate']);
                 }
                 
-                // Número de páginas
                 if (isset($info['pageCount'])) {
                     $data['page_count'] = intval($info['pageCount']);
                 }
                 
-                // ISBNs
                 if (isset($info['industryIdentifiers'])) {
                     foreach ($info['industryIdentifiers'] as $identifier) {
                         if ($identifier['type'] === 'ISBN_13') $data['isbn13'] = $identifier['identifier'];
@@ -539,11 +517,10 @@ function bm_fetch_google_book_data($title, $author = '', $publisher = '', $isbn 
 }
 
 // ==========================================
-// FASE 7D: BUSCA DE CAPA VIA AJAX (BOTÃO NA EDIÇÃO)
-// FASE 8C-B: CORREÇÃO DE SEGURANÇA — ADICIONADO NONCE
+// AJAX COVER SEARCH (BUTTON ON EDIT SCREEN)
 // ==========================================
 function bm_search_book_cover() {
-    if (!current_user_can('manage_options')) wp_die(__('Sem permissão.','book-manager'));
+    if (!current_user_can('manage_options')) wp_die(esc_html__('Sem permissão.','book-manager'));
     check_ajax_referer('bm_search_cover', 'nonce');
     $post_id=isset($_POST['post_id'])?intval($_POST['post_id']):0; $isbn=isset($_POST['isbn'])?sanitize_text_field($_POST['isbn']):''; $title=isset($_POST['title'])?sanitize_text_field($_POST['title']):''; $author=isset($_POST['author'])?sanitize_text_field($_POST['author']):''; $publisher=isset($_POST['publisher'])?sanitize_text_field($_POST['publisher']):'';
     $queries=array(); $ln=array();
@@ -552,7 +529,7 @@ function bm_search_book_cover() {
     if(!empty($title)&&!empty($author)){$queries[]=$title.' '.$author;$ln[]='Título + Autor';}
     if(!empty($title)&&!empty($publisher)){$queries[]=$title.' '.$publisher;$ln[]='Título + Editora';}
     if(!empty($title)){$queries[]=$title;$ln[]='Título';}
-    if(empty($queries)) wp_die(__('Preencha Título, Autor ou ISBN.','book-manager'));
+    if(empty($queries)) wp_die(esc_html__('Preencha Título, Autor ou ISBN.','book-manager'));
     $body=null; $used='';
     foreach($queries as $i=>$q){
         $url='https://www.googleapis.com/books/v1/volumes?q='.urlencode($q).'&key='.bm_get_api_key('google_books');
@@ -560,7 +537,7 @@ function bm_search_book_cover() {
         $body=json_decode(wp_remote_retrieve_body($r),true);
         if(!empty($body['items'])){$hc=false;foreach($body['items'] as $item) if(isset($item['volumeInfo']['imageLinks']['thumbnail'])){$hc=true;break;} if($hc){$used=$ln[$i];break;}}
     }
-    if(empty($body['items'])) wp_die(__('Nenhuma capa encontrada.','book-manager'));
+    if(empty($body['items'])) wp_die(esc_html__('Nenhuma capa encontrada.','book-manager'));
     $img='';$best=null;$st=mb_strtolower(trim($title));$sa=mb_strtolower(trim($author));
     foreach($body['items'] as $item){
         $it=isset($item['volumeInfo']['title'])?mb_strtolower(trim($item['volumeInfo']['title'])):''; if(!isset($item['volumeInfo']['imageLinks']['thumbnail'])) continue;
@@ -568,33 +545,32 @@ function bm_search_book_cover() {
         if(strpos($it,$st)!==false&&!$best){$ia=isset($item['volumeInfo']['authors'])?mb_strtolower(implode(' ',$item['volumeInfo']['authors'])):''; if(empty($sa)||strpos($ia,$sa)!==false)$best=$item;}
     }
     if(!$best){foreach($body['items'] as $item) if(isset($item['volumeInfo']['imageLinks']['thumbnail'])){$best=$item;break;}}
-    if($best&&isset($best['volumeInfo']['title'])){$mt=mb_strtolower(trim($best['volumeInfo']['title']));similar_text($st,$mt,$pct);$min=(mb_strlen($st)<10)?30:50; if($pct<$min&&strpos($mt,$st)===false&&strpos($st,$mt)===false) wp_die(__('Nenhuma capa encontrada.','book-manager')); $img=$best['volumeInfo']['imageLinks']['thumbnail'];$img=str_replace('http://','https://',$img);}
-    if(empty($img)) wp_die(__('Nenhuma capa encontrada.','book-manager'));
+    if($best&&isset($best['volumeInfo']['title'])){$mt=mb_strtolower(trim($best['volumeInfo']['title']));similar_text($st,$mt,$pct);$min=(mb_strlen($st)<10)?30:50; if($pct<$min&&strpos($mt,$st)===false&&strpos($st,$mt)===false) wp_die(esc_html__('Nenhuma capa encontrada.','book-manager')); $img=$best['volumeInfo']['imageLinks']['thumbnail'];$img=str_replace('http://','https://',$img);}
+    if(empty($img)) wp_die(esc_html__('Nenhuma capa encontrada.','book-manager'));
     require_once ABSPATH.'wp-admin/includes/media.php'; require_once ABSPATH.'wp-admin/includes/file.php'; require_once ABSPATH.'wp-admin/includes/image.php';
-    $ir=wp_remote_get($img,array('timeout'=>15)); if(is_wp_error($ir)) wp_die(__('Erro ao baixar a capa.','book-manager'));
-    $id=wp_remote_retrieve_body($ir); if(empty($id)) wp_die(__('Erro ao baixar a capa.','book-manager'));
+    $ir=wp_remote_get($img,array('timeout'=>15)); if(is_wp_error($ir)) wp_die(esc_html__('Erro ao baixar a capa.','book-manager'));
+    $id=wp_remote_retrieve_body($ir); if(empty($id)) wp_die(esc_html__('Erro ao baixar a capa.','book-manager'));
     $ud=wp_upload_dir(); $fn='book-cover-'.$post_id.'-'.time().'.jpg'; $fp=$ud['path'].'/'.$fn; file_put_contents($fp,$id);
     $att=array('post_mime_type'=>'image/jpeg','post_title'=>get_the_title($post_id),'post_content'=>'','post_status'=>'inherit');
-    $aid=wp_insert_attachment($att,$fp,$post_id); if(is_wp_error($aid)) wp_die(__('Erro ao salvar a capa.','book-manager'));
+    $aid=wp_insert_attachment($att,$fp,$post_id); if(is_wp_error($aid)) wp_die(esc_html__('Erro ao salvar a capa.','book-manager'));
     $ad=wp_generate_attachment_metadata($aid,$fp); wp_update_attachment_metadata($aid,$ad); set_post_thumbnail($post_id,$aid);
-    $msg=$used?sprintf(__('Capa salva via %s!','book-manager'),$used):__('Capa salva com sucesso!','book-manager'); wp_die($msg);
+    $msg=$used?sprintf(esc_html__('Capa salva via %s!','book-manager'),$used):esc_html__('Capa salva com sucesso!','book-manager'); wp_die($msg);
 }
 add_action('wp_ajax_bm_search_book_cover','bm_search_book_cover');
 
 // ==========================================
-// FASE 7D: BOTÃO "BUSCAR CAPA" NA EDIÇÃO
-// FASE 8C-B: CORREÇÃO — ENVIO DE NONCE NO AJAX
+// COVER SEARCH BUTTON ON EDIT SCREEN
 // ==========================================
 function bm_add_cover_button() {
     global $post; if(!$post||'bm_book'!==$post->post_type) return;
     $nonce = wp_create_nonce('bm_search_cover');
-    ?><script>jQuery(document).ready(function($){$('#bm_search_cover').on('click',function(){var b=$(this);b.prop('disabled',true).val('Buscando...');$.post(ajaxurl,{action:'bm_search_book_cover',nonce:'<?php echo $nonce; ?>',post_id:$('#post_ID').val(),isbn:$('#_bm_isbn').val(),title:$('#title').val(),author:$('#_bm_author').val(),publisher:$('#_bm_publisher').val()},function(r){alert(r);location.reload();});});});</script>
-    <input type="button" id="bm_search_cover" class="button" value="<?php _e('Buscar Capa','book-manager'); ?>" /><?php
+    ?><script>jQuery(document).ready(function($){$('#bm_search_cover').on('click',function(){var b=$(this);b.prop('disabled',true).val('<?php echo esc_js(__('Buscando...','book-manager')); ?>');$.post(ajaxurl,{action:'bm_search_book_cover',nonce:'<?php echo esc_attr($nonce); ?>',post_id:$('#post_ID').val(),isbn:$('#_bm_isbn').val(),title:$('#title').val(),author:$('#_bm_author').val(),publisher:$('#_bm_publisher').val()},function(r){alert(r);location.reload();});});});</script>
+    <input type="button" id="bm_search_cover" class="button" value="<?php esc_attr_e('Buscar Capa','book-manager'); ?>" /><?php
 }
 add_action('edit_form_after_title','bm_add_cover_button');
 
 // ==========================================
-// FASE 8F: BUSCA AUTOMÁTICA DE SINOPSE
+// AUTO SYNOPSIS FETCH
 // ==========================================
 function bm_fetch_sinopse_from_google($title, $author, $isbn = '') {
     $queries = array();
@@ -633,17 +609,17 @@ function bm_fetch_sinopse_from_google($title, $author, $isbn = '') {
 }
 
 function bm_ajax_fetch_sinopse() {
-    if (!current_user_can('manage_options')) wp_die(__('Sem permissão.','book-manager'));
+    if (!current_user_can('manage_options')) wp_die(esc_html__('Sem permissão.','book-manager'));
     check_ajax_referer('bm_sinopse_nonce', 'nonce');
     $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
     $title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
     $author = isset($_POST['author']) ? sanitize_text_field($_POST['author']) : '';
     $isbn = isset($_POST['isbn']) ? sanitize_text_field($_POST['isbn']) : '';
 
-    if (empty($title)) wp_die(__('Preencha o título.','book-manager'));
+    if (empty($title)) wp_die(esc_html__('Preencha o título.','book-manager'));
 
     $sinopse = bm_fetch_sinopse_from_google($title, $author, $isbn);
-    if (empty($sinopse)) wp_die(__('Nenhuma sinopse encontrada.','book-manager'));
+    if (empty($sinopse)) wp_die(esc_html__('Nenhuma sinopse encontrada.','book-manager'));
 
     $dynamic_fields = get_option('bm_dynamic_fields', array());
     if (!isset($dynamic_fields['Sinopse'])) {
@@ -651,7 +627,7 @@ function bm_ajax_fetch_sinopse() {
         update_option('bm_dynamic_fields', $dynamic_fields);
     }
     update_post_meta($post_id, '_bm_dynamic_sinopse', $sinopse);
-    wp_die(__('Sinopse salva com sucesso!','book-manager'));
+    wp_die(esc_html__('Sinopse salva com sucesso!','book-manager'));
 }
 add_action('wp_ajax_bm_fetch_sinopse', 'bm_ajax_fetch_sinopse');
 
@@ -664,10 +640,10 @@ function bm_add_sinopse_button() {
     jQuery(document).ready(function($) {
         $('#bm_fetch_sinopse').on('click', function() {
             var b = $(this);
-            b.prop('disabled', true).val('Buscando...');
+            b.prop('disabled', true).val('<?php echo esc_js(__('Buscando...','book-manager')); ?>');
             $.post(ajaxurl, {
                 action: 'bm_fetch_sinopse',
-                nonce: '<?php echo $nonce; ?>',
+                nonce: '<?php echo esc_attr($nonce); ?>',
                 post_id: $('#post_ID').val(),
                 title: $('#title').val(),
                 author: $('#_bm_author').val(),
@@ -679,15 +655,14 @@ function bm_add_sinopse_button() {
         });
     });
     </script>
-    <input type="button" id="bm_fetch_sinopse" class="button" value="<?php _e('Buscar Sinopse', 'book-manager'); ?>" style="margin-left:10px;" />
+    <input type="button" id="bm_fetch_sinopse" class="button" value="<?php esc_attr_e('Buscar Sinopse', 'book-manager'); ?>" style="margin-left:10px;" />
     <?php
 }
 add_action('edit_form_after_title', 'bm_add_sinopse_button');
 
 // ==========================================
-// FASE 11B: CLASSIFICAÇÃO POR DISCIPLINA COM GROQ
+// AI DISCIPLINE CLASSIFICATION WITH GROQ
 // ==========================================
-// FASE 46: Classificar Nível de Leitura com IA via Groq
 function bm_classify_reading_level_with_ai($post_id) {
     $groq_key = bm_get_api_key('groq');
     if (empty($groq_key)) return false;
@@ -740,7 +715,7 @@ function bm_classify_reading_level_with_ai($post_id) {
     return false;
 }
 
-// FASE 49: Classificar Gênero com IA via Groq
+// AI Genre Classification with Groq
 function bm_classify_genre_with_ai($post_id) {
     $groq_key = bm_get_api_key('groq');
     if (empty($groq_key)) return false;
@@ -809,7 +784,7 @@ function bm_classify_genre_with_ai($post_id) {
     return false;
 }
 
-// FASE 49: Classificar Categoria com IA via Groq
+// AI Category Classification with Groq
 function bm_classify_category_with_ai($post_id) {
     $groq_key = bm_get_api_key('groq');
     if (empty($groq_key)) return false;
@@ -878,7 +853,6 @@ function bm_classify_category_with_ai($post_id) {
     return false;
 }
 
-
 function bm_classify_book_with_ai($post_id) {
     $groq_key = bm_get_api_key('groq');
     if (empty($groq_key)) return false;
@@ -887,7 +861,6 @@ function bm_classify_book_with_ai($post_id) {
     $author = get_post_meta($post_id, '_bm_author', true);
     $sinopse = get_post_meta($post_id, '_bm_dynamic_sinopse', true);
     
-    // Buscar todas as disciplinas cadastradas
     $dynamic_taxonomies = get_option('bm_dynamic_taxonomies', array());
     if (!isset($dynamic_taxonomies['bm_discipline'])) return false;
     $all_disciplines = get_terms(array('taxonomy' => 'bm_discipline', 'hide_empty' => false));
@@ -899,8 +872,7 @@ function bm_classify_book_with_ai($post_id) {
     }
     $discipline_list = implode(', ', $discipline_names);
     
-    // Montar prompt
-     $keys = bm_get_api_keys();
+    $keys = bm_get_api_keys();
     $persona = isset($keys['groq_persona']) && !empty($keys['groq_persona']) ? $keys['groq_persona'] : '';
     $persona_instruction = $persona ? "Personalidade: " . $persona . "\n\n" : '';
     $prompt = $persona_instruction . "Analise o livro abaixo e responda SOMENTE com um JSON válido neste formato exato:\n\n";
@@ -940,7 +912,6 @@ function bm_classify_book_with_ai($post_id) {
     
     $result_text = $data['choices'][0]['message']['content'];
     
-    // Limpar resposta (remover markdown se houver)
     $result_text = trim($result_text);
     $result_text = preg_replace('/^```json\s*/', '', $result_text);
     $result_text = preg_replace('/\s*```$/', '', $result_text);
@@ -948,7 +919,6 @@ function bm_classify_book_with_ai($post_id) {
     $classification = json_decode($result_text, true);
     if (!is_array($classification)) return false;
     
-    // Processar resultados
     $selected_terms = array();
     $justifications = array();
     
@@ -975,22 +945,22 @@ function bm_classify_book_with_ai($post_id) {
     return false;
 }
 
-// Botão "Classificar com IA" na edição
+// AI Classify button on edit screen
 function bm_add_ai_classify_button() {
     global $post;
     if (!$post || 'bm_book' !== $post->post_type) return;
     $classified = get_post_meta($post->ID, '_bm_ai_classified', true);
-    $label = $classified ? __('Reclassificar com IA', 'book-manager') : __('Classificar com IA', 'book-manager');
+    $label = $classified ? esc_html__('Reclassificar com IA', 'book-manager') : esc_html__('Classificar com IA', 'book-manager');
     $nonce = wp_create_nonce('bm_ai_classify_nonce');
     ?>
     <script>
     jQuery(document).ready(function($) {
         $('#bm_ai_classify').on('click', function() {
             var b = $(this);
-            b.prop('disabled', true).val('Analisando...');
+            b.prop('disabled', true).val('<?php echo esc_js(__('Analisando...','book-manager')); ?>');
             $.post(ajaxurl, {
                 action: 'bm_ai_classify',
-                nonce: '<?php echo $nonce; ?>',
+                nonce: '<?php echo esc_attr($nonce); ?>',
                 post_id: $('#post_ID').val()
             }, function(r) {
                 alert(r);
@@ -1004,85 +974,82 @@ function bm_add_ai_classify_button() {
 }
 add_action('edit_form_after_title', 'bm_add_ai_classify_button');
 
-// Handler AJAX
-
-// FASE 50: Handler AJAX para classificar Gênero
+// AJAX Handler for Genre Classification
 function bm_ajax_classify_genre() {
-    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(__('Sem permissão.', 'book-manager'));
+    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(esc_html__('Sem permissão.', 'book-manager'));
     check_ajax_referer('bm_ai_classify_nonce', 'nonce');
     $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
-    if (!$post_id) wp_die(__('Livro inválido.', 'book-manager'));
+    if (!$post_id) wp_die(esc_html__('Livro inválido.', 'book-manager'));
     $count = bm_classify_genre_with_ai($post_id);
     if ($count) {
-        wp_send_json_success(sprintf(__('%d gênero(s) atribuído(s)!', 'book-manager'), $count));
+        wp_send_json_success(sprintf(esc_html__('%d gênero(s) atribuído(s)!', 'book-manager'), $count));
     } else {
-        wp_send_json_error(__('Não foi possível classificar. Verifique a chave da API Groq.', 'book-manager'));
+        wp_send_json_error(esc_html__('Não foi possível classificar. Verifique a chave da API Groq.', 'book-manager'));
     }
 }
 add_action('wp_ajax_bm_ajax_classify_genre', 'bm_ajax_classify_genre');
 
-// FASE 50: Handler AJAX para classificar Categoria
+// AJAX Handler for Category Classification
 function bm_ajax_classify_category() {
-    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(__('Sem permissão.', 'book-manager'));
+    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(esc_html__('Sem permissão.', 'book-manager'));
     check_ajax_referer('bm_ai_classify_nonce', 'nonce');
     $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
-    if (!$post_id) wp_die(__('Livro inválido.', 'book-manager'));
+    if (!$post_id) wp_die(esc_html__('Livro inválido.', 'book-manager'));
     $count = bm_classify_category_with_ai($post_id);
     if ($count) {
-        wp_send_json_success(sprintf(__('%d categoria(s) atribuída(s)!', 'book-manager'), $count));
+        wp_send_json_success(sprintf(esc_html__('%d categoria(s) atribuída(s)!', 'book-manager'), $count));
     } else {
-        wp_send_json_error(__('Não foi possível classificar. Verifique a chave da API Groq.', 'book-manager'));
+        wp_send_json_error(esc_html__('Não foi possível classificar. Verifique a chave da API Groq.', 'book-manager'));
     }
 }
 add_action('wp_ajax_bm_ajax_classify_category', 'bm_ajax_classify_category');
 
-// FASE 50: Handler AJAX para classificar Nível de Leitura
+// AJAX Handler for Reading Level Classification
 function bm_ajax_classify_reading_level() {
-    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(__('Sem permissão.', 'book-manager'));
+    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(esc_html__('Sem permissão.', 'book-manager'));
     check_ajax_referer('bm_ai_classify_nonce', 'nonce');
     $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
-    if (!$post_id) wp_die(__('Livro inválido.', 'book-manager'));
+    if (!$post_id) wp_die(esc_html__('Livro inválido.', 'book-manager'));
     $result = bm_classify_reading_level_with_ai($post_id);
     if ($result) {
-        wp_send_json_success(sprintf(__('Nível de leitura "%s" atribuído!', 'book-manager'), $result));
+        wp_send_json_success(sprintf(esc_html__('Nível de leitura "%s" atribuído!', 'book-manager'), $result));
     } else {
-        wp_send_json_error(__('Não foi possível classificar. Verifique a chave da API Groq.', 'book-manager'));
+        wp_send_json_error(esc_html__('Não foi possível classificar. Verifique a chave da API Groq.', 'book-manager'));
     }
 }
 add_action('wp_ajax_bm_ajax_classify_reading_level', 'bm_ajax_classify_reading_level');
 
-
 function bm_ajax_ai_classify() {
-    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(__('Sem permissão.', 'book-manager'));
+    if (!current_user_can('manage_options') && !current_user_can('edit_bm_books')) wp_die(esc_html__('Sem permissão.', 'book-manager'));
     check_ajax_referer('bm_ai_classify_nonce', 'nonce');
     $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
-    if (!$post_id) wp_die(__('Livro inválido.', 'book-manager'));
+    if (!$post_id) wp_die(esc_html__('Livro inválido.', 'book-manager'));
 
     $count = bm_classify_book_with_ai($post_id);
     if ($count) {
-        wp_die(sprintf(__('%d disciplina(s) atribuída(s)!', 'book-manager'), $count));
+        wp_die(sprintf(esc_html__('%d disciplina(s) atribuída(s)!', 'book-manager'), $count));
     } else {
-        wp_die(__('Não foi possível classificar. Verifique a chave da API Groq.', 'book-manager'));
+        wp_die(esc_html__('Não foi possível classificar. Verifique a chave da API Groq.', 'book-manager'));
     }
 }
 add_action('wp_ajax_bm_ai_classify', 'bm_ajax_ai_classify');
 
-// Botão "Gerar Atividades" na edição do livro
+// Generate Activities button on edit screen
 function bm_add_activities_button() {
     global $post;
     if (!$post || 'bm_book' !== $post->post_type) return;
     $cached = get_post_meta($post->ID, '_bm_activities', true);
-    $label = $cached ? __('Regenerar Atividades', 'book-manager') : __('Gerar Atividades', 'book-manager');
+    $label = $cached ? esc_html__('Regenerar Atividades', 'book-manager') : esc_html__('Gerar Atividades', 'book-manager');
     $nonce = wp_create_nonce('bm_activities_nonce');
     ?>
     <script>
     jQuery(document).ready(function($) {
         $('#bm_generate_activities').on('click', function() {
             var b = $(this);
-            b.prop('disabled', true).val('Gerando...');
+            b.prop('disabled', true).val('<?php echo esc_js(__('Gerando...','book-manager')); ?>');
             $.post(ajaxurl, {
                 action: 'bm_generate_activities',
-                nonce: '<?php echo $nonce; ?>',
+                nonce: '<?php echo esc_attr($nonce); ?>',
                 post_id: $('#post_ID').val()
             }, function(r) {
                 alert(r);
@@ -1096,22 +1063,21 @@ function bm_add_activities_button() {
 }
 add_action('edit_form_after_title', 'bm_add_activities_button');
 
-// Handler AJAX
+// AJAX Handler for Activities Generation
 function bm_ajax_generate_activities() {
-    if (!current_user_can('edit_bm_book') && !current_user_can('manage_options')) wp_die(__('Sem permissão.', 'book-manager'));
+    if (!current_user_can('edit_bm_book') && !current_user_can('manage_options')) wp_die(esc_html__('Sem permissão.', 'book-manager'));
     check_ajax_referer('bm_activities_nonce', 'nonce');
     $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
-    if (!$post_id) wp_die(__('Livro inválido.', 'book-manager'));
+    if (!$post_id) wp_die(esc_html__('Livro inválido.', 'book-manager'));
     
-    // Usar Groq diretamente (gratuito)
     $groq_key = bm_get_api_key('groq');
-    if (empty($groq_key)) wp_die(__('Chave Groq não configurada.', 'book-manager'));
+    if (empty($groq_key)) wp_die(esc_html__('Chave Groq não configurada.', 'book-manager'));
     
     $title = get_the_title($post_id);
     $author = get_post_meta($post_id, '_bm_author', true);
     $sinopse = get_post_meta($post_id, '_bm_dynamic_sinopse', true);
     
-     $keys = bm_get_api_keys();
+    $keys = bm_get_api_keys();
     $persona_act = isset($keys['groq_persona']) && !empty($keys['groq_persona']) ? $keys['groq_persona'] . "\n\n" : '';
     $prompt = $persona_act . "Sugira 3 atividades pedagógicas para o livro \"" . $title . "\"";
     if ($author) $prompt .= ", de " . $author;
@@ -1128,7 +1094,6 @@ function bm_ajax_generate_activities() {
         'max_tokens' => 500,
     ));
     
-    // Contador de chamadas
     $count = intval(get_option('bm_groq_call_count', 0));
     update_option('bm_groq_call_count', $count + 1);
     
@@ -1142,14 +1107,14 @@ function bm_ajax_generate_activities() {
     ));
     
     if (is_wp_error($response)) {
-        wp_die(__('Erro de conexão:', 'book-manager') . ' ' . $response->get_error_message());
+        wp_die(esc_html__('Erro de conexão:', 'book-manager') . ' ' . $response->get_error_message());
     }
     
     $http_code = wp_remote_retrieve_response_code($response);
     $data = json_decode(wp_remote_retrieve_body($response), true);
     
     if ($http_code !== 200) {
-        $error_msg = isset($data['error']['message']) ? $data['error']['message'] : __('Erro desconhecido', 'book-manager');
+        $error_msg = isset($data['error']['message']) ? $data['error']['message'] : esc_html__('Erro desconhecido', 'book-manager');
         wp_die('HTTP ' . $http_code . ': ' . $error_msg);
     }
     
@@ -1158,14 +1123,14 @@ function bm_ajax_generate_activities() {
         update_post_meta($post_id, '_bm_activities', $result);
         $success = intval(get_option('bm_groq_success_count', 0));
         update_option('bm_groq_success_count', $success + 1);
-        wp_die(__('Atividades geradas com sucesso!', 'book-manager'));
+        wp_die(esc_html__('Atividades geradas com sucesso!', 'book-manager'));
     }
     
-    wp_die(__('Resposta inesperada da API.', 'book-manager'));
+    wp_die(esc_html__('Resposta inesperada da API.', 'book-manager'));
 }
 add_action('wp_ajax_bm_generate_activities', 'bm_ajax_generate_activities');
 
-// Exibir atividades no single do livro (para professores e gestores)
+// Display activities on book single page
 function bm_display_activities($book_id = null) {
     if (!$book_id) $book_id = get_the_ID();
     if (!current_user_can('edit_bm_book') && !current_user_can('manage_options')) return '';
@@ -1173,18 +1138,18 @@ function bm_display_activities($book_id = null) {
     $activities = get_post_meta($book_id, '_bm_activities', true);
     if (empty($activities)) return '';
     
-    return '<hr><h2>📝 ' . __('Atividades Pedagógicas', 'book-manager') . '</h2><div style="background:#f0f7ff;padding:20px;border-radius:8px;border-left:4px solid #2196f3;">' . nl2br(esc_html($activities)) . '</div>';
+    return '<hr><h2>📝 ' . esc_html__('Atividades Pedagógicas', 'book-manager') . '</h2><div style="background:#f0f7ff;padding:20px;border-radius:8px;border-left:4px solid #2196f3;">' . nl2br(esc_html($activities)) . '</div>';
 }
 
 function bm_add_activities_metabox() {
-    add_meta_box('bm_activities_box', __('Atividades Pedagógicas (IA)', 'book-manager'), 'bm_render_activities_metabox', 'bm_book', 'normal', 'default');
+    add_meta_box('bm_activities_box', esc_html__('Atividades Pedagógicas (IA)', 'book-manager'), 'bm_render_activities_metabox', 'bm_book', 'normal', 'default');
 }
 add_action('add_meta_boxes', 'bm_add_activities_metabox');
 
 function bm_render_activities_metabox($post) {
     $activities = get_post_meta($post->ID, '_bm_activities', true);
     if (empty($activities)) {
-        echo '<p style="color:#999;">' . __('Nenhuma atividade gerada. Clique em "Gerar Atividades" acima.', 'book-manager') . '</p>';
+        echo '<p style="color:#999;">' . esc_html__('Nenhuma atividade gerada. Clique em "Gerar Atividades" acima.', 'book-manager') . '</p>';
     } else {
         echo '<div style="background:#f0f7ff;padding:15px;border-left:4px solid #2196f3;">';
         echo nl2br(esc_html($activities));
@@ -1193,11 +1158,11 @@ function bm_render_activities_metabox($post) {
 }
 
 // ==========================================
-// FASE 11E: CHATBOT DA BIBLIOTECA (GROQ)
+// LIBRARY CHATBOT (GROQ)
 // ==========================================
 function bm_chatbot_scripts() {
     if (is_admin()) return;
-        $keys = bm_get_api_keys();
+    $keys = bm_get_api_keys();
     if (isset($keys['chatbot_active']) && $keys['chatbot_active'] === '0') return;
     ?>
     <style>
@@ -1229,7 +1194,7 @@ function bm_chatbot_scripts() {
     @media (max-width:400px) { #bm-chatbot-box { width:90%; right:5%; } }
     </style>
 
-    <button id="bm-chatbot-toggle" onclick="bmToggleChat()" title="Chat da Biblioteca"><span class="dashicons dashicons-format-chat" style="font-size:28px;color:#fff;"></span></button>
+    <button id="bm-chatbot-toggle" onclick="bmToggleChat()" title="<?php esc_attr_e('Chat da Biblioteca', 'book-manager'); ?>"><span class="dashicons dashicons-format-chat" style="font-size:28px;color:#fff;"></span></button>
     <div id="bm-chatbot-box">
         <?php $keys = bm_get_api_keys(); $chatbot_name = !empty($keys['chatbot_name']) ? $keys['chatbot_name'] : 'Bibliotecária Virtual'; ?>
         <div id="bm-chatbot-header">📚  <?php echo esc_html($chatbot_name); ?> <span style="float:right;cursor:pointer;" onclick="bmToggleChat()">✕</span></div>
@@ -1238,7 +1203,7 @@ function bm_chatbot_scripts() {
             <div class="bm-msg-bot">👋 Olá! Sou <?php echo esc_html($chatbot_name); ?>. Pergunte-me sobre livros, disponibilidade ou peça recomendações!</div>
         </div>
         <div id="bm-chatbot-input-area">
-            <input type="text" id="bm-chatbot-input" placeholder="Digite sua pergunta..." onkeypress="if(event.key==='Enter')bmChatSend()" />
+            <input type="text" id="bm-chatbot-input" placeholder="<?php esc_attr_e('Digite sua pergunta...', 'book-manager'); ?>" onkeypress="if(event.key==='Enter')bmChatSend()" />
             <button id="bm-chatbot-send" onclick="bmChatSend()">Enviar</button>
         </div>
     </div>
@@ -1259,20 +1224,19 @@ function bm_chatbot_scripts() {
         messages.scrollTop = messages.scrollHeight;
         
         var xhr = new XMLHttpRequest();
-        xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+        xhr.open('POST', '<?php echo esc_url(admin_url('admin-ajax.php')); ?>');
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.onload = function() {
             document.getElementById('bm-typing').remove();
             var r = JSON.parse(xhr.responseText);
             var reply = (r.reply || 'Desculpe, não entendi.');
-            // Captura tanto [BOTAO:url] quanto BOTAO:url (sem colchetes)
             reply = reply.replace(/\[?BOTAO:\s*(https?:\/\/[^\s\]\[]+)\]?/gi, function(match, url) {
                 return '<a href="' + url + '" target="_blank" style="display:inline-block;padding:8px 16px;background:#111;color:#fff;border-radius:6px;text-decoration:none;font-size:13px;margin-top:8px;">📖 Ver livro na biblioteca</a>';
             });
             messages.innerHTML += '<div class="bm-msg-bot">' + reply + '</div>';
             messages.scrollTop = messages.scrollHeight;
         };
-        xhr.send('action=bm_chatbot&nonce=<?php echo wp_create_nonce("bm_chatbot_nonce"); ?>&message=' + encodeURIComponent(msg));
+        xhr.send('action=bm_chatbot&nonce=<?php echo esc_attr(wp_create_nonce("bm_chatbot_nonce")); ?>&message=' + encodeURIComponent(msg));
     }
     </script>
     <?php
@@ -1290,7 +1254,7 @@ function bm_get_user_context($user_id) {
     $roles = (array) $user->roles;
     $context = '';
     
-    // Contexto para Aluno
+    // Student context
     if (in_array('bm_student', $roles)) {
         $context = "ALUNO LOGADO: " . $user->display_name . "\n";
         
@@ -1305,9 +1269,9 @@ function bm_get_user_context($user_id) {
                 $due = isset($loan['due_date']) ? strtotime($loan['due_date']) : 0;
                 $days = ceil(($due - time()) / DAY_IN_SECONDS);
                 if ($days < 0) {
-                    $overdue_loans[] = array('title' => $title, 'days' => abs($days), 'due_date' => date('d/m/Y', $due));
+                    $overdue_loans[] = array('title' => $title, 'days' => abs($days), 'due_date' => esc_html(date('d/m/Y', $due)));
                 } else {
-                    $active_loans[] = array('title' => $title, 'days' => $days, 'due_date' => date('d/m/Y', $due));
+                    $active_loans[] = array('title' => $title, 'days' => $days, 'due_date' => esc_html(date('d/m/Y', $due)));
                 }
             } elseif ($loan['status'] === 'returned') {
                 $returned_books[] = $title;
@@ -1333,7 +1297,7 @@ function bm_get_user_context($user_id) {
             $context .= "Últimos livros lidos: " . implode(', ', array_map(function($t) { return '"' . $t . '"'; }, $ultimos)) . "\n";
         }
         
-        // Gêneros favoritos
+        // Favorite genres
         $favorite_genres = array();
         foreach ($loan_history as $loan) {
             if ($loan['status'] === 'returned') {
@@ -1355,28 +1319,23 @@ function bm_get_user_context($user_id) {
         }
     }
     
-    // Contexto para Professor (apenas dados agregados, sem expor alunos individuais)
+    // Teacher context (aggregated, no personal student data)
     if (in_array('bm_teacher', $roles)) {
         $context = "PROFESSOR LOGADO: " . $user->display_name . "\n";
         $context .= "Você pode consultar o acervo, verificar disponibilidade de livros, sugerir atividades pedagógicas e acompanhar as leituras dos seus alunos.\n";
         
-        // Turmas que leciona
         $teacher_groups = get_user_meta($user_id, '_bm_user_' . sanitize_key('Turma'), true);
         if (!empty($teacher_groups)) {
             $context .= "Suas turmas: " . $teacher_groups . "\n";
         }
-        
-        // IMPORTANTE: Por privacidade, nunca inclua nomes de alunos individuais, e-mails ou históricos pessoais.
-        // Apenas dados agregados da turma podem ser fornecidos se solicitados.
     }
     
-    // Contexto para Gestor e Admin
+    // Librarian and Admin context
     if (in_array('bm_librarian', $roles) || in_array('administrator', $roles)) {
         $role_label = in_array('administrator', $roles) ? 'ADMINISTRADOR' : 'GESTOR DA BIBLIOTECA';
         $context = $role_label . " LOGADO: " . $user->display_name . "\n";
         $context .= "Você tem acesso total ao sistema. Pode gerenciar livros, alunos, empréstimos, reservas, multas, relatórios e configurações.\n";
         
-        // Estatísticas rápidas
         $total_books = wp_count_posts('bm_book');
         $total = $total_books->publish + $total_books->draft;
         $total_students = count(get_users(array('role' => 'bm_student')));
@@ -1419,8 +1378,7 @@ function bm_ajax_chatbot() {
     $groq_key = bm_get_api_key('groq');
     if (empty($groq_key)) wp_die(json_encode(array('reply' => 'Chatbot não configurado.')));
 
-
-    // Recuperar histórico da sessão (últimas 5 interações)
+    // Session history (last 5 interactions)
     $history = isset($_SESSION['bm_chatbot_history']) ? $_SESSION['bm_chatbot_history'] : array();
     $history_text = '';
     if (!empty($history)) {
@@ -1431,7 +1389,7 @@ function bm_ajax_chatbot() {
         }
     }    
     
-    // Buscar acervo resumido com sinopses para recomendação inteligente
+    // Build catalog summary
     $books = get_posts(array('post_type' => 'bm_book', 'posts_per_page' => 30, 'post_status' => 'publish'));
     $catalog = '';
     foreach ($books as $book) {
@@ -1457,23 +1415,21 @@ function bm_ajax_chatbot() {
         $catalog .= "\n";
     }
     
-    // Persona personalizada da central de APIs
+    // Custom persona from API settings
     $keys = bm_get_api_keys();
     $persona_chat = isset($keys['groq_persona']) && !empty($keys['groq_persona']) ? $keys['groq_persona'] : '';
 
-    // Contexto do usuário logado (todos os perfis)
+    // User context
     $user_context = '';
     if (is_user_logged_in()) {
         $user_id = get_current_user_id();
         $user_context = bm_get_user_context($user_id);
     }
 
-    // Nome do chatbot (Fase 35.X)
     $chatbot_name = !empty($keys['chatbot_name']) ? $keys['chatbot_name'] : 'Bibliotecária Virtual';
     
     $prompt = "Você é " . $chatbot_name . ", bibliotecário(a) escolar brasileiro(a), culto(a), empático(a) e apaixonado(a) por livros. Trabalha em uma biblioteca escolar e adora ajudar alunos e professores a descobrirem novas leituras.\n";
 
-    // Incluir histórico no prompt (Fase 35.5)
     if (!empty($history_text)) {
         $prompt = $history_text . "\n" . $prompt;
     }
@@ -1508,7 +1464,6 @@ function bm_ajax_chatbot() {
         'max_tokens' => 500,
     ));
     
-    // Contador de chamadas
     $count = intval(get_option('bm_groq_call_count', 0));
     update_option('bm_groq_call_count', $count + 1);
     
@@ -1528,8 +1483,7 @@ function bm_ajax_chatbot() {
         update_option('bm_groq_success_count', $success + 1);
     }
 
-
-    // Salvar interação no histórico da sessão (Fase 35.5)
+    // Save interaction to session history
     $history = isset($_SESSION['bm_chatbot_history']) ? $_SESSION['bm_chatbot_history'] : array();
     $history[] = array(
         'user' => $message,
@@ -1540,14 +1494,13 @@ function bm_ajax_chatbot() {
     }
     $_SESSION['bm_chatbot_history'] = $history;
 
-    
     wp_die(json_encode(array('reply' => $reply)));
 }
 add_action('wp_ajax_bm_chatbot', 'bm_ajax_chatbot');
 add_action('wp_ajax_nopriv_bm_chatbot', 'bm_ajax_chatbot');
 
 // ==========================================
-// FASE 12I-T5: BUSCA RÁPIDA NO DASHBOARD
+// QUICK SEARCH ON DASHBOARD
 // ==========================================
 function bm_ajax_quick_search() {
     check_ajax_referer('bm_quick_search_nonce', 'nonce');
@@ -1583,10 +1536,10 @@ function bm_ajax_quick_search() {
 add_action('wp_ajax_bm_quick_search', 'bm_ajax_quick_search');
 
 // ==========================================
-// FASE 12K: HANDLERS AJAX DE ATENDIMENTO
+// SERVICE DESK AJAX HANDLERS
 // ==========================================
 
-// Buscar livro por título, autor ou ISBN
+// Search book by title, author or ISBN
 function bm_ajax_service_search_book() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('found' => false, 'message' => 'Sem permissão.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -1595,7 +1548,6 @@ function bm_ajax_service_search_book() {
     $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
     
     if (!empty($isbn)) {
-        // Buscar por ISBN exato
         $posts = get_posts(array(
             'post_type' => 'bm_book',
             'posts_per_page' => 1,
@@ -1617,17 +1569,15 @@ function bm_ajax_service_search_book() {
         $total = intval(get_post_meta($book->ID, '_bm_copies', true));
         $borrowed = intval(get_post_meta($book->ID, '_bm_borrowed_count', true));
         
-        // Fila de espera
         $reservations = get_post_meta($book->ID, '_bm_reservations', true) ?: array();
         $queue = array();
         foreach ($reservations as $r) {
             if ($r['status'] === 'waiting') {
                 $user = get_userdata($r['user_id']);
-                $queue[] = array('name' => $user ? $user->display_name : '#' . $r['user_id'], 'date' => date('d/m/Y', strtotime($r['date'])));
+                $queue[] = array('name' => $user ? $user->display_name : '#' . $r['user_id'], 'date' => esc_html(date('d/m/Y', strtotime($r['date']))));
             }
         }
         
-        // Verificar se há empréstimo ativo em atraso
         $overdue = false;
         foreach ($reservations as $r) {
             if ($r['status'] === 'active' && isset($r['due_date']) && strtotime($r['due_date']) < time()) {
@@ -1652,7 +1602,6 @@ function bm_ajax_service_search_book() {
         )));
     }
     
-    // Não encontrado — verificar se é ISBN para sugerir cadastro
     if (!empty($isbn)) {
         $clean_isbn = preg_replace('/[^0-9]/', '', $isbn);
         if (strlen($clean_isbn) >= 10) {
@@ -1664,7 +1613,7 @@ function bm_ajax_service_search_book() {
 }
 add_action('wp_ajax_bm_service_search_book', 'bm_ajax_service_search_book');
 
-// Buscar aluno por nome ou e-mail
+// Search student by name or email
 function bm_ajax_service_search_student() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('found' => false, 'message' => 'Sem permissão.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -1703,10 +1652,10 @@ function bm_ajax_service_search_student() {
 }
 
 // ==========================================
-// FASE 12K: AÇÕES DO ATENDIMENTO
+// SERVICE DESK ACTIONS
 // ==========================================
 
-// Emprestar
+// Loan
 function bm_ajax_service_loan() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -1717,34 +1666,30 @@ function bm_ajax_service_loan() {
     
     if (!$book_id || !$user_id) wp_die(json_encode(array('success' => false, 'message' => 'Selecione livro e aluno.')));
     
-        // Verificar penalidade ativa
     $penalty_block = bm_check_penalty_block($user_id);
     if ($penalty_block) {
-        $msg = __('Empréstimo bloqueado.', 'book-manager');
+        $msg = esc_html__('Empréstimo bloqueado.', 'book-manager');
         if ($penalty_block['type'] === 'suspension') {
-            $msg .= ' ' . sprintf(__('Aluno suspenso até %s.', 'book-manager'), date('d/m/Y', strtotime($penalty_block['until'])));
+            $msg .= ' ' . sprintf(esc_html__('Aluno suspenso até %s.', 'book-manager'), esc_html(date('d/m/Y', strtotime($penalty_block['until']))));
         } elseif ($penalty_block['type'] === 'fine') {
-            $msg .= ' ' . sprintf(__('Aluno possui multa de R$ %.2f em aberto.', 'book-manager'), $penalty_block['value']);
+            $msg .= ' ' . sprintf(esc_html__('Aluno possui multa de R$ %.2f em aberto.', 'book-manager'), $penalty_block['value']);
         } else {
-            $msg .= ' ' . __('Aluno possui advertência ativa.', 'book-manager');
+            $msg .= ' ' . esc_html__('Aluno possui advertência ativa.', 'book-manager');
         }
         wp_die(json_encode(array('success' => false, 'message' => $msg)));
     }
     
-    // Verificar consulta local
     if (get_post_meta($book_id, '_bm_consulta_local', true) == '1') {
-        wp_die(json_encode(array('success' => false, 'message' => 'Este livro é de consulta local e não pode ser emprestado.')));
+        wp_die(json_encode(array('success' => false, 'message' => esc_html__('Este livro é de consulta local e não pode ser emprestado.', 'book-manager'))));
     }
     
-    // Verificar se aluno tem atraso (bloqueio)
     $loan_history = get_user_meta($user_id, '_bm_loan_history', true) ?: array();
     foreach ($loan_history as $loan) {
         if ($loan['status'] === 'active' && isset($loan['due_date']) && strtotime($loan['due_date']) < time()) {
-            wp_die(json_encode(array('success' => false, 'message' => 'Aluno possui livro em atraso. Empréstimo bloqueado.')));
+            wp_die(json_encode(array('success' => false, 'message' => esc_html__('Aluno possui livro em atraso. Empréstimo bloqueado.', 'book-manager'))));
         }
     }
     
-    // Criar reserva primeiro (se não existir)
     $reservations = get_post_meta($book_id, '_bm_reservations', true) ?: array();
     $has_reservation = false;
     foreach ($reservations as $r) {
@@ -1752,7 +1697,7 @@ function bm_ajax_service_loan() {
     }
     
     if (!$has_reservation) {
-        $result = bm_reserve_book($book_id, 1, $user_id); // user_id 1 = admin reservando para aluno
+        $result = bm_reserve_book($book_id, 1, $user_id);
         if (isset($result['error'])) {
             wp_die(json_encode(array('success' => false, 'message' => $result['error'])));
         }
@@ -1764,30 +1709,28 @@ function bm_ajax_service_loan() {
     }
     
     $receipt_url = admin_url('admin-ajax.php') . '?action=bm_print_receipt&book_id=' . $book_id . '&user_id=' . $user_id;
-    wp_die(json_encode(array('success' => true, 'message' => '✅ Emprestado com sucesso! Devolução: ' . date('d/m/Y', strtotime('+' . $days . ' days')), 'receipt_url' => $receipt_url)));
+    wp_die(json_encode(array('success' => true, 'message' => '✅ ' . esc_html__('Emprestado com sucesso!', 'book-manager') . ' ' . sprintf(esc_html__('Devolução: %s', 'book-manager'), esc_html(date('d/m/Y', strtotime('+' . $days . ' days')))), 'receipt_url' => $receipt_url)));
 }
 add_action('wp_ajax_bm_service_loan', 'bm_ajax_service_loan');
 
-
 // ==========================================
-// FASE 36.5: COMPROVANTE DE EMPRÉSTIMO
+// LOAN RECEIPT PRINT
 // ==========================================
 function bm_ajax_print_receipt() {
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(__('Sem permissão.', 'book-manager'));
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(esc_html__('Sem permissão.', 'book-manager'));
     
     $book_id = isset($_GET['book_id']) ? intval($_GET['book_id']) : 0;
     $user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
     
-    if (!$book_id || !$user_id) wp_die(__('Dados inválidos.', 'book-manager'));
+    if (!$book_id || !$user_id) wp_die(esc_html__('Dados inválidos.', 'book-manager'));
     
     $book = get_post($book_id);
     $student = get_userdata($user_id);
-    if (!$book || !$student) wp_die(__('Registro não encontrado.', 'book-manager'));
+    if (!$book || !$student) wp_die(esc_html__('Registro não encontrado.', 'book-manager'));
     
     $author = get_post_meta($book_id, '_bm_author', true);
     $isbn = get_post_meta($book_id, '_bm_isbn', true);
     
-    // Buscar o empréstimo ativo mais recente para este livro e aluno
     $reservations = get_post_meta($book_id, '_bm_reservations', true) ?: array();
     $loan_date = ''; $due_date = '';
     foreach (array_reverse($reservations) as $r) {
@@ -1806,7 +1749,7 @@ function bm_ajax_print_receipt() {
     <html>
     <head>
         <meta charset="UTF-8">
-        <title><?php _e('Comprovante de Empréstimo', 'book-manager'); ?></title>
+        <title><?php esc_html_e('Comprovante de Empréstimo', 'book-manager'); ?></title>
         <style>
             body { font-family: Arial, sans-serif; max-width: 400px; margin: 30px auto; padding: 20px; color: #333; }
             .receipt { border: 2px solid #111; padding: 25px; border-radius: 8px; text-align: center; }
@@ -1826,24 +1769,24 @@ function bm_ajax_print_receipt() {
     </head>
     <body>
         <div class="no-print">
-            <button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ <?php _e('Imprimir Comprovante', 'book-manager'); ?></button>
-            <p style="font-size:12px;color:#666;"><?php _e('Pressione Ctrl+P ou clique no botão para imprimir.', 'book-manager'); ?></p>
+            <button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ <?php esc_html_e('Imprimir Comprovante', 'book-manager'); ?></button>
+            <p style="font-size:12px;color:#666;"><?php esc_html_e('Pressione Ctrl+P ou clique no botão para imprimir.', 'book-manager'); ?></p>
         </div>
         <div class="receipt">
             <div class="school"><?php echo esc_html($school_name); ?></div>
-            <div class="subtitle"><?php _e('Comprovante de Empréstimo', 'book-manager'); ?></div>
+            <div class="subtitle"><?php esc_html_e('Comprovante de Empréstimo', 'book-manager'); ?></div>
             <div class="info">
-                <p><strong><?php _e('Aluno(a):', 'book-manager'); ?></strong> <?php echo esc_html($student->display_name); ?></p>
-                <p><strong><?php _e('Livro:', 'book-manager'); ?></strong> <?php echo esc_html($book->post_title); ?></p>
-                <?php if ($author): ?><p><strong><?php _e('Autor:', 'book-manager'); ?></strong> <?php echo esc_html($author); ?></p><?php endif; ?>
+                <p><strong><?php esc_html_e('Aluno(a):', 'book-manager'); ?></strong> <?php echo esc_html($student->display_name); ?></p>
+                <p><strong><?php esc_html_e('Livro:', 'book-manager'); ?></strong> <?php echo esc_html($book->post_title); ?></p>
+                <?php if ($author): ?><p><strong><?php esc_html_e('Autor:', 'book-manager'); ?></strong> <?php echo esc_html($author); ?></p><?php endif; ?>
                 <?php if ($isbn): ?><p><strong>ISBN:</strong> <?php echo esc_html($isbn); ?></p><?php endif; ?>
             </div>
             <div class="dates">
-                <?php if ($loan_date): ?><p><strong><?php _e('Data do empréstimo:', 'book-manager'); ?></strong> <?php echo date('d/m/Y H:i', strtotime($loan_date)); ?></p><?php endif; ?>
-                <?php if ($due_date): ?><p><strong><?php _e('Devolução prevista:', 'book-manager'); ?></strong> <?php echo date('d/m/Y', strtotime($due_date)); ?></p><?php endif; ?>
+                <?php if ($loan_date): ?><p><strong><?php esc_html_e('Data do empréstimo:', 'book-manager'); ?></strong> <?php echo esc_html(date('d/m/Y H:i', strtotime($loan_date))); ?></p><?php endif; ?>
+                <?php if ($due_date): ?><p><strong><?php esc_html_e('Devolução prevista:', 'book-manager'); ?></strong> <?php echo esc_html(date('d/m/Y', strtotime($due_date))); ?></p><?php endif; ?>
             </div>
             <div class="footer">
-                <?php _e('Cuide bem do livro e aproveite a leitura!', 'book-manager'); ?>
+                <?php esc_html_e('Cuide bem do livro e aproveite a leitura!', 'book-manager'); ?>
             </div>
         </div>
     </body>
@@ -1855,34 +1798,33 @@ add_action('wp_ajax_bm_print_receipt', 'bm_ajax_print_receipt');
 
 function bm_ajax_print_library_card() {
     check_ajax_referer('bm_library_card_nonce', 'nonce');
-    if (!is_user_logged_in()) wp_die(__('Faça login.', 'book-manager'));
+    if (!is_user_logged_in()) wp_die(esc_html__('Faça login.', 'book-manager'));
     
     $user_id = get_current_user_id();
     $user = get_userdata($user_id);
-    if (!$user) wp_die(__('Usuário não encontrado.', 'book-manager'));
+    if (!$user) wp_die(esc_html__('Usuário não encontrado.', 'book-manager'));
     
     $photo = get_user_meta($user_id, '_bm_profile_photo', true);
     $roles = (array) $user->roles;
     $user_labels = get_option('bm_user_labels', array());
     
     if (in_array('administrator', $roles)) {
-        $type_label = isset($user_labels['admin']) ? $user_labels['admin'] : __('Administrador', 'book-manager');
+        $type_label = isset($user_labels['admin']) ? $user_labels['admin'] : esc_html__('Administrador', 'book-manager');
     } elseif (in_array('bm_librarian', $roles) || in_array('gestor_biblioteca', $roles) || in_array('gestor da biblioteca', $roles)) {
-        $type_label = isset($user_labels['librarian']) ? $user_labels['librarian'] : __('Gestor da Biblioteca', 'book-manager');
+        $type_label = isset($user_labels['librarian']) ? $user_labels['librarian'] : esc_html__('Gestor da Biblioteca', 'book-manager');
     } elseif (in_array('bm_teacher', $roles) || in_array('professor', $roles)) {
-        $type_label = isset($user_labels['teacher']) ? $user_labels['teacher'] : __('Professor', 'book-manager');
+        $type_label = isset($user_labels['teacher']) ? $user_labels['teacher'] : esc_html__('Professor', 'book-manager');
     } else {
-        $type_label = isset($user_labels['student']) ? $user_labels['student'] : __('Aluno', 'book-manager');
+        $type_label = isset($user_labels['student']) ? $user_labels['student'] : esc_html__('Aluno', 'book-manager');
     }
     
-    $library_name = __('Biblioteca Escolar', 'book-manager');
+    $library_name = esc_html__('Biblioteca Escolar', 'book-manager');
     $vigencia = date('Y') . '/' . (date('Y') + 1);
     $turno = get_user_meta($user_id, '_bm_user_' . sanitize_key('Turno'), true);
     $serie_ano = get_user_meta($user_id, '_bm_user_' . sanitize_key('Série/Ano'), true);
     $turma = get_user_meta($user_id, '_bm_user_' . sanitize_key('Turma'), true);
     $badges = get_user_meta($user_id, '_bm_badges', true) ?: array();
 
-    $qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' . $user_id;
     $wl = function_exists('bm_get_white_label') ? bm_get_white_label() : array();
     $school_name = ($wl['enabled'] === '1' && !empty($wl['school_name'])) ? $wl['school_name'] : get_bloginfo('name');
     
@@ -1891,7 +1833,7 @@ function bm_ajax_print_library_card() {
     <html>
     <head>
         <meta charset="UTF-8">
-        <title><?php _e('Carteirinha da Biblioteca', 'book-manager'); ?></title>
+        <title><?php esc_html_e('Carteirinha da Biblioteca', 'book-manager'); ?></title>
         <style>
             @page { size: 85mm 54mm; margin: 0; }
             body { font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f5f5f5; }
@@ -1920,9 +1862,9 @@ function bm_ajax_print_library_card() {
     </head>
     <body>
         <div class="no-print" style="padding:20px;background:#f9f9f9;margin-bottom:20px;">
-            <h2><?php _e('Carteirinha da Biblioteca', 'book-manager'); ?></h2>
-            <p><?php _e('Pressione Ctrl+P para imprimir. Use papel fotográfico ou PVC para melhor durabilidade.', 'book-manager'); ?></p>
-            <button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ <?php _e('Imprimir Carteirinha', 'book-manager'); ?></button>
+            <h2><?php esc_html_e('Carteirinha da Biblioteca', 'book-manager'); ?></h2>
+            <p><?php esc_html_e('Pressione Ctrl+P para imprimir. Use papel fotográfico ou PVC para melhor durabilidade.', 'book-manager'); ?></p>
+            <button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ <?php esc_html_e('Imprimir Carteirinha', 'book-manager'); ?></button>
         </div>
         <div class="card-wrapper">
             <div class="card">
@@ -1941,19 +1883,19 @@ function bm_ajax_print_library_card() {
                         <div class="info">
                             <?php echo esc_html($type_label); ?>
                             <?php if ($serie_ano): ?><span>| <?php echo esc_html($serie_ano); ?></span><?php endif; ?>
-                            <?php if ($turma): ?><span>| <?php _e('Turma:', 'book-manager'); ?> <?php echo esc_html($turma); ?></span><?php endif; ?>
+                            <?php if ($turma): ?><span>| <?php esc_html_e('Turma:', 'book-manager'); ?> <?php echo esc_html($turma); ?></span><?php endif; ?>
                             <?php if ($turno): ?><span>| <?php echo esc_html($turno); ?></span><?php endif; ?>
                         </div>
                         <?php if (!empty($badges)): ?>
                             <div class="badges">
                                 <?php foreach ($badges as $badge_key): 
                                     $info = function_exists('bm_get_badge_info') ? bm_get_badge_info($badge_key) : array('icon' => '🏅');
-                                    echo '<span class="badge" title="' . esc_attr(isset($info['name']) ? $info['name'] : '') . '">' . $info['icon'] . '</span> ';
+                                    echo '<span class="badge" title="' . esc_attr(isset($info['name']) ? $info['name'] : '') . '">' . esc_html($info['icon']) . '</span> ';
                                 endforeach; ?>
                             </div>
                         <?php endif; ?>
                     </div>
-                    <div class="vigencia"><?php _e('Vigência:', 'book-manager'); ?> <?php echo $vigencia; ?></div>
+                    <div class="vigencia"><?php esc_html_e('Vigência:', 'book-manager'); ?> <?php echo esc_html($vigencia); ?></div>
                 </div>
             </div>
         </div>
@@ -1963,17 +1905,18 @@ function bm_ajax_print_library_card() {
     exit;
 }
 add_action('wp_ajax_bm_print_library_card', 'bm_ajax_print_library_card');
+
 function bm_ajax_print_library_cards_bulk() {
     check_ajax_referer('bm_library_cards_bulk_nonce', 'nonce');
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(__('Sem permissão.', 'book-manager'));
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(esc_html__('Sem permissão.', 'book-manager'));
     
     $ids = isset($_GET['ids']) ? explode(',', sanitize_text_field($_GET['ids'])) : array();
-    if (empty($ids)) wp_die(__('Nenhum aluno selecionado.', 'book-manager'));
+    if (empty($ids)) wp_die(esc_html__('Nenhum aluno selecionado.', 'book-manager'));
     
     $user_labels = get_option('bm_user_labels', array());
     $wl = function_exists('bm_get_white_label') ? bm_get_white_label() : array();
     $school_name = ($wl['enabled'] === '1' && !empty($wl['school_name'])) ? $wl['school_name'] : get_bloginfo('name');
-    $library_name = __('Biblioteca Escolar', 'book-manager');
+    $library_name = esc_html__('Biblioteca Escolar', 'book-manager');
     $vigencia = date('Y') . '/' . (date('Y') + 1);
     
     $users = array();
@@ -1988,13 +1931,13 @@ function bm_ajax_print_library_cards_bulk() {
             
             $roles = (array) $user->roles;
             if (in_array('administrator', $roles)) {
-                $type_label = isset($user_labels['admin']) ? $user_labels['admin'] : __('Administrador', 'book-manager');
+                $type_label = isset($user_labels['admin']) ? $user_labels['admin'] : esc_html__('Administrador', 'book-manager');
             } elseif (in_array('bm_librarian', $roles) || in_array('gestor_biblioteca', $roles) || in_array('gestor da biblioteca', $roles)) {
-                $type_label = isset($user_labels['librarian']) ? $user_labels['librarian'] : __('Gestor da Biblioteca', 'book-manager');
+                $type_label = isset($user_labels['librarian']) ? $user_labels['librarian'] : esc_html__('Gestor da Biblioteca', 'book-manager');
             } elseif (in_array('bm_teacher', $roles) || in_array('professor', $roles)) {
-                $type_label = isset($user_labels['teacher']) ? $user_labels['teacher'] : __('Professor', 'book-manager');
+                $type_label = isset($user_labels['teacher']) ? $user_labels['teacher'] : esc_html__('Professor', 'book-manager');
             } else {
-                $type_label = isset($user_labels['student']) ? $user_labels['student'] : __('Aluno', 'book-manager');
+                $type_label = isset($user_labels['student']) ? $user_labels['student'] : esc_html__('Aluno', 'book-manager');
             }
             $users[] = array(
                 'id' => $user->ID,
@@ -2014,7 +1957,7 @@ function bm_ajax_print_library_cards_bulk() {
     <html>
     <head>
         <meta charset="UTF-8">
-        <title><?php _e('Carteirinhas — Visualização', 'book-manager'); ?></title>
+        <title><?php esc_html_e('Carteirinhas — Visualização', 'book-manager'); ?></title>
         <style>
             @page { size: A4; margin: 1cm 0.5cm 0.5cm 0.5cm; }
             body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
@@ -2044,9 +1987,9 @@ function bm_ajax_print_library_cards_bulk() {
     </head>
     <body>
         <div class="no-print" style="padding:20px;background:#f9f9f9;margin-bottom:20px;">
-            <h2><?php _e('Visualização de Carteirinhas', 'book-manager'); ?> (<?php echo count($users); ?> <?php _e('alunos', 'book-manager'); ?>)</h2>
-            <p><?php _e('Pressione Ctrl+P para imprimir. Ajuste as margens para "Mínimo".', 'book-manager'); ?></p>
-            <button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ <?php _e('Imprimir Agora', 'book-manager'); ?></button>
+            <h2><?php esc_html_e('Visualização de Carteirinhas', 'book-manager'); ?> (<?php echo count($users); ?> <?php esc_html_e('alunos', 'book-manager'); ?>)</h2>
+            <p><?php esc_html_e('Pressione Ctrl+P para imprimir. Ajuste as margens para "Mínimo".', 'book-manager'); ?></p>
+            <button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ <?php esc_html_e('Imprimir Agora', 'book-manager'); ?></button>
         </div>
         <div class="cards-grid">
             <?php foreach ($users as $u): ?>
@@ -2067,19 +2010,19 @@ function bm_ajax_print_library_cards_bulk() {
                                 <div class="info">
                                     <?php echo esc_html($u['type_label']); ?>
                                     <?php if ($u['serie_ano']): ?><span>| <?php echo esc_html($u['serie_ano']); ?></span><?php endif; ?>
-                                    <?php if ($u['turma']): ?><span>| <?php _e('Turma:', 'book-manager'); ?> <?php echo esc_html($u['turma']); ?></span><?php endif; ?>
+                                    <?php if ($u['turma']): ?><span>| <?php esc_html_e('Turma:', 'book-manager'); ?> <?php echo esc_html($u['turma']); ?></span><?php endif; ?>
                                     <?php if ($u['turno']): ?><span>| <?php echo esc_html($u['turno']); ?></span><?php endif; ?>
                                 </div>
                                 <?php if (!empty($u['badges'])): ?>
                                     <div class="badges">
                                         <?php foreach ($u['badges'] as $badge_key): 
                                             $info = function_exists('bm_get_badge_info') ? bm_get_badge_info($badge_key) : array('icon' => '🏅');
-                                            echo '<span class="badge" title="' . esc_attr(isset($info['name']) ? $info['name'] : '') . '">' . $info['icon'] . '</span> ';
+                                            echo '<span class="badge" title="' . esc_attr(isset($info['name']) ? $info['name'] : '') . '">' . esc_html($info['icon']) . '</span> ';
                                         endforeach; ?>
                                     </div>
                                 <?php endif; ?>
                             </div>
-                            <div class="vigencia"><?php _e('Vigência:', 'book-manager'); ?> <?php echo $vigencia; ?></div>
+                            <div class="vigencia"><?php esc_html_e('Vigência:', 'book-manager'); ?> <?php echo esc_html($vigencia); ?></div>
                         </div>
                     </div>
                 </div>
@@ -2092,13 +2035,12 @@ function bm_ajax_print_library_cards_bulk() {
 }
 add_action('wp_ajax_bm_print_library_cards_bulk', 'bm_ajax_print_library_cards_bulk');
 
-
 // ==========================================
-// FASE 36.4: GESTÃO MANUAL DE PENALIDADES
+// MANUAL PENALTY MANAGEMENT
 // ==========================================
 function bm_ajax_manage_penalty() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) {
-        wp_die(json_encode(array('success' => false, 'message' => __('Sem permissão.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'message' => esc_html__('Sem permissão.', 'book-manager'))));
     }
     check_ajax_referer('bm_service_nonce', 'nonce');
     
@@ -2107,67 +2049,62 @@ function bm_ajax_manage_penalty() {
     $action = isset($_POST['penalty_action']) ? sanitize_text_field($_POST['penalty_action']) : '';
     
     if (!$student_id || $index < 0 || !in_array($action, array('revoke', 'alter', 'pay'))) {
-        wp_die(json_encode(array('success' => false, 'message' => __('Dados inválidos.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'message' => esc_html__('Dados inválidos.', 'book-manager'))));
     }
     
     $penalties = get_user_meta($student_id, '_bm_penalties', true) ?: array();
     if (!isset($penalties[$index])) {
-        wp_die(json_encode(array('success' => false, 'message' => __('Penalidade não encontrada.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'message' => esc_html__('Penalidade não encontrada.', 'book-manager'))));
     }
     
     if ($action === 'revoke') {
-        // Remover a penalidade do array
         array_splice($penalties, $index, 1);
         update_user_meta($student_id, '_bm_penalties', $penalties);
         
-        // Liberar bloqueio
         update_user_meta($student_id, '_bm_penalty_active', '0');
         delete_user_meta($student_id, '_bm_penalty_until');
         
         bm_log_admin_action('Penalidade revogada', $student_id);
-        wp_die(json_encode(array('success' => true, 'message' => __('Penalidade revogada.', 'book-manager'))));
+        wp_die(json_encode(array('success' => true, 'message' => esc_html__('Penalidade revogada.', 'book-manager'))));
     }
     
     if ($action === 'pay') {
         if ($penalties[$index]['type'] !== 'fine') {
-            wp_die(json_encode(array('success' => false, 'message' => __('Apenas multas podem ser quitadas.', 'book-manager'))));
+            wp_die(json_encode(array('success' => false, 'message' => esc_html__('Apenas multas podem ser quitadas.', 'book-manager'))));
         }
-        // Marcar como paga (alterar tipo para 'paid')
         $penalties[$index]['type'] = 'paid';
         $penalties[$index]['paid_date'] = current_time('mysql');
         update_user_meta($student_id, '_bm_penalties', $penalties);
         
-        // Liberar bloqueio
         update_user_meta($student_id, '_bm_penalty_active', '0');
         delete_user_meta($student_id, '_bm_penalty_until');
         
         bm_log_admin_action('Multa quitada', $student_id);
-        wp_die(json_encode(array('success' => true, 'message' => __('Multa quitada.', 'book-manager'))));
+        wp_die(json_encode(array('success' => true, 'message' => esc_html__('Multa quitada.', 'book-manager'))));
     }
     
     if ($action === 'alter') {
         $new_value = isset($_POST['new_value']) ? floatval($_POST['new_value']) : 0;
         if ($new_value <= 0) {
-            wp_die(json_encode(array('success' => false, 'message' => __('Valor inválido.', 'book-manager'))));
+            wp_die(json_encode(array('success' => false, 'message' => esc_html__('Valor inválido.', 'book-manager'))));
         }
         $penalties[$index]['value'] = $new_value;
         update_user_meta($student_id, '_bm_penalties', $penalties);
         
-        // Se for suspensão, atualizar data fim
         if ($penalties[$index]['type'] === 'suspension') {
             $until = date('Y-m-d', strtotime('+' . intval($new_value) . ' days'));
             update_user_meta($student_id, '_bm_penalty_until', $until);
         }
         
         bm_log_admin_action('Penalidade alterada para ' . $new_value, $student_id);
-        wp_die(json_encode(array('success' => true, 'message' => __('Penalidade alterada.', 'book-manager'))));
+        wp_die(json_encode(array('success' => true, 'message' => esc_html__('Penalidade alterada.', 'book-manager'))));
     }
     
-    wp_die(json_encode(array('success' => false, 'message' => __('Ação inválida.', 'book-manager'))));
+    wp_die(json_encode(array('success' => false, 'message' => esc_html__('Ação inválida.', 'book-manager'))));
 }
 add_action('wp_ajax_bm_manage_penalty', 'bm_ajax_manage_penalty');
 
-// Devolver
+// Return
 function bm_ajax_service_return() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -2179,7 +2116,6 @@ function bm_ajax_service_return() {
     
     if (!$book_id || !$user_id) wp_die(json_encode(array('success' => false, 'message' => 'Selecione livro e aluno.')));
     
-    // Salvar condição de devolução
     if (!empty($note) || $condition !== 'good') {
         $return_log = get_post_meta($book_id, '_bm_return_log', true) ?: array();
         $return_log[] = array(
@@ -2200,7 +2136,7 @@ function bm_ajax_service_return() {
 }
 add_action('wp_ajax_bm_service_return', 'bm_ajax_service_return');
 
-// Renovar
+// Renew
 function bm_ajax_service_renew() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -2211,7 +2147,6 @@ function bm_ajax_service_renew() {
     
     if (!$book_id || !$user_id) wp_die(json_encode(array('success' => false, 'message' => 'Selecione livro e aluno.')));
     
-    // Atualizar due_date no empréstimo ativo
     $reservations = get_post_meta($book_id, '_bm_reservations', true) ?: array();
     $found = false;
     foreach ($reservations as &$r) {
@@ -2236,11 +2171,10 @@ function bm_ajax_service_renew() {
     }
     update_user_meta($user_id, '_bm_loan_history', $loan_history);
     
-    $new_due = date('d/m/Y', strtotime('+' . $days . ' days'));
-    wp_die(json_encode(array('success' => true, 'message' => '🔄 Renovado! Nova data de devolução: ' . $new_due)));
+    $new_due = esc_html(date('d/m/Y', strtotime('+' . $days . ' days')));
+    wp_die(json_encode(array('success' => true, 'message' => '🔄 ' . esc_html__('Renovado!', 'book-manager') . ' ' . sprintf(esc_html__('Nova data de devolução: %s', 'book-manager'), $new_due))));
 }
 add_action('wp_ajax_bm_service_renew', 'bm_ajax_service_renew');
-
 
 function bm_ajax_advance_reserve() {
     if (!is_user_logged_in()) wp_die(json_encode(array('success' => false, 'error' => 'Faça login.')));
@@ -2272,10 +2206,9 @@ function bm_ajax_advance_reserve() {
     
     bm_log_audit($book_id, "Reserva antecipada por professor #$user_id para turma $group ($start_date até $end_date)");
     
-    wp_die(json_encode(array('success' => true, 'message' => '📅 Reserva antecipada confirmada para ' . date('d/m/Y', strtotime($start_date)) . '!')));
+    wp_die(json_encode(array('success' => true, 'message' => '📅 ' . sprintf(esc_html__('Reserva antecipada confirmada para %s!', 'book-manager'), esc_html(date('d/m/Y', strtotime($start_date)))))));
 }
 add_action('wp_ajax_bm_advance_reserve', 'bm_ajax_advance_reserve');
-
 
 function bm_ajax_separate_advance() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
@@ -2315,7 +2248,6 @@ function bm_ajax_cancel_advance() {
 }
 add_action('wp_ajax_bm_cancel_advance', 'bm_ajax_cancel_advance');
 
-
 function bm_ajax_loan_advance() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -2329,19 +2261,16 @@ function bm_ajax_loan_advance() {
         wp_die(json_encode(array('success' => false, 'message' => 'Dados incompletos.')));
     }
     
-    // Criar reserva para o aluno
     $result = bm_reserve_book($book_id, get_current_user_id(), $student_id);
     if (isset($result['error'])) {
         wp_die(json_encode(array('success' => false, 'message' => $result['error'])));
     }
     
-    // Confirmar empréstimo
     $loan = bm_confirm_loan($book_id, $student_id, $days);
     if (isset($loan['error'])) {
         wp_die(json_encode(array('success' => false, 'message' => $loan['error'])));
     }
     
-    // Marcar agendamento como concluído
     $bulk = get_post_meta($book_id, '_bm_bulk_reservation', true) ?: array();
     foreach ($bulk as $key => $item) {
         if (isset($item['created_at']) && $item['created_at'] === $created_at) {
@@ -2353,7 +2282,7 @@ function bm_ajax_loan_advance() {
     
     bm_log_audit($book_id, "Empréstimo confirmado via agendamento para aluno #$student_id ($days dias)");
     
-    wp_die(json_encode(array('success' => true, 'message' => '✅ Emprestado com sucesso! Devolução: ' . date('d/m/Y', strtotime('+' . $days . ' days')))));
+    wp_die(json_encode(array('success' => true, 'message' => '✅ ' . esc_html__('Emprestado com sucesso!', 'book-manager') . ' ' . sprintf(esc_html__('Devolução: %s', 'book-manager'), esc_html(date('d/m/Y', strtotime('+' . $days . ' days')))))));
 }
 add_action('wp_ajax_bm_loan_advance', 'bm_ajax_loan_advance');
 
@@ -2372,7 +2301,6 @@ function bm_ajax_reject_reservation() {
 }
 add_action('wp_ajax_bm_reject_reservation', 'bm_ajax_reject_reservation');
 
-
 function bm_ajax_undo_loan() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -2388,7 +2316,7 @@ function bm_ajax_undo_loan() {
 }
 add_action('wp_ajax_bm_undo_loan', 'bm_ajax_undo_loan');
 
-// Renovação feita pelo próprio aluno no dashboard
+// Online renewal by student from dashboard
 function bm_ajax_renew_loan() {
     if (!is_user_logged_in()) wp_die(json_encode(array('success' => false, 'message' => 'Faça login.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -2400,7 +2328,6 @@ function bm_ajax_renew_loan() {
         wp_die(json_encode(array('success' => false, 'message' => 'Você só pode renovar seus próprios livros.')));
     }
     
-    // Verificar fila de espera
     $reservations = get_post_meta($book_id, '_bm_reservations', true) ?: array();
     $has_queue = false;
     foreach ($reservations as $r) {
@@ -2416,7 +2343,6 @@ function bm_ajax_renew_loan() {
     
     $days = 7;
     
-    // Atualizar due_date
     foreach ($reservations as &$r) {
         if ($r['user_id'] == $user_id && $r['status'] === 'active') {
             $r['due_date'] = date('Y-m-d H:i:s', strtotime('+' . $days . ' days', strtotime($r['due_date'])));
@@ -2434,11 +2360,11 @@ function bm_ajax_renew_loan() {
     }
     update_user_meta($user_id, '_bm_loan_history', $loan_history);
     
-    wp_die(json_encode(array('success' => true, 'message' => '🔄 Renovado por mais ' . $days . ' dias!')));
+    wp_die(json_encode(array('success' => true, 'message' => '🔄 ' . sprintf(esc_html__('Renovado por mais %d dias!', 'book-manager'), $days))));
 }
 add_action('wp_ajax_bm_renew_loan', 'bm_ajax_renew_loan');
 
-// Cadastro rápido de aluno
+// Quick student registration
 function bm_ajax_service_quick_register() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -2466,7 +2392,6 @@ function bm_ajax_service_quick_register() {
     update_user_meta($user_id, '_bm_user_' . sanitize_key('E-mail'), $email);
     update_user_meta($user_id, '_bm_user_' . sanitize_key('Telefone'), $phone);
     
-    // Campos dinâmicos
     $user_fields = get_option('bm_user_dynamic_fields', array());
     foreach ($user_fields as $field_name => $info) {
         $meta_key = '_bm_user_' . sanitize_key($field_name);
@@ -2475,11 +2400,11 @@ function bm_ajax_service_quick_register() {
         }
     }
     
-    wp_die(json_encode(array('success' => true, 'message' => '✅ Aluno cadastrado!', 'student_id' => $user_id, 'student_name' => $name)));
+    wp_die(json_encode(array('success' => true, 'message' => '✅ ' . esc_html__('Aluno cadastrado!', 'book-manager'), 'student_id' => $user_id, 'student_name' => $name)));
 }
 add_action('wp_ajax_bm_service_quick_register', 'bm_ajax_service_quick_register');
 
-// Cadastro de livro por ISBN via Google Books
+// Register book by ISBN via Google Books
 function bm_ajax_service_register_book_by_isbn() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -2513,7 +2438,6 @@ function bm_ajax_service_register_book_by_isbn() {
     update_post_meta($post_id, '_bm_publisher', $publisher);
     update_post_meta($post_id, '_bm_copies', '1');
     
-    // Buscar capa
     if (isset($info['imageLinks']['thumbnail'])) {
         $cover_url = str_replace('http://', 'https://', $info['imageLinks']['thumbnail']);
         $cover_url = str_replace('&zoom=1', '&zoom=2', $cover_url);
@@ -2539,17 +2463,16 @@ function bm_ajax_service_register_book_by_isbn() {
         }
     }
     
-    wp_die(json_encode(array('success' => true, 'message' => '✅ Livro cadastrado: ' . $title, 'book_id' => $post_id, 'book_title' => $title, 'book_author' => $author)));
+    wp_die(json_encode(array('success' => true, 'message' => '✅ ' . sprintf(esc_html__('Livro cadastrado: %s', 'book-manager'), $title), 'book_id' => $post_id, 'book_title' => $title, 'book_author' => $author)));
 }
 add_action('wp_ajax_bm_service_register_book_by_isbn', 'bm_ajax_service_register_book_by_isbn');
 
-
 // ==========================================
-// FASE 35.2: PREENCHER VIA ISBN NA EDIÇÃO
+// FILL BY ISBN ON EDIT SCREEN
 // ==========================================
 function bm_ajax_fill_by_isbn() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) {
-        wp_die(json_encode(array('success' => false, 'data' => __('Sem permissão.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'data' => esc_html__('Sem permissão.', 'book-manager'))));
     }
     check_ajax_referer('bm_fill_by_isbn_nonce', 'nonce');
     
@@ -2557,48 +2480,44 @@ function bm_ajax_fill_by_isbn() {
     $isbn = isset($_POST['isbn']) ? sanitize_text_field($_POST['isbn']) : '';
     
     if (!$post_id || empty($isbn)) {
-        wp_die(json_encode(array('success' => false, 'data' => __('ISBN não informado.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'data' => esc_html__('ISBN não informado.', 'book-manager'))));
     }
     
     $url = 'https://www.googleapis.com/books/v1/volumes?q=isbn:' . urlencode($isbn) . '&key=' . bm_get_api_key('google_books');
     $response = wp_remote_get($url, array('timeout' => 15));
     
     if (is_wp_error($response)) {
-        wp_die(json_encode(array('success' => false, 'data' => __('Erro ao buscar na Google Books.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'data' => esc_html__('Erro ao buscar na Google Books.', 'book-manager'))));
     }
     
     $data = json_decode(wp_remote_retrieve_body($response), true);
     if (empty($data['items'][0]['volumeInfo'])) {
-        wp_die(json_encode(array('success' => false, 'data' => __('Livro não encontrado na Google Books.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'data' => esc_html__('Livro não encontrado na Google Books.', 'book-manager'))));
     }
     
     $info = $data['items'][0]['volumeInfo'];
     $filled = array();
     
-    // Preencher Autor (se vazio)
     $current_author = get_post_meta($post_id, '_bm_author', true);
     if (empty($current_author) && !empty($info['authors'])) {
         $author = sanitize_text_field(implode(', ', $info['authors']));
         update_post_meta($post_id, '_bm_author', $author);
-        $filled[] = __('Autor', 'book-manager');
+        $filled[] = esc_html__('Autor', 'book-manager');
     }
     
-    // Preencher Editora (se vazio)
     $current_publisher = get_post_meta($post_id, '_bm_publisher', true);
     if (empty($current_publisher) && !empty($info['publisher'])) {
         $publisher = sanitize_text_field($info['publisher']);
         update_post_meta($post_id, '_bm_publisher', $publisher);
-        $filled[] = __('Editora', 'book-manager');
+        $filled[] = esc_html__('Editora', 'book-manager');
     }
     
-    // Preencher Título (se vazio — livro cadastrado sem título)
     $current_post = get_post($post_id);
     if ($current_post && empty($current_post->post_title) && !empty($info['title'])) {
         wp_update_post(array('ID' => $post_id, 'post_title' => sanitize_text_field($info['title'])));
-        $filled[] = __('Título', 'book-manager');
+        $filled[] = esc_html__('Título', 'book-manager');
     }
     
-    // Preencher Sinopse (se vazio)
     $current_sinopse = get_post_meta($post_id, '_bm_dynamic_sinopse', true);
     if (empty($current_sinopse) && !empty($info['description'])) {
         $dynamic_fields = get_option('bm_dynamic_fields', array());
@@ -2607,10 +2526,9 @@ function bm_ajax_fill_by_isbn() {
             update_option('bm_dynamic_fields', $dynamic_fields);
         }
         update_post_meta($post_id, '_bm_dynamic_sinopse', sanitize_textarea_field($info['description']));
-        $filled[] = __('Sinopse', 'book-manager');
+        $filled[] = esc_html__('Sinopse', 'book-manager');
     }
     
-    // Preencher Capa (se não tiver)
     if (!has_post_thumbnail($post_id) && isset($info['imageLinks']['thumbnail'])) {
         $cover_url = str_replace('http://', 'https://', $info['imageLinks']['thumbnail']);
         $cover_url = str_replace('&zoom=1', '&zoom=2', $cover_url);
@@ -2634,24 +2552,23 @@ function bm_ajax_fill_by_isbn() {
                     $ad = wp_generate_attachment_metadata($aid, $fp);
                     wp_update_attachment_metadata($aid, $ad);
                     set_post_thumbnail($post_id, $aid);
-                    $filled[] = __('Capa', 'book-manager');
+                    $filled[] = esc_html__('Capa', 'book-manager');
                 }
             }
         }
     }
     
     if (empty($filled)) {
-        wp_die(json_encode(array('success' => false, 'data' => __('Nenhum campo vazio para preencher. Os dados já estão completos.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'data' => esc_html__('Nenhum campo vazio para preencher. Os dados já estão completos.', 'book-manager'))));
     }
     
-    wp_die(json_encode(array('success' => true, 'data' => array('message' => sprintf(__('Preenchido: %s.', 'book-manager'), implode(', ', $filled))))));
+    wp_die(json_encode(array('success' => true, 'data' => array('message' => sprintf(esc_html__('Preenchido: %s.', 'book-manager'), implode(', ', $filled))))));
 }
 add_action('wp_ajax_bm_fill_by_isbn', 'bm_ajax_fill_by_isbn');
 
-
 function bm_ajax_search_isbn() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) {
-        wp_die(json_encode(array('success' => false, 'data' => __('Sem permissão.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'data' => esc_html__('Sem permissão.', 'book-manager'))));
     }
     check_ajax_referer('bm_search_isbn_nonce', 'nonce');
     
@@ -2659,10 +2576,9 @@ function bm_ajax_search_isbn() {
     $author = isset($_POST['author']) ? sanitize_text_field($_POST['author']) : '';
     
     if (empty($title)) {
-        wp_die(json_encode(array('success' => false, 'data' => __('Título não informado.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'data' => esc_html__('Título não informado.', 'book-manager'))));
     }
     
-    // Buscar por título + autor
     $query = $title;
     if (!empty($author)) $query .= ' ' . $author;
     
@@ -2670,15 +2586,14 @@ function bm_ajax_search_isbn() {
     $response = wp_remote_get($url, array('timeout' => 15));
     
     if (is_wp_error($response)) {
-        wp_die(json_encode(array('success' => false, 'data' => __('Erro ao buscar na Google Books.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'data' => esc_html__('Erro ao buscar na Google Books.', 'book-manager'))));
     }
     
     $data = json_decode(wp_remote_retrieve_body($response), true);
     if (empty($data['items'])) {
-        wp_die(json_encode(array('success' => false, 'data' => __('Nenhum livro encontrado.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'data' => esc_html__('Nenhum livro encontrado.', 'book-manager'))));
     }
     
-    // Procurar ISBN nos resultados
     $st = mb_strtolower(trim($title));
     $sa = mb_strtolower(trim($author));
     
@@ -2688,12 +2603,10 @@ function bm_ajax_search_isbn() {
         $it = isset($item['volumeInfo']['title']) ? mb_strtolower(trim($item['volumeInfo']['title'])) : '';
         $ia = isset($item['volumeInfo']['authors']) ? mb_strtolower(implode(' ', $item['volumeInfo']['authors'])) : '';
         
-        // Verificar similaridade
         similar_text($st, $it, $pct);
         $min = (mb_strlen($st) < 10) ? 30 : 50;
         if ($pct < $min && strpos($it, $st) === false && strpos($st, $it) === false) continue;
         
-        // Preferir ISBN-13
         $isbn13 = ''; $isbn10 = '';
         foreach ($item['volumeInfo']['industryIdentifiers'] as $identifier) {
             if ($identifier['type'] === 'ISBN_13') $isbn13 = $identifier['identifier'];
@@ -2706,11 +2619,11 @@ function bm_ajax_search_isbn() {
         }
     }
     
-    wp_die(json_encode(array('success' => false, 'data' => __('ISBN não encontrado para este livro.', 'book-manager'))));
+    wp_die(json_encode(array('success' => false, 'data' => esc_html__('ISBN não encontrado para este livro.', 'book-manager'))));
 }
 add_action('wp_ajax_bm_search_isbn', 'bm_ajax_search_isbn');
 
-// Editar aluno via atendimento
+// Edit student via service desk
 function bm_ajax_service_edit_student() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(json_encode(array('success' => false, 'message' => 'Sem permissão.')));
     check_ajax_referer('bm_service_nonce', 'nonce');
@@ -2725,7 +2638,6 @@ function bm_ajax_service_edit_student() {
     $existing = get_userdata($student_id);
     if (!$existing || !in_array('bm_student', (array) $existing->roles)) wp_die(json_encode(array('success' => false, 'message' => 'Aluno não encontrado.')));
     
-    // Verificar se e-mail já existe em outro usuário
     $email_owner = email_exists($email);
     if ($email_owner && $email_owner != $student_id) wp_die(json_encode(array('success' => false, 'message' => 'E-mail já cadastrado para outro aluno.')));
     
@@ -2734,7 +2646,6 @@ function bm_ajax_service_edit_student() {
     update_user_meta($student_id, '_bm_user_' . sanitize_key('E-mail'), $email);
     update_user_meta($student_id, '_bm_user_' . sanitize_key('Telefone'), $phone);
     
-    // Campos dinâmicos
     $user_fields = get_option('bm_user_dynamic_fields', array());
     foreach ($user_fields as $field_name => $info) {
         $meta_key = '_bm_user_' . sanitize_key($field_name);
@@ -2743,15 +2654,16 @@ function bm_ajax_service_edit_student() {
         }
     }
     
-    wp_die(json_encode(array('success' => true, 'message' => '✅ Aluno atualizado!')));
+    wp_die(json_encode(array('success' => true, 'message' => '✅ ' . esc_html__('Aluno atualizado!', 'book-manager'))));
 }
 add_action('wp_ajax_bm_service_edit_student', 'bm_ajax_service_edit_student');
+
 function bm_ajax_upload_photo() {
-    if (!is_user_logged_in()) wp_die(json_encode(array('success' => false, 'message' => __('Faça login.', 'book-manager'))));
+    if (!is_user_logged_in()) wp_die(json_encode(array('success' => false, 'message' => esc_html__('Faça login.', 'book-manager'))));
     check_ajax_referer('bm_photo_upload', 'nonce');
     
     if (empty($_FILES['bm_photo'])) {
-        wp_die(json_encode(array('success' => false, 'message' => __('Nenhum arquivo enviado.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'message' => esc_html__('Nenhum arquivo enviado.', 'book-manager'))));
     }
     
     $file = $_FILES['bm_photo'];
@@ -2759,11 +2671,11 @@ function bm_ajax_upload_photo() {
     $filetype = wp_check_filetype($file['name'], $allowed_types);
     
     if (!in_array($filetype['type'], $allowed_types)) {
-        wp_die(json_encode(array('success' => false, 'message' => __('Formato inválido. Envie JPG, PNG ou WebP.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'message' => esc_html__('Formato inválido. Envie JPG, PNG ou WebP.', 'book-manager'))));
     }
     
     if ($file['size'] > 2 * 1024 * 1024) {
-        wp_die(json_encode(array('success' => false, 'message' => __('A imagem deve ter no máximo 2MB.', 'book-manager'))));
+        wp_die(json_encode(array('success' => false, 'message' => esc_html__('A imagem deve ter no máximo 2MB.', 'book-manager'))));
     }
     
     $upload = wp_handle_upload($file, array('test_form' => false, 'mimes' => $allowed_types));
@@ -2775,7 +2687,7 @@ function bm_ajax_upload_photo() {
     $user_id = get_current_user_id();
     update_user_meta($user_id, '_bm_profile_photo', $upload['url']);
     
-    wp_die(json_encode(array('success' => true, 'url' => $upload['url'], 'message' => __('Foto atualizada!', 'book-manager'))));
+    wp_die(json_encode(array('success' => true, 'url' => $upload['url'], 'message' => esc_html__('Foto atualizada!', 'book-manager'))));
 }
 add_action('wp_ajax_bm_upload_photo', 'bm_ajax_upload_photo');
 
@@ -2797,7 +2709,6 @@ function bm_format_student_data($student) {
         }
     }
     
-    // Campos dinâmicos
     $dynamic_fields = array();
     $user_fields = get_option('bm_user_dynamic_fields', array());
     foreach ($user_fields as $field_name => $info) {
@@ -2821,9 +2732,8 @@ function bm_format_student_data($student) {
 }
 
 // ==========================================
-// FASE 11B: NÚMERO DE CHAMADA (CDU + CUTTER)
+// CALL NUMBER (CDU + CUTTER)
 // ==========================================
-
 function bm_generate_call_number($post_id) {
     $groq_key = bm_get_api_key('groq');
     if (empty($groq_key)) return false;
@@ -2906,13 +2816,11 @@ function bm_groq_simple_request($prompt) {
     $groq_key = bm_get_api_key('groq');
     if (empty($groq_key)) return false;
     
-    // Contador de chamadas
     $count = intval(get_option('bm_groq_call_count', 0));
     update_option('bm_groq_call_count', $count + 1);
     
-    // Sanitizar prompt para evitar quebra de JSON (Fase 37)
-    $prompt = preg_replace('/[^\x20-\x7E\x80-\xFF]/', '', $prompt); // Remove caracteres de controle não imprimíveis
-    $prompt = str_replace(array('\\', '"'), array('\\\\', '\\"'), $prompt); // Escapa barras invertidas e aspas duplas
+    $prompt = preg_replace('/[^\x20-\x7E\x80-\xFF]/', '', $prompt);
+    $prompt = str_replace(array('\\', '"'), array('\\\\', '\\"'), $prompt);
     
     $url = 'https://api.groq.com/openai/v1/chat/completions';
     $body = json_encode(array(
@@ -2953,8 +2861,7 @@ function bm_resolve_cutter_conflict($cutter, $post_id) {
     return $cutter;
 }
 
-
-function bm_add_call_number_metabox() { add_meta_box('bm_call_number', __('Número de Chamada', 'book-manager'), 'bm_render_call_number_metabox', 'bm_book', 'side', 'default'); }
+function bm_add_call_number_metabox() { add_meta_box('bm_call_number', esc_html__('Número de Chamada', 'book-manager'), 'bm_render_call_number_metabox', 'bm_book', 'side', 'default'); }
 add_action('add_meta_boxes', 'bm_add_call_number_metabox');
 
 function bm_render_call_number_metabox($post) {
@@ -2977,30 +2884,30 @@ function bm_render_call_number_metabox($post) {
         $author_formatted = count($parts) > 1 ? mb_strtoupper(array_pop($parts)) . ', ' . implode(' ', $parts) : mb_strtoupper($author);
     }
     ?>
-    <p><label><strong><?php _e('Título:', 'book-manager'); ?></strong></label><input type="text" value="<?php echo esc_attr($title); ?>" style="width:100%;" readonly /></p>
-    <p><label><strong><?php _e('Autor:', 'book-manager'); ?></strong></label><input type="text" value="<?php echo esc_attr($author_formatted ?: $author); ?>" style="width:100%;" readonly /></p>
-    <p><label><strong><?php _e('Classificação:', 'book-manager'); ?></strong></label><input type="text" name="bm_cdu" value="<?php echo esc_attr($cdu); ?>" style="width:100%;" <?php echo $readonly; ?> /></p>
-    <p><label><strong><?php _e('Cutter:', 'book-manager'); ?></strong></label><input type="text" name="bm_cutter" value="<?php echo esc_attr($cutter); ?>" style="width:100%;" <?php echo $readonly; ?> /></p>
-    <p><label><strong><?php _e('Volume:', 'book-manager'); ?></strong></label><input type="text" name="bm_volume" value="<?php echo esc_attr($volume); ?>" style="width:100%;" placeholder="v.1" /></p>
-    <p><label><strong><?php _e('Edição:', 'book-manager'); ?></strong></label><input type="text" name="bm_edition" value="<?php echo esc_attr($edition); ?>" style="width:100%;" placeholder="3.ed." /></p>
-    <p><label><strong><?php _e('Exemplares:', 'book-manager'); ?></strong></label><input type="text" name="bm_copies" value="<?php echo $copies; ?>" style="width:100%;" /></p>
+    <p><label><strong><?php esc_html_e('Título:', 'book-manager'); ?></strong></label><input type="text" value="<?php echo esc_attr($title); ?>" style="width:100%;" readonly /></p>
+    <p><label><strong><?php esc_html_e('Autor:', 'book-manager'); ?></strong></label><input type="text" value="<?php echo esc_attr($author_formatted ?: $author); ?>" style="width:100%;" readonly /></p>
+    <p><label><strong><?php esc_html_e('Classificação:', 'book-manager'); ?></strong></label><input type="text" name="bm_cdu" value="<?php echo esc_attr($cdu); ?>" style="width:100%;" <?php echo esc_attr($readonly); ?> /></p>
+    <p><label><strong><?php esc_html_e('Cutter:', 'book-manager'); ?></strong></label><input type="text" name="bm_cutter" value="<?php echo esc_attr($cutter); ?>" style="width:100%;" <?php echo esc_attr($readonly); ?> /></p>
+    <p><label><strong><?php esc_html_e('Volume:', 'book-manager'); ?></strong></label><input type="text" name="bm_volume" value="<?php echo esc_attr($volume); ?>" style="width:100%;" placeholder="v.1" /></p>
+    <p><label><strong><?php esc_html_e('Edição:', 'book-manager'); ?></strong></label><input type="text" name="bm_edition" value="<?php echo esc_attr($edition); ?>" style="width:100%;" placeholder="3.ed." /></p>
+    <p><label><strong><?php esc_html_e('Exemplares:', 'book-manager'); ?></strong></label><input type="text" name="bm_copies" value="<?php echo esc_attr($copies); ?>" style="width:100%;" /></p>
     
-    <button type="button" id="bm-generate-call" class="button" style="width:100%;margin-top:5px;">🤖 <?php echo ($cdu && $cutter) ? __('Regenerar Número de Chamada', 'book-manager') : __('Gerar Número de Chamada', 'book-manager'); ?></button>
+    <button type="button" id="bm-generate-call" class="button" style="width:100%;margin-top:5px;">🤖 <?php echo ($cdu && $cutter) ? esc_html__('Regenerar Número de Chamada', 'book-manager') : esc_html__('Gerar Número de Chamada', 'book-manager'); ?></button>
     
     <?php if ($locked): ?>
-        <p style="color:#f0ad4e;font-size:11px;">⚠️ <?php _e('Número de chamada bloqueado.', 'book-manager'); ?></p>
-        <button type="button" id="bm-unlock-call" class="button button-small" style="width:100%;">🔓 <?php _e('Habilitar edição', 'book-manager'); ?></button>
+        <p style="color:#f0ad4e;font-size:11px;">⚠️ <?php esc_html_e('Número de chamada bloqueado.', 'book-manager'); ?></p>
+        <button type="button" id="bm-unlock-call" class="button button-small" style="width:100%;">🔓 <?php esc_html_e('Habilitar edição', 'book-manager'); ?></button>
     <?php endif; ?>
     
     <?php if (!empty($history)): ?>
-        <p style="margin-top:10px;"><strong><?php _e('Histórico:', 'book-manager'); ?></strong></p>
+        <p style="margin-top:10px;"><strong><?php esc_html_e('Histórico:', 'book-manager'); ?></strong></p>
         <select name="bm_restore_history" style="width:100%;font-size:11px;">
-            <option value="">— <?php _e('Versões anteriores', 'book-manager'); ?> —</option>
+            <option value="">— <?php esc_html_e('Versões anteriores', 'book-manager'); ?> —</option>
             <?php foreach (array_reverse($history) as $i => $h): ?>
-                <option value="<?php echo $i; ?>"><?php echo $h['cdu'] . ' / ' . $h['cutter'] . ' (' . date('d/m/Y', strtotime($h['date'])) . ')'; ?></option>
+                <option value="<?php echo esc_attr($i); ?>"><?php echo esc_html($h['cdu'] . ' / ' . $h['cutter'] . ' (' . date('d/m/Y', strtotime($h['date'])) . ')'); ?></option>
             <?php endforeach; ?>
         </select>
-        <button type="button" id="bm-restore-btn" class="button button-small" style="display:none;width:100%;margin-top:3px;">↩️ <?php _e('Restaurar versão', 'book-manager'); ?></button>
+        <button type="button" id="bm-restore-btn" class="button button-small" style="display:none;width:100%;margin-top:3px;">↩️ <?php esc_html_e('Restaurar versão', 'book-manager'); ?></button>
     <?php endif; ?>
     
     <script>
@@ -3012,27 +2919,27 @@ function bm_render_call_number_metabox($post) {
                 btn.disabled = true;
                 btn.textContent = 'Gerando...';
                 var xhr = new XMLHttpRequest();
-                xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+                xhr.open('POST', '<?php echo esc_url(admin_url("admin-ajax.php")); ?>');
                 xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
                 xhr.onload = function() {
                     try {
                         var r = JSON.parse(xhr.responseText);
                         if (r.success) { location.reload(); }
-                        else { alert(r.data || 'Erro'); btn.disabled = false; btn.textContent = '🤖 Gerar Número de Chamada'; }
+                        else { alert(r.data || 'Erro'); btn.disabled = false; btn.textContent = '🤖 <?php echo esc_js(__('Gerar Número de Chamada', 'book-manager')); ?>'; }
                     } catch(e) {
                         alert('Erro: ' + xhr.responseText.substring(0, 200));
                         btn.disabled = false;
-                        btn.textContent = '🤖 Gerar Número de Chamada';
+                        btn.textContent = '🤖 <?php echo esc_js(__('Gerar Número de Chamada', 'book-manager')); ?>';
                     }
                 };
-                xhr.send('action=bm_generate_call_number&nonce=<?php echo wp_create_nonce("bm_call_number_nonce"); ?>&post_id=<?php echo $post->ID; ?>');
+                xhr.send('action=bm_generate_call_number&nonce=<?php echo esc_attr(wp_create_nonce("bm_call_number_nonce")); ?>&post_id=<?php echo esc_attr($post->ID); ?>');
             });
         }
         
         var unlockBtn = document.getElementById('bm-unlock-call');
         if (unlockBtn) {
             unlockBtn.addEventListener('click', function() {
-                if (confirm('<?php _e("Atenção: Ao editar manualmente, o número de chamada pode não corresponder ao livro físico. Continuar?", "book-manager"); ?>')) {
+                if (confirm('<?php echo esc_js(__("Atenção: Ao editar manualmente, o número de chamada pode não corresponder ao livro físico. Continuar?", "book-manager")); ?>')) {
                     var cduInput = document.querySelector('input[name="bm_cdu"]');
                     var cutterInput = document.querySelector('input[name="bm_cutter"]');
                     if (cduInput) cduInput.removeAttribute('readonly');
@@ -3052,13 +2959,13 @@ function bm_render_call_number_metabox($post) {
                 var index = historySelect.value;
                 if (index !== '') {
                     var xhr = new XMLHttpRequest();
-                    xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+                    xhr.open('POST', '<?php echo esc_url(admin_url("admin-ajax.php")); ?>');
                     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
                     xhr.onload = function() {
                         var r = JSON.parse(xhr.responseText);
                         if (r.success) location.reload();
                     };
-                    xhr.send('action=bm_restore_call_number&nonce=<?php echo wp_create_nonce("bm_call_number_nonce"); ?>&post_id=<?php echo $post->ID; ?>&history_index=' + index);
+                    xhr.send('action=bm_restore_call_number&nonce=<?php echo esc_attr(wp_create_nonce("bm_call_number_nonce")); ?>&post_id=<?php echo esc_attr($post->ID); ?>&history_index=' + index);
                 }
             });
         }
@@ -3191,12 +3098,12 @@ function bm_display_call_number($book_id = null) {
                 if ($volume) $lines[] = '<p style="margin:3px 0;color:#666;">' . esc_html($volume) . '</p>';
                 break;
             case 'copies':
-                if ($copies > 0) $lines[] = '<p style="margin:3px 0;color:#666;">' . sprintf(__('%d exemplares', 'book-manager'), $copies) . '</p>';
+                if ($copies > 0) $lines[] = '<p style="margin:3px 0;color:#666;">' . sprintf(esc_html__('%d exemplares', 'book-manager'), $copies) . '</p>';
                 break;
         }
     }
     
-    $html = '<hr><h2>📋 ' . __('Número de Chamada', 'book-manager') . '</h2>';
+    $html = '<hr><h2>📋 ' . esc_html__('Número de Chamada', 'book-manager') . '</h2>';
     $html .= '<div style="background:#f9f9f9;padding:15px;border-radius:8px;border:1px solid #ddd;max-width:300px;margin:0 auto;text-align:center;">';
     $html .= implode('', $lines);
     $html .= '</div>';

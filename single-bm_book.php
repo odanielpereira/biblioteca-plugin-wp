@@ -1,17 +1,11 @@
 <?php
+defined('ABSPATH') || exit;
+
 get_header();
 $wl = bm_get_white_label();
 ?>
 
 <div class="bm-book-single" style="max-width:800px;margin:0 auto;padding:20px;">
-<style>
-@media (max-width:480px) {
-    .bm-review-card-inner { flex-direction:column !important; align-items:center !important; text-align:center; }
-    .bm-review-cover { width:40px !important; height:56px !important; margin-bottom:5px; }
-    .bm-review-meta { font-size:11px; }
-    .bm-review-text { font-size:12px; }
-}
-</style>
     <?php if ($wl['enabled'] === '1' && !empty($wl['school_logo'])): ?>
         <div style="text-align:center;margin-bottom:15px;">
             <img src="<?php echo esc_url($wl['school_logo']); ?>" style="max-width:200px;max-height:80px;" alt="<?php echo esc_attr($wl['school_name']); ?>" />
@@ -28,11 +22,11 @@ $wl = bm_get_white_label();
                 </div>
             <?php elseif (!empty($hotlink)): ?>
                 <div class="bm-book-cover" style="flex:0 0 200px;">
-                    <img src="<?php echo esc_url($hotlink); ?>" style="width:100%;height:auto;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.15);" alt="<?php the_title(); ?>" />
+                    <img src="<?php echo esc_url($hotlink); ?>" style="width:100%;height:auto;border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,0.15);" alt="<?php the_title_attribute(); ?>" />
                 </div>
             <?php else: ?>
                 <div class="bm-book-no-cover" style="flex:0 0 200px;height:280px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999;font-size:14px;border-radius:4px;text-align:center;padding:10px;">
-                    <?php _e('Sem capa', 'book-manager'); ?>
+                    <?php esc_html_e('Sem capa', 'book-manager'); ?>
                 </div>
             <?php endif; ?>
             <div class="bm-book-info" style="flex:1;min-width:250px;">
@@ -43,13 +37,13 @@ $wl = bm_get_white_label();
                 $genres = wp_get_post_terms(get_the_ID(), 'bm_genre', array('fields' => 'names'));
                 $categories = wp_get_post_terms(get_the_ID(), 'bm_category', array('fields' => 'names'));
                 ?>
-                <?php if ($author): ?><p><strong>Autor:</strong> <?php echo esc_html($author); ?></p><?php endif; ?>
-                <?php if ($publisher): ?><p><strong>Editora:</strong> <?php echo esc_html($publisher); ?></p><?php endif; ?>
-                <?php if ($genres): ?><p><strong>Gênero:</strong> <?php echo esc_html(implode(', ', $genres)); ?></p><?php endif; ?>
-                <?php if ($categories): ?><p><strong>Categoria:</strong> <?php echo esc_html(implode(', ', $categories)); ?></p><?php endif; ?>
+                <?php if ($author): ?><p><strong><?php esc_html_e('Autor:', 'book-manager'); ?></strong> <?php echo esc_html($author); ?></p><?php endif; ?>
+                <?php if ($publisher): ?><p><strong><?php esc_html_e('Editora:', 'book-manager'); ?></strong> <?php echo esc_html($publisher); ?></p><?php endif; ?>
+                <?php if ($genres): ?><p><strong><?php esc_html_e('Gênero:', 'book-manager'); ?></strong> <?php echo esc_html(implode(', ', $genres)); ?></p><?php endif; ?>
+                <?php if ($categories): ?><p><strong><?php esc_html_e('Categoria:', 'book-manager'); ?></strong> <?php echo esc_html(implode(', ', $categories)); ?></p><?php endif; ?>
 
                 <?php if (function_exists('bm_display_stock_info')) echo bm_display_stock_info(); ?>
-                                <div style="margin:15px 0;display:flex;gap:8px;flex-wrap:wrap;">
+                <div style="margin:15px 0;display:flex;gap:8px;flex-wrap:wrap;">
                     <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode(get_permalink()); ?>" target="_blank" rel="noopener" style="display:inline-block;padding:6px 12px;background:#1877f2;color:#fff;border-radius:4px;text-decoration:none;font-size:12px;">📘 Facebook</a>
                     <a href="https://www.instagram.com/" target="_blank" rel="noopener" style="display:inline-block;padding:6px 12px;background:#e4405f;color:#fff;border-radius:4px;text-decoration:none;font-size:12px;">📷 Instagram</a>
                     <a href="https://www.tiktok.com/" target="_blank" rel="noopener" style="display:inline-block;padding:6px 12px;background:#000;color:#fff;border-radius:4px;text-decoration:none;font-size:12px;">🎵 TikTok</a>
@@ -80,13 +74,13 @@ $wl = bm_get_white_label();
                 ?>
                 <?php if ($has_visible): ?>
                     <hr>
-                    <h3>Informações Administrativas</h3>
+                    <h3><?php esc_html_e('Informações Administrativas', 'book-manager'); ?></h3>
                     <?php if ($isbn && $can_see('isbn')): ?><p><strong>ISBN:</strong> <?php echo esc_html($isbn); ?></p><?php endif; ?>
-                    <?php if ($location && $can_see('location')): ?><p><strong>Localização:</strong> <?php echo esc_html($location); ?></p><?php endif; ?>
-                    <?php if ($copies && $can_see('copies')): ?><p><strong>Exemplares:</strong> <?php echo esc_html($copies); ?></p><?php endif; ?>
+                    <?php if ($location && $can_see('location')): ?><p><strong><?php esc_html_e('Localização:', 'book-manager'); ?></strong> <?php echo esc_html($location); ?></p><?php endif; ?>
+                    <?php if ($copies && $can_see('copies')): ?><p><strong><?php esc_html_e('Exemplares:', 'book-manager'); ?></strong> <?php echo esc_html($copies); ?></p><?php endif; ?>
 
                     <?php if (!empty($audit_log) && $can_see('audit_log')): ?>
-                        <h4>Histórico de Ações</h4>
+                        <h4><?php esc_html_e('Histórico de Ações', 'book-manager'); ?></h4>
                         <ul style="font-size:12px;color:#666;">
                             <?php foreach (array_reverse($audit_log) as $entry): ?>
                                 <li><?php echo esc_html($entry['time'] . ' — ' . $entry['user'] . ': ' . $entry['action']); ?></li>
@@ -104,7 +98,7 @@ $wl = bm_get_white_label();
             $key = '_bm_dynamic_' . sanitize_key($field);
             $value = get_post_meta(get_the_ID(), $key, true);
             if (!empty($value)) {
-                if (!$has_dynamic) { echo '<hr><h3>Informações Adicionais</h3>'; $has_dynamic = true; }
+                if (!$has_dynamic) { echo '<hr><h3>' . esc_html__('Informações Adicionais', 'book-manager') . '</h3>'; $has_dynamic = true; }
                 if ($info['type'] === 'textarea') {
                     echo '<p><strong>' . esc_html($field) . ':</strong></p>';
                     echo '<div style="background:#f9f9f9;padding:15px;border-radius:4px;">' . nl2br(esc_html($value)) . '</div>';
@@ -131,12 +125,12 @@ $wl = bm_get_white_label();
         if (!empty($official_review) || !empty($official_link)):
         ?>
             <hr>
-            <h2><?php _e('Resenha', 'book-manager'); ?></h2>
+            <h2><?php esc_html_e('Resenha', 'book-manager'); ?></h2>
             <div style="background:#fff8e1;padding:20px;border-radius:8px;border-left:4px solid #ffc107;margin-bottom:20px;">
                 <?php if (!empty($official_embed)): ?>
                     <iframe src="<?php echo esc_url($official_embed); ?>" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px;margin-bottom:15px;" allowfullscreen></iframe>
                 <?php elseif (!empty($official_link)): ?>
-                    <p><a href="<?php echo esc_url($official_link); ?>" target="_blank">🔗 Link oficial</a></p>
+                    <p><a href="<?php echo esc_url($official_link); ?>" target="_blank">🔗 <?php esc_html_e('Link oficial', 'book-manager'); ?></a></p>
                 <?php endif; ?>
                 <?php if (!empty($official_review)): ?>
                     <p style="margin:0;font-style:italic;color:#555;"><?php echo nl2br(esc_html($official_review)); ?></p>
@@ -147,11 +141,11 @@ $wl = bm_get_white_label();
         <?php
         if (current_user_can('edit_bm_book') || current_user_can('manage_options')):
             $activities = get_post_meta(get_the_ID(), '_bm_activities', true);
-            $btn_label = $activities ? __('Regenerar Atividades', 'book-manager') : __('Gerar Atividades', 'book-manager');
+            $btn_label = $activities ? esc_html__('Regenerar Atividades', 'book-manager') : esc_html__('Gerar Atividades', 'book-manager');
             $nonce = wp_create_nonce('bm_activities_nonce');
         ?>
             <hr>
-            <h2>📝 <?php _e('Atividades Pedagógicas', 'book-manager'); ?></h2>
+            <h2>📝 <?php esc_html_e('Atividades Pedagógicas', 'book-manager'); ?></h2>
             <?php if ($activities): ?>
                 <div style="background:#f0f7ff;padding:20px;border-radius:8px;border-left:4px solid #2196f3;margin-bottom:10px;">
                     <?php echo nl2br(esc_html($activities)); ?>
@@ -160,21 +154,21 @@ $wl = bm_get_white_label();
             <button type="button" id="bm-gen-activities" class="bm-btn-filter" style="padding:8px 16px;background:#2196f3;color:#fff;border:none;border-radius:4px;cursor:pointer;">
                 🤖 <?php echo $btn_label; ?>
             </button>
-            <span id="bm-gen-loading" style="display:none;margin-left:10px;color:#666;">Gerando...</span>
+            <span id="bm-gen-loading" style="display:none;margin-left:10px;color:#666;"><?php esc_html_e('Gerando...', 'book-manager'); ?></span>
             <script>
             document.getElementById('bm-gen-activities').addEventListener('click', function() {
                 var btn = this;
                 btn.disabled = true;
                 document.getElementById('bm-gen-loading').style.display = 'inline';
                 var xhr = new XMLHttpRequest();
-                xhr.open('POST', '<?php echo admin_url('admin-ajax.php'); ?>');
+                xhr.open('POST', '<?php echo esc_url(admin_url('admin-ajax.php')); ?>');
                 xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
                 xhr.onload = function() {
                     document.getElementById('bm-gen-loading').style.display = 'none';
                     if (xhr.responseText.indexOf('sucesso') !== -1) { location.reload(); }
                     else { alert(xhr.responseText); btn.disabled = false; }
                 };
-                xhr.send('action=bm_generate_activities&nonce=<?php echo $nonce; ?>&post_id=<?php echo get_the_ID(); ?>');
+                xhr.send('action=bm_generate_activities&nonce=<?php echo esc_attr($nonce); ?>&post_id=<?php echo get_the_ID(); ?>');
             });
             </script>
         <?php endif; ?>
@@ -187,7 +181,7 @@ $wl = bm_get_white_label();
         if (!empty($disciplines)):
         ?>
             <hr>
-            <h2>📚 <?php _e('Relação com as Disciplinas', 'book-manager'); ?></h2>
+            <h2>📚 <?php esc_html_e('Relação com as Disciplinas', 'book-manager'); ?></h2>
             <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:15px;">
                 <?php foreach ($disciplines as $discipline): ?>
                     <div style="background:#e3f2fd;padding:8px 15px;border-radius:20px;font-size:14px;font-weight:bold;color:#1565c0;">
@@ -197,12 +191,12 @@ $wl = bm_get_white_label();
             </div>
             <?php if (!empty($justifications)): ?>
                 <div style="background:#f9f9f9;padding:15px;border-radius:8px;">
-                    <h3 style="margin-top:0;"><?php _e('Por que este livro se relaciona com cada disciplina?', 'book-manager'); ?></h3>
+                    <h3 style="margin-top:0;"><?php esc_html_e('Por que este livro se relaciona com cada disciplina?', 'book-manager'); ?></h3>
                     <?php foreach ($justifications as $discipline_name => $justification): ?>
                         <p style="margin:8px 0;">
                             <?php 
                             $icon = function_exists('bm_get_discipline_icon') ? bm_get_discipline_icon($discipline_name) : '📚';
-                            echo $icon . ' ';
+                            echo esc_html($icon) . ' ';
                             ?>
                             <strong><?php echo esc_html($discipline_name); ?>:</strong> 
                             <?php echo esc_html($justification); ?>
@@ -237,9 +231,9 @@ $wl = bm_get_white_label();
             });
         ?>
             <hr>
-            <h2><?php _e('Resenhas dos Leitores', 'book-manager'); ?></h2>
+            <h2><?php esc_html_e('Resenhas dos Leitores', 'book-manager'); ?></h2>
             <?php if ($has_videos): ?>
-                <h3>🎬 <?php _e('Vídeo-Resenhas', 'book-manager'); ?></h3>
+                <h3>🎬 <?php esc_html_e('Vídeo-Resenhas', 'book-manager'); ?></h3>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;margin-bottom:20px;">
                     <?php foreach ($approved_reviews as $review): ?>
                         <?php if (!empty($review['video_url'])): ?>
@@ -259,7 +253,7 @@ $wl = bm_get_white_label();
                                 <?php if ($embed_url): ?>
                                     <iframe src="<?php echo esc_url($embed_url); ?>" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px;" allowfullscreen></iframe>
                                 <?php else: ?>
-                                    <p><a href="<?php echo esc_url($review['video_url']); ?>" target="_blank">🔗 Ver vídeo</a></p>
+                                    <p><a href="<?php echo esc_url($review['video_url']); ?>" target="_blank">🔗 <?php esc_html_e('Ver vídeo', 'book-manager'); ?></a></p>
                                 <?php endif; ?>
                                 <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
                                     <?php if ($review['user_avatar']): ?>
@@ -272,22 +266,22 @@ $wl = bm_get_white_label();
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-            <h3>📝 <?php _e('Resenhas', 'book-manager'); ?></h3>
+            <h3>📝 <?php esc_html_e('Resenhas', 'book-manager'); ?></h3>
             <?php foreach ($approved_reviews as $review): 
                 $is_featured = isset($review['featured']) && $review['featured'];
                 $bg = $is_featured ? '#fff8e1' : '#f9f9f9';
                 $border = $is_featured ? 'border-left:4px solid #ffc107;' : '';
                 $book_cover = get_the_post_thumbnail_url($review['book_id'], 'thumbnail');
             ?>
-                <div style="background:<?php echo $bg; ?>;padding:15px;border-radius:8px;margin-bottom:10px;<?php echo $border; ?>">
+                <div style="background:<?php echo esc_attr($bg); ?>;padding:15px;border-radius:8px;margin-bottom:10px;<?php echo esc_attr($border); ?>">
                     <?php if ($is_featured): ?>
-                        <div style="background:#ffc107;color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:bold;display:inline-block;margin-bottom:8px;">⭐ <?php _e('Curadoria da Biblioteca', 'book-manager'); ?></div>
+                        <div style="background:#ffc107;color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:bold;display:inline-block;margin-bottom:8px;">⭐ <?php esc_html_e('Curadoria da Biblioteca', 'book-manager'); ?></div>
                     <?php endif; ?>
                     <div class="bm-review-card-inner" style="display:flex;gap:12px;align-items:flex-start;">
                         <?php if ($book_cover): ?>
                             <img src="<?php echo esc_url($book_cover); ?>" class="bm-review-cover" style="width:50px;height:70px;object-fit:cover;border-radius:4px;flex-shrink:0;" alt="" />
                         <?php else: ?>
-                            <div class="bm-review-cover" style="width:50px;height:70px;background:#f0f0f0;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#999;font-size:10px;"><?php _e('Sem capa', 'book-manager'); ?></div>
+                            <div class="bm-review-cover" style="width:50px;height:70px;background:#f0f0f0;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#999;font-size:10px;"><?php esc_html_e('Sem capa', 'book-manager'); ?></div>
                         <?php endif; ?>
                         <div style="flex:1;min-width:0;">
                             <div class="bm-review-meta" style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
@@ -295,8 +289,8 @@ $wl = bm_get_white_label();
                                     <img src="<?php echo esc_url($review['user_avatar']); ?>" style="width:24px;height:24px;border-radius:50%;" alt="" />
                                 <?php endif; ?>
                                 <strong style="font-size:13px;"><?php echo esc_html($review['user_name']); ?></strong>
-                                <span style="color:#ffc107;font-size:12px;"><?php echo str_repeat('★', $review['rating']) . str_repeat('☆', 5 - $review['rating']); ?></span>
-                                <small style="color:#999;font-size:11px;"><?php echo date('d/m/Y', strtotime($review['date'])); ?></small>
+                                <span style="color:#ffc107;font-size:12px;"><?php echo esc_html(str_repeat('★', $review['rating']) . str_repeat('☆', 5 - $review['rating'])); ?></span>
+                                <small style="color:#999;font-size:11px;"><?php echo esc_html(date('d/m/Y', strtotime($review['date']))); ?></small>
                             </div>
                             <p class="bm-review-text" style="margin:5px 0;color:#444;font-size:13px;"><?php echo esc_html($review['review']); ?></p>
                         </div>

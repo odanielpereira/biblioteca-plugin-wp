@@ -1,49 +1,17 @@
 <?php
+defined('ABSPATH') || exit;
+
 get_header();
 $wl = bm_get_white_label();
 ?>
 
-<style>
-.bm-catalog { max-width:1000px; margin:0 auto; padding:20px; }
-.bm-filters { display:flex; gap:10px; flex-wrap:wrap; margin:20px 0; align-items:end; }
-.bm-filters label { display:block; font-size:12px; font-weight:bold; margin-bottom:3px; }
-.bm-filters input[type="text"], .bm-filters select { padding:6px 10px; border:1px solid #ccc; border-radius:4px; }
-.bm-filters input[type="text"] { min-width:200px; }
-.bm-book-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:20px; margin-top:20px; }
-.bm-book-card { background:#fff; border-radius:6px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition:transform 0.2s ease, box-shadow 0.2s ease; }
-.bm-book-card:hover { transform:translateY(-4px); box-shadow:0 6px 20px rgba(0,0,0,0.15); }
-.bm-book-card a { text-decoration:none; color:inherit; }
-.bm-card-cover img { width:100%; height:220px; object-fit:cover; display:block; }
-.bm-card-no-cover { height:220px; background:#f0f0f0; display:flex; align-items:center; justify-content:center; color:#999; font-size:14px; }
-.bm-card-info { padding:10px; }
-.bm-card-info h3 { font-size:14px; margin:0 0 5px 0; line-height:1.3; }
-.bm-card-info p { font-size:12px; color:#666; margin:0; }
-.bm-pagination { margin-top:30px; text-align:center; }
-.bm-btn-filter { padding:6px 15px; background:#111; color:#fff; border:none; border-radius:4px; cursor:pointer; }
-.bm-btn-filter:hover { background:#333; }
-.bm-btn-clear { padding:6px 15px; background:#eee; color:#333; text-decoration:none; border-radius:4px; font-size:14px; }
-.bm-btn-clear:hover { background:#ddd; }
-.bm-btn-reserve { padding:4px 10px; background:#111; color:#fff; border:none; border-radius:3px; cursor:pointer; font-size:12px; margin-top:5px; }
-.bm-btn-reserve:hover { background:#333; }
-@media (max-width:768px) {
-    .bm-book-grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:16px; }
-    .bm-card-cover img, .bm-card-no-cover { height:200px; }
-}
-@media (max-width:480px) {
-    .bm-book-grid { grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:10px; }
-    .bm-card-cover img, .bm-card-no-cover { height:170px; }
-    .bm-filters { flex-direction:column; }
-    .bm-filters input[type="text"] { min-width:100%; }
-}
-</style>
-
 <div class="bm-catalog">
-    <h1><?php echo ($wl['enabled'] === '1' && !empty($wl['school_name'])) ? esc_html($wl['school_name']) : __('Catálogo de Livros', 'book-manager'); ?></h1>
+    <h1><?php echo ($wl['enabled'] === '1' && !empty($wl['school_name'])) ? esc_html($wl['school_name']) : esc_html__('Catálogo de Livros', 'book-manager'); ?></h1>
 
     <form method="get" class="bm-filters">
         <div>
-            <label><?php _e('Buscar', 'book-manager'); ?></label>
-            <input type="text" name="bm_search" value="<?php echo isset($_GET['bm_search']) ? esc_attr($_GET['bm_search']) : ''; ?>" placeholder="<?php _e('Título ou autor', 'book-manager'); ?>" />
+            <label><?php esc_html_e('Buscar', 'book-manager'); ?></label>
+            <input type="text" name="bm_search" value="<?php echo isset($_GET['bm_search']) ? esc_attr($_GET['bm_search']) : ''; ?>" placeholder="<?php esc_attr_e('Título ou autor', 'book-manager'); ?>" />
         </div>
         <?php 
         $taxonomies = get_option('bm_dynamic_taxonomies', array());
@@ -60,7 +28,7 @@ $wl = bm_get_white_label();
             <label><?php echo esc_html($genre_label); ?></label>
             <?php
             wp_dropdown_categories(array(
-                'show_option_all' => sprintf(__('Todos os %s', 'book-manager'), $genre_label),
+                'show_option_all' => sprintf(esc_html__('Todos os %s', 'book-manager'), $genre_label),
                 'taxonomy' => 'bm_genre',
                 'name' => 'bm_genre',
                 'selected' => isset($_GET['bm_genre']) ? $_GET['bm_genre'] : '',
@@ -74,7 +42,7 @@ $wl = bm_get_white_label();
             <label><?php echo esc_html($category_label); ?></label>
             <?php
             wp_dropdown_categories(array(
-                'show_option_all' => sprintf(__('Todas as %s', 'book-manager'), $category_label),
+                'show_option_all' => sprintf(esc_html__('Todas as %s', 'book-manager'), $category_label),
                 'taxonomy' => 'bm_category',
                 'name' => 'bm_category',
                 'selected' => isset($_GET['bm_category']) ? $_GET['bm_category'] : '',
@@ -88,7 +56,7 @@ $wl = bm_get_white_label();
             <label><?php echo esc_html($discipline_label); ?></label>
             <?php
             wp_dropdown_categories(array(
-                'show_option_all' => sprintf(__('Todas as %s', 'book-manager'), $discipline_label),
+                'show_option_all' => sprintf(esc_html__('Todas as %s', 'book-manager'), $discipline_label),
                 'taxonomy' => 'bm_discipline',
                 'name' => 'bm_discipline',
                 'selected' => isset($_GET['bm_discipline']) ? $_GET['bm_discipline'] : '',
@@ -102,7 +70,7 @@ $wl = bm_get_white_label();
             <label><?php echo esc_html($reading_level_label); ?></label>
             <?php
             wp_dropdown_categories(array(
-                'show_option_all' => sprintf(__('Todos os %s', 'book-manager'), $reading_level_label),
+                'show_option_all' => sprintf(esc_html__('Todos os %s', 'book-manager'), $reading_level_label),
                 'taxonomy' => 'bm_reading_level',
                 'name' => 'bm_reading_level',
                 'selected' => isset($_GET['bm_reading_level']) ? $_GET['bm_reading_level'] : '',
@@ -112,8 +80,8 @@ $wl = bm_get_white_label();
         </div>
         <?php endif; ?>
         <div>
-            <button type="submit" class="bm-btn-filter"><?php _e('Filtrar', 'book-manager'); ?></button>
-            <a href="<?php echo get_post_type_archive_link('bm_book'); ?>" class="bm-btn-clear"><?php _e('Limpar', 'book-manager'); ?></a>
+            <button type="submit" class="bm-btn-filter"><?php esc_html_e('Filtrar', 'book-manager'); ?></button>
+            <a href="<?php echo esc_url(get_post_type_archive_link('bm_book')); ?>" class="bm-btn-clear"><?php esc_html_e('Limpar', 'book-manager'); ?></a>
         </div>
     </form>
 <?php
@@ -164,11 +132,11 @@ $bm_query = new WP_Query($args);
                             </div>
                         <?php elseif (!empty($hotlink)): ?>
                             <div class="bm-card-cover">
-                                <img src="<?php echo esc_url($hotlink); ?>" style="width:100%;height:220px;object-fit:cover;" alt="<?php the_title(); ?>" />
+                                <img src="<?php echo esc_url($hotlink); ?>" style="width:100%;height:220px;object-fit:cover;" alt="<?php the_title_attribute(); ?>" />
                             </div>
                         <?php else: ?>
                             <div class="bm-card-no-cover">
-                                <?php _e('Sem capa', 'book-manager'); ?>
+                                <?php esc_html_e('Sem capa', 'book-manager'); ?>
                             </div>
                         <?php endif; ?>
                         <div class="bm-card-info">
@@ -195,11 +163,10 @@ $bm_query = new WP_Query($args);
                 'prev_text' => '←',
                 'next_text' => '→',
             ));
-
             ?>
         </div>
     <?php else: ?>
-        <p><?php _e('Nenhum livro encontrado.', 'book-manager'); ?></p>
+        <p><?php esc_html_e('Nenhum livro encontrado.', 'book-manager'); ?></p>
     <?php endif; ?>
 </div>
 

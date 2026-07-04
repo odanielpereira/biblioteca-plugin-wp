@@ -1,16 +1,16 @@
 <?php
 /**
- * Book Manager — Módulo de Serviços Administrativos
- * Balcão de Atendimento, Alunos, Empréstimos Admin, Etiquetas, Carteirinhas, Relatórios Admin
+ * Book Manager — Administrative Services Module
+ * Service desk, students, loans admin, labels, library cards, reports admin
  */
 
 defined('ABSPATH') || exit;
 
 // ==========================================
-// FASE 18: PÁGINA UNIFICADA — BALCÃO DE ATENDIMENTO
+// UNIFIED SERVICE DESK PAGE
 // ==========================================
 function bm_add_service_desk_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Balcão de Atendimento', 'book-manager'), __('Balcão de Atendimento', 'book-manager'), 'edit_bm_books', 'bm_service_desk', 'bm_render_service_desk_page');
+    add_submenu_page('edit.php?post_type=bm_book', esc_html__('Balcão de Atendimento', 'book-manager'), esc_html__('Balcão de Atendimento', 'book-manager'), 'edit_bm_books', 'bm_service_desk', 'bm_render_service_desk_page');
 }
 add_action('admin_menu', 'bm_add_service_desk_page');
 
@@ -20,11 +20,11 @@ function bm_render_service_desk_page() {
     $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'loans';
     ?>
     <div class="wrap">
-        <h1><?php _e('Balcão de Atendimento', 'book-manager'); ?></h1>
+        <h1><?php esc_html_e('Balcão de Atendimento', 'book-manager'); ?></h1>
         
         <nav class="nav-tab-wrapper" style="margin-bottom:15px;">
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_service_desk&tab=loans'); ?>" class="nav-tab <?php echo $tab === 'loans' ? 'nav-tab-active' : ''; ?>">📋 <?php _e('Empréstimos', 'book-manager'); ?></a>
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_service_desk&tab=service'); ?>" class="nav-tab <?php echo $tab === 'service' ? 'nav-tab-active' : ''; ?>">📤 <?php _e('Atendimento', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_service_desk&tab=loans')); ?>" class="nav-tab <?php echo $tab === 'loans' ? 'nav-tab-active' : ''; ?>">📋 <?php esc_html_e('Empréstimos', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_service_desk&tab=service')); ?>" class="nav-tab <?php echo $tab === 'service' ? 'nav-tab-active' : ''; ?>">📤 <?php esc_html_e('Atendimento', 'book-manager'); ?></a>
         </nav>
         
         <?php
@@ -39,7 +39,7 @@ function bm_render_service_desk_page() {
 }
 
 // ==========================================
-// FASE 12K: ATENDIMENTO (EMPRÉSTIMO RÁPIDO NO BALCÃO)
+// SERVICE DESK — QUICK LOAN COUNTER
 // ==========================================
 function bm_render_service_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
@@ -50,46 +50,46 @@ function bm_render_service_page_content() {
     $nonce = wp_create_nonce('bm_service_nonce');
     ?>
     <div class="wrap" style="max-width:1100px;">
-        <h1>📋 <?php _e('Atendimento — Balcão', 'book-manager'); ?></h1>
+        <h1>📋 <?php esc_html_e('Atendimento — Balcão', 'book-manager'); ?></h1>
         
         <div style="background:#f0f7ff;padding:10px 15px;border-radius:6px;margin-bottom:15px;border-left:4px solid #2196f3;">
-            <label style="font-weight:bold;">📷 <?php _e('Leitor de Código de Barras', 'book-manager'); ?></label>
-            <input type="text" id="bm-barcode-input" placeholder="<?php _e('Escaneie o ISBN ou digite...', 'book-manager'); ?>" style="width:100%;padding:10px;font-size:16px;margin-top:5px;border:2px solid #2196f3;border-radius:4px;" autofocus />
-            <p class="description" style="margin:5px 0 0 0;"><?php _e('Escaneie o código de barras ou digite o ISBN e pressione Enter para buscar o livro.', 'book-manager'); ?></p>
+            <label style="font-weight:bold;">📷 <?php esc_html_e('Leitor de Código de Barras', 'book-manager'); ?></label>
+            <input type="text" id="bm-barcode-input" placeholder="<?php esc_attr_e('Escaneie o ISBN ou digite...', 'book-manager'); ?>" style="width:100%;padding:10px;font-size:16px;margin-top:5px;border:2px solid #2196f3;border-radius:4px;" autofocus />
+            <p class="description" style="margin:5px 0 0 0;"><?php esc_html_e('Escaneie o código de barras ou digite o ISBN e pressione Enter para buscar o livro.', 'book-manager'); ?></p>
         </div>
         
         <div style="display:flex;gap:20px;flex-wrap:wrap;">
             <div style="flex:1;min-width:350px;background:#fff;padding:20px;border-radius:8px;border:1px solid #ddd;">
-                <h2 style="margin-top:0;">📖 <?php _e('Livro', 'book-manager'); ?></h2>
+                <h2 style="margin-top:0;">📖 <?php esc_html_e('Livro', 'book-manager'); ?></h2>
                 <div style="display:flex;gap:10px;margin-bottom:10px;">
-                    <input type="text" id="bm-book-search" placeholder="<?php _e('Buscar por título, autor ou ISBN...', 'book-manager'); ?>" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:4px;" />
+                    <input type="text" id="bm-book-search" placeholder="<?php esc_attr_e('Buscar por título, autor ou ISBN...', 'book-manager'); ?>" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:4px;" />
                     <button type="button" id="bm-book-search-btn" class="button">🔍</button>
                 </div>
                 <div id="bm-book-result" style="min-height:100px;padding:10px;background:#f9f9f9;border-radius:4px;">
-                    <p style="color:#999;"><?php _e('Busque um livro ou escaneie o código de barras.', 'book-manager'); ?></p>
+                    <p style="color:#999;"><?php esc_html_e('Busque um livro ou escaneie o código de barras.', 'book-manager'); ?></p>
                 </div>
                 <div id="bm-book-queue" style="margin-top:10px;display:none;"></div>
             </div>
             
             <div style="flex:1;min-width:350px;background:#fff;padding:20px;border-radius:8px;border:1px solid #ddd;">
-                <h2 style="margin-top:0;">👤 <?php _e('Aluno', 'book-manager'); ?></h2>
+                <h2 style="margin-top:0;">👤 <?php esc_html_e('Aluno', 'book-manager'); ?></h2>
                 <div style="display:flex;gap:10px;margin-bottom:10px;">
-                    <input type="text" id="bm-student-search" placeholder="<?php _e('Buscar por nome ou e-mail...', 'book-manager'); ?>" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:4px;" />
+                    <input type="text" id="bm-student-search" placeholder="<?php esc_attr_e('Buscar por nome ou e-mail...', 'book-manager'); ?>" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:4px;" />
                     <button type="button" id="bm-student-search-btn" class="button">🔍</button>
                 </div>
                 <div id="bm-student-result" style="min-height:100px;padding:10px;background:#f9f9f9;border-radius:4px;">
-                    <p style="color:#999;"><?php _e('Busque um aluno.', 'book-manager'); ?></p>
+                    <p style="color:#999;"><?php esc_html_e('Busque um aluno.', 'book-manager'); ?></p>
                 </div>
                 <div style="margin-top:10px;">
-                    <button type="button" id="bm-new-student-btn" class="button" style="width:100%;">➕ <?php _e('Cadastrar Novo Aluno', 'book-manager'); ?></button>
+                    <button type="button" id="bm-new-student-btn" class="button" style="width:100%;">➕ <?php esc_html_e('Cadastrar Novo Aluno', 'book-manager'); ?></button>
                 </div>
             </div>
         </div>
         
         <div id="bm-action-area" style="margin-top:20px;text-align:center;display:none;">
-            <button type="button" id="bm-loan-btn" class="button button-primary" style="font-size:18px;padding:15px 40px;">📤 <?php _e('EMPRESTAR', 'book-manager'); ?></button>
-            <button type="button" id="bm-return-btn" class="button" style="font-size:18px;padding:15px 40px;background:#46b450;color:#fff;border-color:#46b450;">📥 <?php _e('DEVOLVER', 'book-manager'); ?></button>
-            <button type="button" id="bm-renew-btn" class="button" style="font-size:16px;padding:12px 30px;background:#ffc107;color:#111;border-color:#ffc107;">🔄 <?php _e('Renovar +7 dias', 'book-manager'); ?></button>
+            <button type="button" id="bm-loan-btn" class="button button-primary" style="font-size:18px;padding:15px 40px;">📤 <?php esc_html_e('EMPRESTAR', 'book-manager'); ?></button>
+            <button type="button" id="bm-return-btn" class="button" style="font-size:18px;padding:15px 40px;background:#46b450;color:#fff;border-color:#46b450;">📥 <?php esc_html_e('DEVOLVER', 'book-manager'); ?></button>
+            <button type="button" id="bm-renew-btn" class="button" style="font-size:16px;padding:12px 30px;background:#ffc107;color:#111;border-color:#ffc107;">🔄 <?php esc_html_e('Renovar +7 dias', 'book-manager'); ?></button>
         </div>
  
         <div id="bm-action-result" style="margin-top:15px;display:none;"></div>
@@ -97,19 +97,19 @@ function bm_render_service_page_content() {
     
     <div id="bm-quick-register-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
         <div style="background:#fff;padding:25px;border-radius:8px;max-width:450px;width:90%;max-height:80vh;overflow-y:auto;">
-            <h2 style="margin-top:0;" id="bm-modal-title">➕ <?php _e('Cadastro Rápido de Aluno', 'book-manager'); ?></h2>
+            <h2 style="margin-top:0;" id="bm-modal-title">➕ <?php esc_html_e('Cadastro Rápido de Aluno', 'book-manager'); ?></h2>
             <form id="bm-quick-register-form" onsubmit="return false;">
                 <?php wp_nonce_field('bm_service_nonce', 'bm_quick_register_nonce'); ?>
                 <p>
-                    <label><strong><?php _e('Nome completo', 'book-manager'); ?> *</strong></label>
+                    <label><strong><?php esc_html_e('Nome completo', 'book-manager'); ?> *</strong></label>
                     <input type="text" name="bm_quick_name" required style="width:100%;padding:8px;margin-top:4px;" />
                 </p>
                 <p>
-                    <label><strong><?php _e('E-mail', 'book-manager'); ?> *</strong></label>
+                    <label><strong><?php esc_html_e('E-mail', 'book-manager'); ?> *</strong></label>
                     <input type="email" name="bm_quick_email" required style="width:100%;padding:8px;margin-top:4px;" />
                 </p>
                 <p>
-                    <label><strong><?php _e('Telefone', 'book-manager'); ?></strong></label>
+                    <label><strong><?php esc_html_e('Telefone', 'book-manager'); ?></strong></label>
                     <input type="text" name="bm_quick_phone" style="width:100%;padding:8px;margin-top:4px;" placeholder="5511999999999" />
                 </p>
                 <?php
@@ -133,8 +133,8 @@ function bm_render_service_page_content() {
                 </p>
                 <?php endforeach; ?>
                 <p style="margin-top:15px;display:flex;gap:10px;">
-                    <button type="submit" class="button button-primary" style="flex:1;" id="bm-modal-submit-btn"><?php _e('Cadastrar', 'book-manager'); ?></button>
-                    <button type="button" class="button" onclick="document.getElementById('bm-quick-register-modal').style.display='none'" style="flex:1;"><?php _e('Cancelar', 'book-manager'); ?></button>
+                    <button type="submit" class="button button-primary" style="flex:1;" id="bm-modal-submit-btn"><?php esc_html_e('Cadastrar', 'book-manager'); ?></button>
+                    <button type="button" class="button" onclick="document.getElementById('bm-quick-register-modal').style.display='none'" style="flex:1;"><?php esc_html_e('Cancelar', 'book-manager'); ?></button>
                 </p>
             </form>
         </div>
@@ -142,29 +142,29 @@ function bm_render_service_page_content() {
     
     <div id="bm-damage-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
         <div style="background:#fff;padding:25px;border-radius:8px;max-width:400px;width:90%;">
-            <h3 style="margin-top:0;">📋 <?php _e('Registro de Devolução', 'book-manager'); ?></h3>
+            <h3 style="margin-top:0;">📋 <?php esc_html_e('Registro de Devolução', 'book-manager'); ?></h3>
             <p>
-                <label><strong><?php _e('Estado do livro:', 'book-manager'); ?></strong></label>
+                <label><strong><?php esc_html_e('Estado do livro:', 'book-manager'); ?></strong></label>
                 <select id="bm-damage-status" style="width:100%;padding:8px;margin-top:4px;">
-                    <option value="good">✅ <?php _e('Bom', 'book-manager'); ?></option>
-                    <option value="acceptable">⚠️ <?php _e('Aceitável', 'book-manager'); ?></option>
-                    <option value="damaged">❌ <?php _e('Danificado', 'book-manager'); ?></option>
+                    <option value="good">✅ <?php esc_html_e('Bom', 'book-manager'); ?></option>
+                    <option value="acceptable">⚠️ <?php esc_html_e('Aceitável', 'book-manager'); ?></option>
+                    <option value="damaged">❌ <?php esc_html_e('Danificado', 'book-manager'); ?></option>
                 </select>
             </p>
             <p>
-                <label><strong><?php _e('Observação:', 'book-manager'); ?></strong></label>
-                <textarea id="bm-damage-note" rows="3" style="width:100%;margin-top:4px;" placeholder="<?php _e('Descreva o dano...', 'book-manager'); ?>"></textarea>
+                <label><strong><?php esc_html_e('Observação:', 'book-manager'); ?></strong></label>
+                <textarea id="bm-damage-note" rows="3" style="width:100%;margin-top:4px;" placeholder="<?php esc_attr_e('Descreva o dano...', 'book-manager'); ?>"></textarea>
             </p>
             <p style="display:flex;gap:10px;">
-                <button type="button" id="bm-confirm-return" class="button button-primary" style="flex:1;"><?php _e('Confirmar Devolução', 'book-manager'); ?></button>
-                <button type="button" class="button" onclick="document.getElementById('bm-damage-modal').style.display='none'" style="flex:1;"><?php _e('Cancelar', 'book-manager'); ?></button>
+                <button type="button" id="bm-confirm-return" class="button button-primary" style="flex:1;"><?php esc_html_e('Confirmar Devolução', 'book-manager'); ?></button>
+                <button type="button" class="button" onclick="document.getElementById('bm-damage-modal').style.display='none'" style="flex:1;"><?php esc_html_e('Cancelar', 'book-manager'); ?></button>
             </p>
         </div>
     </div>
     
     <script>
-    var bmNonce = '<?php echo $nonce; ?>';
-    var bmAjaxUrl = '<?php echo admin_url("admin-ajax.php"); ?>';
+    var bmNonce = '<?php echo esc_attr($nonce); ?>';
+    var bmAjaxUrl = '<?php echo esc_url(admin_url("admin-ajax.php")); ?>';
     var bmSelectedBook = null;
     var bmSelectedStudent = null;
     
@@ -246,17 +246,17 @@ function bm_render_service_page_content() {
         var stockColor = book.available > 0 ? '#46b450' : '#dc3545';
         var html = '<div style="padding:10px;">';
         html += '<h3 style="margin:0 0 5px 0;">' + book.title + '</h3>';
-        if (book.author) html += '<p style="margin:3px 0;"><strong>Autor:</strong> ' + book.author + '</p>';
-        if (book.cdu) html += '<p style="margin:3px 0;"><strong>Classificação:</strong> ' + book.cdu + '</p>';
-        html += '<p style="margin:3px 0;"><strong>Disponível:</strong> <span style="color:' + stockColor + ';font-weight:bold;">' + book.available + '/' + book.total + '</span></p>';
-        if (book.consulta_local) html += '<p style="margin:3px 0;color:#dc3545;">📌 <strong>Consulta local</strong> — não pode sair da biblioteca</p>';
-        if (book.overdue) html += '<p style="margin:3px 0;color:#dc3545;">⚠️ Este livro está com devolução atrasada</p>';
+        if (book.author) html += '<p style="margin:3px 0;"><strong><?php echo esc_js(__('Autor:', 'book-manager')); ?></strong> ' + book.author + '</p>';
+        if (book.cdu) html += '<p style="margin:3px 0;"><strong><?php echo esc_js(__('Classificação:', 'book-manager')); ?></strong> ' + book.cdu + '</p>';
+        html += '<p style="margin:3px 0;"><strong><?php echo esc_js(__('Disponível:', 'book-manager')); ?></strong> <span style="color:' + stockColor + ';font-weight:bold;">' + book.available + '/' + book.total + '</span></p>';
+        if (book.consulta_local) html += '<p style="margin:3px 0;color:#dc3545;">📌 <strong><?php echo esc_js(__('Consulta local', 'book-manager')); ?></strong> <?php echo esc_js(__('— não pode sair da biblioteca', 'book-manager')); ?></p>';
+        if (book.overdue) html += '<p style="margin:3px 0;color:#dc3545;">⚠️ <?php echo esc_js(__('Este livro está com devolução atrasada', 'book-manager')); ?></p>';
         html += '</div>';
         
         document.getElementById('bm-book-result').innerHTML = html;
         
         if (book.queue && book.queue.length > 0) {
-            var qHtml = '<div style="margin-top:10px;padding:10px;background:#fff8e1;border-radius:4px;"><strong>📋 Fila de espera:</strong><ol style="margin:5px 0;padding-left:20px;">';
+            var qHtml = '<div style="margin-top:10px;padding:10px;background:#fff8e1;border-radius:4px;"><strong>📋 <?php echo esc_js(__('Fila de espera:', 'book-manager')); ?></strong><ol style="margin:5px 0;padding-left:20px;">';
             book.queue.forEach(function(q) {
                 qHtml += '<li>' + q.name + ' (desde ' + q.date + ')</li>';
             });
@@ -271,8 +271,8 @@ function bm_render_service_page_content() {
     }
     
     function bmShowBookNotFound(isbn, cleanIsbn) {
-        var html = '<p style="color:#dc3545;">Livro não encontrado no acervo.</p>';
-        html += '<button type="button" class="button button-primary" onclick="bmRegisterBookByISBN(\'' + cleanIsbn + '\')">📚 Cadastrar este livro via Google Books</button>';
+        var html = '<p style="color:#dc3545;"><?php echo esc_js(__('Livro não encontrado no acervo.', 'book-manager')); ?></p>';
+        html += '<button type="button" class="button button-primary" onclick="bmRegisterBookByISBN(\'' + cleanIsbn + '\')">📚 <?php echo esc_js(__('Cadastrar este livro via Google Books', 'book-manager')); ?></button>';
         document.getElementById('bm-book-result').innerHTML = html;
     }
     
@@ -300,15 +300,15 @@ function bm_render_service_page_content() {
     function bmDisplayStudent(student) {
         bmSelectedStudent = student;
         var html = '<div style="padding:10px;">';
-        html += '<h3 style="margin:0 0 5px 0;"><a href="<?php echo admin_url("edit.php?post_type=bm_book&page=bm_student_detail"); ?>&student_id=' + student.id + '" style="text-decoration:none;color:#111;" target="_blank">' + student.name + '</a> <button type="button" class="button button-small" onclick="bmEditStudent(' + student.id + ')" style="margin-left:10px;font-size:11px;">✏️ Editar</button></h3>';
-        html += '<p style="margin:3px 0;"><strong>E-mail:</strong> ' + student.email + '</p>';
-        if (student.group) html += '<p style="margin:3px 0;"><strong>Grupo:</strong> ' + student.group + '</p>';
-        html += '<p style="margin:3px 0;"><strong>Empréstimos ativos:</strong> ' + student.active_loans + '/' + student.max_loans + '</p>';
-        if (student.has_overdue) html += '<p style="margin:3px 0;color:#dc3545;">⚠️ <strong>Possui livro em atraso</strong></p>';
-        if (student.blocked) html += '<p style="margin:3px 0;color:#dc3545;">🚫 <strong>Empréstimo bloqueado</strong> — aluno com atraso</p>';
+        html += '<h3 style="margin:0 0 5px 0;"><a href="<?php echo esc_url(admin_url("edit.php?post_type=bm_book&page=bm_student_detail")); ?>&student_id=' + student.id + '" style="text-decoration:none;color:#111;" target="_blank">' + student.name + '</a> <button type="button" class="button button-small" onclick="bmEditStudent(' + student.id + ')" style="margin-left:10px;font-size:11px;">✏️ <?php echo esc_js(__('Editar', 'book-manager')); ?></button></h3>';
+        html += '<p style="margin:3px 0;"><strong><?php echo esc_js(__('E-mail:', 'book-manager')); ?></strong> ' + student.email + '</p>';
+        if (student.group) html += '<p style="margin:3px 0;"><strong><?php echo esc_js(__('Grupo:', 'book-manager')); ?></strong> ' + student.group + '</p>';
+        html += '<p style="margin:3px 0;"><strong><?php echo esc_js(__('Empréstimos ativos:', 'book-manager')); ?></strong> ' + student.active_loans + '/' + student.max_loans + '</p>';
+        if (student.has_overdue) html += '<p style="margin:3px 0;color:#dc3545;">⚠️ <strong><?php echo esc_js(__('Possui livro em atraso', 'book-manager')); ?></strong></p>';
+        if (student.blocked) html += '<p style="margin:3px 0;color:#dc3545;">🚫 <strong><?php echo esc_js(__('Empréstimo bloqueado', 'book-manager')); ?></strong> <?php echo esc_js(__('— aluno com atraso', 'book-manager')); ?></p>';
         
         if (student.recent_books && student.recent_books.length > 0) {
-            html += '<p style="margin:5px 0 3px 0;"><strong>Últimos livros:</strong></p>';
+            html += '<p style="margin:5px 0 3px 0;"><strong><?php echo esc_js(__('Últimos livros:', 'book-manager')); ?></strong></p>';
             student.recent_books.forEach(function(b) {
                 html += '<span style="display:inline-block;background:#e3f2fd;padding:2px 8px;border-radius:10px;font-size:11px;margin:2px;">' + b + '</span> ';
             });
@@ -319,7 +319,7 @@ function bm_render_service_page_content() {
     }
     
     function bmDisplayStudentList(students) {
-        var html = '<p style="margin:0 0 10px 0;">Múltiplos alunos encontrados:</p>';
+        var html = '<p style="margin:0 0 10px 0;"><?php echo esc_js(__('Múltiplos alunos encontrados:', 'book-manager')); ?></p>';
         students.forEach(function(s) {
             html += '<div style="padding:8px;margin:3px 0;background:#fff;border:1px solid #eee;border-radius:4px;cursor:pointer;" onclick="bmSelectStudent(' + s.id + ')">';
             html += '<strong>' + s.name + '</strong> — ' + s.email;
@@ -349,18 +349,18 @@ function bm_render_service_page_content() {
     document.getElementById('bm-loan-btn').addEventListener('click', function() {
         if (!bmSelectedBook || !bmSelectedStudent) return;
         if (bmSelectedStudent.blocked) {
-            alert('Aluno com atraso — empréstimo bloqueado.');
+            alert('<?php echo esc_js(__('Aluno com atraso — empréstimo bloqueado.', 'book-manager')); ?>');
             return;
         }
         if (bmSelectedBook.consulta_local) {
-            alert('Este livro é de consulta local e não pode ser emprestado.');
+            alert('<?php echo esc_js(__('Este livro é de consulta local e não pode ser emprestado.', 'book-manager')); ?>');
             return;
         }
         if (bmSelectedBook.available <= 0) {
-            alert('Não há exemplares disponíveis.');
+            alert('<?php echo esc_js(__('Não há exemplares disponíveis.', 'book-manager')); ?>');
             return;
         }
-        var days = prompt('Prazo do empréstimo (dias):', '14');
+        var days = prompt('<?php echo esc_js(__('Prazo do empréstimo (dias):', 'book-manager')); ?>', '14');
         if (!days) return;
         
         var xhr = new XMLHttpRequest();
@@ -373,14 +373,14 @@ function bm_render_service_page_content() {
             area.innerHTML = '<div class="notice notice-' + (r.success ? 'success' : 'error') + '"><p>' + r.message + '</p></div>';
             if (r.success) {
                 bmSelectedBook = null; bmSelectedStudent = null;
-                document.getElementById('bm-book-result').innerHTML = '<p style="color:#999;">Busque um livro.</p>';
-                document.getElementById('bm-student-result').innerHTML = '<p style="color:#999;">Busque um aluno.</p>';
+                document.getElementById('bm-book-result').innerHTML = '<p style="color:#999;"><?php echo esc_js(__('Busque um livro.', 'book-manager')); ?></p>';
+                document.getElementById('bm-student-result').innerHTML = '<p style="color:#999;"><?php echo esc_js(__('Busque um aluno.', 'book-manager')); ?></p>';
                 document.getElementById('bm-action-area').style.display = 'none';
                 document.getElementById('bm-book-queue').style.display = 'none';
             }
 
             if (r.success && r.receipt_url) {
-                area.innerHTML += ' <a href="' + r.receipt_url + '" target="_blank" class="button" style="margin-left:10px;background:#111;color:#fff;border:none;">🧾 Imprimir Comprovante</a>';
+                area.innerHTML += ' <a href="' + r.receipt_url + '" target="_blank" class="button" style="margin-left:10px;background:#111;color:#fff;border:none;">🧾 <?php echo esc_js(__('Imprimir Comprovante', 'book-manager')); ?></a>';
             }
 
         };
@@ -407,8 +407,8 @@ function bm_render_service_page_content() {
             area.innerHTML = '<div class="notice notice-' + (r.success ? 'success' : 'error') + '"><p>' + r.message + '</p></div>';
             if (r.success) {
                 bmSelectedBook = null; bmSelectedStudent = null;
-                document.getElementById('bm-book-result').innerHTML = '<p style="color:#999;">Busque um livro.</p>';
-                document.getElementById('bm-student-result').innerHTML = '<p style="color:#999;">Busque um aluno.</p>';
+                document.getElementById('bm-book-result').innerHTML = '<p style="color:#999;"><?php echo esc_js(__('Busque um livro.', 'book-manager')); ?></p>';
+                document.getElementById('bm-student-result').innerHTML = '<p style="color:#999;"><?php echo esc_js(__('Busque um aluno.', 'book-manager')); ?></p>';
                 document.getElementById('bm-action-area').style.display = 'none';
                 document.getElementById('bm-book-queue').style.display = 'none';
             }
@@ -418,7 +418,7 @@ function bm_render_service_page_content() {
     
     document.getElementById('bm-renew-btn').addEventListener('click', function() {
         if (!bmSelectedBook || !bmSelectedStudent) return;
-        var days = prompt('Renovar por quantos dias?', '7');
+        var days = prompt('<?php echo esc_js(__('Renovar por quantos dias?', 'book-manager')); ?>', '7');
         if (!days) return;
         
         var xhr = new XMLHttpRequest();
@@ -462,8 +462,8 @@ function bm_render_service_page_content() {
             if (r.success) {
                 document.getElementById('bm-quick-register-modal').style.display = 'none';
                 form.removeAttribute('data-edit-id');
-                document.getElementById('bm-modal-title').textContent = '➕ Cadastro Rápido de Aluno';
-                document.getElementById('bm-modal-submit-btn').textContent = 'Cadastrar';
+                document.getElementById('bm-modal-title').textContent = '➕ <?php echo esc_js(__('Cadastro Rápido de Aluno', 'book-manager')); ?>';
+                document.getElementById('bm-modal-submit-btn').textContent = '<?php echo esc_js(__('Cadastrar', 'book-manager')); ?>';
                 if (editId) {
                     bmSelectStudent(editId);
                 } else {
@@ -514,8 +514,8 @@ function bm_render_service_page_content() {
                     }
                 }
                 form.setAttribute('data-edit-id', id);
-                document.getElementById('bm-modal-title').textContent = '✏️ Editar Aluno';
-                document.getElementById('bm-modal-submit-btn').textContent = 'Salvar Alterações';
+                document.getElementById('bm-modal-title').textContent = '✏️ <?php echo esc_js(__('Editar Aluno', 'book-manager')); ?>';
+                document.getElementById('bm-modal-submit-btn').textContent = '<?php echo esc_js(__('Salvar Alterações', 'book-manager')); ?>';
                 document.getElementById('bm-quick-register-modal').style.display = 'flex';
             }
         };
@@ -526,10 +526,10 @@ function bm_render_service_page_content() {
 }
 
 // ==========================================
-// FASE 12J: ADMINISTRAÇÃO DE ALUNOS
+// STUDENTS ADMINISTRATION
 // ==========================================
 function bm_add_students_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Alunos', 'book-manager'), __('Alunos', 'book-manager'), 'edit_bm_books', 'bm_students', 'bm_render_students_unified_page');
+    add_submenu_page('edit.php?post_type=bm_book', esc_html__('Alunos', 'book-manager'), esc_html__('Alunos', 'book-manager'), 'edit_bm_books', 'bm_students', 'bm_render_students_unified_page');
 }
 add_action('admin_menu', 'bm_add_students_page');
 
@@ -548,9 +548,9 @@ function bm_render_reading_lists_page_content() {
         $description = sanitize_textarea_field($_POST['bm_list_description']);
         
         if (empty($group)) {
-            $msg = '<div class="notice notice-error"><p>' . __('Informe a turma.', 'book-manager') . '</p></div>';
+            $msg = '<div class="notice notice-error"><p>' . esc_html__('Informe a turma.', 'book-manager') . '</p></div>';
         } elseif (empty($book_ids)) {
-            $msg = '<div class="notice notice-error"><p>' . __('Selecione pelo menos um livro.', 'book-manager') . '</p></div>';
+            $msg = '<div class="notice notice-error"><p>' . esc_html__('Selecione pelo menos um livro.', 'book-manager') . '</p></div>';
         } else {
             $reading_lists[$group] = array(
                 'books' => $book_ids,
@@ -559,7 +559,7 @@ function bm_render_reading_lists_page_content() {
                 'created_at' => current_time('mysql'),
             );
             update_option('bm_reading_lists', $reading_lists);
-            $msg = '<div class="notice notice-success"><p>' . sprintf(__('Lista de leitura para %s salva!', 'book-manager'), $group) . '</p></div>';
+            $msg = '<div class="notice notice-success"><p>' . sprintf(esc_html__('Lista de leitura para %s salva!', 'book-manager'), esc_html($group)) . '</p></div>';
         }
     }
     
@@ -568,7 +568,7 @@ function bm_render_reading_lists_page_content() {
         if (isset($reading_lists[$delete_group])) {
             unset($reading_lists[$delete_group]);
             update_option('bm_reading_lists', $reading_lists);
-            $msg = '<div class="notice notice-success"><p>' . sprintf(__('Lista da turma %s removida.', 'book-manager'), $delete_group) . '</p></div>';
+            $msg = '<div class="notice notice-success"><p>' . sprintf(esc_html__('Lista da turma %s removida.', 'book-manager'), esc_html($delete_group)) . '</p></div>';
         }
     }
     
@@ -584,56 +584,56 @@ function bm_render_reading_lists_page_content() {
     
     ?>
     <div class="wrap">
-        <h1><?php _e('Listas de Leitura Obrigatória', 'book-manager'); ?></h1>
+        <h1><?php esc_html_e('Listas de Leitura Obrigatória', 'book-manager'); ?></h1>
         <?php echo $msg; ?>
         
-        <h2><?php _e('Nova Lista', 'book-manager'); ?></h2>
+        <h2><?php esc_html_e('Nova Lista', 'book-manager'); ?></h2>
         <form method="post" style="max-width:600px;">
             <?php wp_nonce_field('bm_reading_list_action', 'bm_reading_list_nonce'); ?>
             <table class="form-table">
                 <tr>
-                    <th><label><?php _e('Turma', 'book-manager'); ?></label></th>
+                    <th><label><?php esc_html_e('Turma', 'book-manager'); ?></label></th>
                     <td>
                         <select name="bm_list_group" required style="width:200px;">
-                            <option value=""><?php _e('— Selecione —', 'book-manager'); ?></option>
+                            <option value=""><?php esc_html_e('— Selecione —', 'book-manager'); ?></option>
                             <?php foreach ($existing_groups as $group): ?>
                                 <option value="<?php echo esc_attr($group); ?>"><?php echo esc_html($group); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <p class="description"><?php _e('Selecione uma turma existente. Se não aparecer, cadastre alunos nessa turma primeiro.', 'book-manager'); ?></p>
+                        <p class="description"><?php esc_html_e('Selecione uma turma existente. Se não aparecer, cadastre alunos nessa turma primeiro.', 'book-manager'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th><label><?php _e('Descrição', 'book-manager'); ?></label></th>
+                    <th><label><?php esc_html_e('Descrição', 'book-manager'); ?></label></th>
                     <td>
-                        <input type="text" name="bm_list_description" style="width:100%;" placeholder="<?php _e('Ex: Leituras obrigatórias do 2º bimestre', 'book-manager'); ?>" />
+                        <input type="text" name="bm_list_description" style="width:100%;" placeholder="<?php esc_attr_e('Ex: Leituras obrigatórias do 2º bimestre', 'book-manager'); ?>" />
                     </td>
                 </tr>
                 <tr>
-                    <th><label><?php _e('Livros', 'book-manager'); ?></label></th>
+                    <th><label><?php esc_html_e('Livros', 'book-manager'); ?></label></th>
                     <td>
                         <div id="bm-list-selected" style="margin-bottom:10px;"></div>
-                        <input type="text" id="bm-list-book-search" placeholder="<?php _e('Digite o título do livro e pressione Enter...', 'book-manager'); ?>" style="width:100%;" />
+                        <input type="text" id="bm-list-book-search" placeholder="<?php esc_attr_e('Digite o título do livro e pressione Enter...', 'book-manager'); ?>" style="width:100%;" />
                         <div id="bm-list-search-results" style="margin-top:5px;"></div>
-                        <p class="description"><?php _e('Busque e selecione os livros. Eles aparecerão na lista acima.', 'book-manager'); ?></p>
+                        <p class="description"><?php esc_html_e('Busque e selecione os livros. Eles aparecerão na lista acima.', 'book-manager'); ?></p>
                     </td>
                 </tr>
             </table>
-            <p><input type="submit" name="bm_save_reading_list" class="button button-primary" value="<?php _e('Salvar Lista', 'book-manager'); ?>" /></p>
+            <p><input type="submit" name="bm_save_reading_list" class="button button-primary" value="<?php esc_attr_e('Salvar Lista', 'book-manager'); ?>" /></p>
         </form>
         
-        <h2><?php _e('Listas Existentes', 'book-manager'); ?></h2>
+        <h2><?php esc_html_e('Listas Existentes', 'book-manager'); ?></h2>
         <?php if (empty($reading_lists)): ?>
-            <p><?php _e('Nenhuma lista criada.', 'book-manager'); ?></p>
+            <p><?php esc_html_e('Nenhuma lista criada.', 'book-manager'); ?></p>
         <?php else: ?>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
-                        <th><?php _e('Turma', 'book-manager'); ?></th>
-                        <th><?php _e('Descrição', 'book-manager'); ?></th>
-                        <th><?php _e('Livros', 'book-manager'); ?></th>
-                        <th><?php _e('Criado em', 'book-manager'); ?></th>
-                        <th><?php _e('Ações', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Turma', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Descrição', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Livros', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Criado em', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Ações', 'book-manager'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -641,13 +641,13 @@ function bm_render_reading_lists_page_content() {
                         <tr>
                             <td><strong><?php echo esc_html($group); ?></strong></td>
                             <td><?php echo esc_html($list['description']); ?></td>
-                            <td><?php echo count($list['books']); ?> livro(s)</td>
-                            <td><?php echo date('d/m/Y', strtotime($list['created_at'])); ?></td>
+                            <td><?php echo count($list['books']); ?> <?php esc_html_e('livro(s)', 'book-manager'); ?></td>
+                            <td><?php echo esc_html(date('d/m/Y', strtotime($list['created_at']))); ?></td>
                             <td>
-                                <form method="post" style="display:inline;" onsubmit="return confirm('<?php _e('Remover esta lista?', 'book-manager'); ?>');">
+                                <form method="post" style="display:inline;" onsubmit="return confirm('<?php echo esc_js(__('Remover esta lista?', 'book-manager')); ?>');">
                                     <?php wp_nonce_field('bm_reading_list_action', 'bm_reading_list_nonce'); ?>
                                     <input type="hidden" name="bm_delete_group" value="<?php echo esc_attr($group); ?>">
-                                    <button type="submit" name="bm_delete_list" class="button button-small"><?php _e('Remover', 'book-manager'); ?></button>
+                                    <button type="submit" name="bm_delete_list" class="button button-small"><?php esc_html_e('Remover', 'book-manager'); ?></button>
                                 </form>
                             </td>
                         </tr>
@@ -665,7 +665,7 @@ function bm_render_reading_lists_page_content() {
             var query = this.value.trim();
             if (query.length < 2) return;
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.open('POST', '<?php echo esc_url(admin_url("admin-ajax.php")); ?>');
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
             xhr.onload = function() {
                 var r = JSON.parse(xhr.responseText);
@@ -673,13 +673,13 @@ function bm_render_reading_lists_page_content() {
                 if (r.found) {
                     html += '<div style="padding:6px;background:#e8f5e9;border-radius:4px;cursor:pointer;margin:3px 0;" onclick="bmAddBookToList(' + r.book.id + ', \'' + r.book.title.replace(/'/g, "\\'") + '\')">' + r.book.title + ' — ' + (r.book.author || '') + '</div>';
                 } else if (r.can_register) {
-                    html += '<p style="color:#999;">Livro não encontrado.</p>';
+                    html += '<p style="color:#999;"><?php echo esc_js(__('Livro não encontrado.', 'book-manager')); ?></p>';
                 } else {
-                    html += '<p style="color:#999;">Nenhum resultado.</p>';
+                    html += '<p style="color:#999;"><?php echo esc_js(__('Nenhum resultado.', 'book-manager')); ?></p>';
                 }
                 document.getElementById('bm-list-search-results').innerHTML = html;
             };
-            xhr.send('action=bm_service_search_book&query=' + encodeURIComponent(query) + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+            xhr.send('action=bm_service_search_book&query=' + encodeURIComponent(query) + '&nonce=<?php echo esc_attr(wp_create_nonce("bm_service_nonce")); ?>');
         }
     });
     
@@ -715,15 +715,15 @@ function bm_render_reading_lists_page_content() {
     $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'list';
     ?>
     <div class="wrap">
-        <h1><?php _e('Alunos', 'book-manager'); ?></h1>
+        <h1><?php esc_html_e('Alunos', 'book-manager'); ?></h1>
         
         <nav class="nav-tab-wrapper" style="margin-bottom:15px;">
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=list'); ?>" class="nav-tab <?php echo $tab === 'list' ? 'nav-tab-active' : ''; ?>">👥 <?php _e('Lista de Alunos', 'book-manager'); ?></a>
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=approve_users'); ?>" class="nav-tab <?php echo $tab === 'approve_users' ? 'nav-tab-active' : ''; ?>">✅ <?php _e('Aprovar Cadastros', 'book-manager'); ?></a>
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=approve_readings'); ?>" class="nav-tab <?php echo $tab === 'approve_readings' ? 'nav-tab-active' : ''; ?>">📝 <?php _e('Aprovar Fichas', 'book-manager'); ?></a>
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=reading_lists'); ?>" class="nav-tab <?php echo $tab === 'reading_lists' ? 'nav-tab-active' : ''; ?>">📚 <?php _e('Listas de Leitura', 'book-manager'); ?></a>
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=library_cards'); ?>" class="nav-tab <?php echo $tab === 'library_cards' ? 'nav-tab-active' : ''; ?>">🪪 <?php _e('Carteirinhas', 'book-manager'); ?></a>
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students&tab=acquisition_suggestions'); ?>" class="nav-tab <?php echo $tab === 'acquisition_suggestions' ? 'nav-tab-active' : ''; ?>">🛒 <?php _e('Sugestões de Aquisição', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_students&tab=list')); ?>" class="nav-tab <?php echo $tab === 'list' ? 'nav-tab-active' : ''; ?>">👥 <?php esc_html_e('Lista de Alunos', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_students&tab=approve_users')); ?>" class="nav-tab <?php echo $tab === 'approve_users' ? 'nav-tab-active' : ''; ?>">✅ <?php esc_html_e('Aprovar Cadastros', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_students&tab=approve_readings')); ?>" class="nav-tab <?php echo $tab === 'approve_readings' ? 'nav-tab-active' : ''; ?>">📝 <?php esc_html_e('Aprovar Fichas', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_students&tab=reading_lists')); ?>" class="nav-tab <?php echo $tab === 'reading_lists' ? 'nav-tab-active' : ''; ?>">📚 <?php esc_html_e('Listas de Leitura', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_students&tab=library_cards')); ?>" class="nav-tab <?php echo $tab === 'library_cards' ? 'nav-tab-active' : ''; ?>">🪪 <?php esc_html_e('Carteirinhas', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_students&tab=acquisition_suggestions')); ?>" class="nav-tab <?php echo $tab === 'acquisition_suggestions' ? 'nav-tab-active' : ''; ?>">🛒 <?php esc_html_e('Sugestões de Aquisição', 'book-manager'); ?></a>
         </nav>
         
         <?php
@@ -731,19 +731,19 @@ function bm_render_reading_lists_page_content() {
             if (function_exists('bm_render_reading_lists_page_content')) {
                 bm_render_reading_lists_page_content();
             } else {
-                echo '<p>' . __('Função não encontrada.', 'book-manager') . '</p>';
+                echo '<p>' . esc_html__('Função não encontrada.', 'book-manager') . '</p>';
             }
         } elseif ($tab === 'library_cards') {
             if (function_exists('bm_render_library_cards_page')) {
                 bm_render_library_cards_page();
             } else {
-                echo '<p>' . __('Função não encontrada.', 'book-manager') . '</p>';
+                echo '<p>' . esc_html__('Função não encontrada.', 'book-manager') . '</p>';
             }
         } elseif ($tab === 'acquisition_suggestions') {
             if (function_exists('bm_render_acquisition_suggestions_page')) {
                 bm_render_acquisition_suggestions_page();
             } else {
-                echo '<p>' . __('Função não encontrada.', 'book-manager') . '</p>';
+                echo '<p>' . esc_html__('Função não encontrada.', 'book-manager') . '</p>';
             }
         } elseif ($tab === 'approve_users') {
             bm_render_approval_page_content();
@@ -794,7 +794,7 @@ function bm_render_students_page_content() {
                     }
                 }
             }
-            $msg = '<div class="notice notice-success"><p>' . sprintf(__('%d aluno(s) afetado(s).', 'book-manager'), $count) . '</p></div>';
+            $msg = '<div class="notice notice-success"><p>' . sprintf(esc_html__('%d aluno(s) afetado(s).', 'book-manager'), $count) . '</p></div>';
         }
     }
     
@@ -839,19 +839,19 @@ function bm_render_students_page_content() {
     
     ?>
     <div class="wrap">
-        <h1><?php _e('Alunos', 'book-manager'); ?></h1>
+        <h1><?php esc_html_e('Alunos', 'book-manager'); ?></h1>
         <?php echo $msg; ?>
 
-        <button type="button" class="button button-primary" id="bm-add-student-btn" style="margin-bottom:10px;">➕ <?php _e('Adicionar Novo Aluno', 'book-manager'); ?></button>
+        <button type="button" class="button button-primary" id="bm-add-student-btn" style="margin-bottom:10px;">➕ <?php esc_html_e('Adicionar Novo Aluno', 'book-manager'); ?></button>
 
 <div id="bm-quick-register-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
     <div style="background:#fff;padding:25px;border-radius:8px;max-width:450px;width:90%;max-height:80vh;overflow-y:auto;">
-        <h2 style="margin-top:0;">➕ <?php _e('Cadastro Rápido de Aluno', 'book-manager'); ?></h2>
+        <h2 style="margin-top:0;">➕ <?php esc_html_e('Cadastro Rápido de Aluno', 'book-manager'); ?></h2>
         <form id="bm-quick-register-form" onsubmit="return false;">
             <?php wp_nonce_field('bm_service_nonce', 'bm_quick_register_nonce'); ?>
-            <p><label><strong><?php _e('Nome completo', 'book-manager'); ?> *</strong></label><input type="text" name="bm_quick_name" required style="width:100%;padding:8px;margin-top:4px;" /></p>
-            <p><label><strong><?php _e('E-mail', 'book-manager'); ?> *</strong></label><input type="email" name="bm_quick_email" required style="width:100%;padding:8px;margin-top:4px;" /></p>
-            <p><label><strong><?php _e('Telefone', 'book-manager'); ?></strong></label><input type="text" name="bm_quick_phone" style="width:100%;padding:8px;margin-top:4px;" placeholder="5511999999999" /></p>
+            <p><label><strong><?php esc_html_e('Nome completo', 'book-manager'); ?> *</strong></label><input type="text" name="bm_quick_name" required style="width:100%;padding:8px;margin-top:4px;" /></p>
+            <p><label><strong><?php esc_html_e('E-mail', 'book-manager'); ?> *</strong></label><input type="email" name="bm_quick_email" required style="width:100%;padding:8px;margin-top:4px;" /></p>
+            <p><label><strong><?php esc_html_e('Telefone', 'book-manager'); ?></strong></label><input type="text" name="bm_quick_phone" style="width:100%;padding:8px;margin-top:4px;" placeholder="5511999999999" /></p>
             <?php
             $user_fields = get_option('bm_user_dynamic_fields', array());
             $user_field_order = get_option('bm_user_field_order', array());
@@ -866,8 +866,8 @@ function bm_render_students_page_content() {
             <p><label><strong><?php echo esc_html($field_name); ?></strong></label><input type="text" name="<?php echo esc_attr($meta_key); ?>" style="width:100%;padding:8px;margin-top:4px;" /></p>
             <?php endforeach; ?>
             <p style="margin-top:15px;display:flex;gap:10px;">
-                <button type="submit" class="button button-primary" style="flex:1;"><?php _e('Cadastrar', 'book-manager'); ?></button>
-                <button type="button" class="button" onclick="document.getElementById('bm-quick-register-modal').style.display='none'" style="flex:1;"><?php _e('Cancelar', 'book-manager'); ?></button>
+                <button type="submit" class="button button-primary" style="flex:1;"><?php esc_html_e('Cadastrar', 'book-manager'); ?></button>
+                <button type="button" class="button" onclick="document.getElementById('bm-quick-register-modal').style.display='none'" style="flex:1;"><?php esc_html_e('Cancelar', 'book-manager'); ?></button>
             </p>
         </form>
     </div>
@@ -881,7 +881,7 @@ document.getElementById('bm-add-student-btn').addEventListener('click', function
 document.getElementById('bm-quick-register-form').addEventListener('submit', function(e) {
     e.preventDefault();
     var form = this;
-    var params = 'nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>';
+    var params = 'nonce=<?php echo esc_attr(wp_create_nonce("bm_service_nonce")); ?>';
     params += '&name=' + encodeURIComponent(form.querySelector('[name="bm_quick_name"]').value);
     params += '&email=' + encodeURIComponent(form.querySelector('[name="bm_quick_email"]').value);
     params += '&phone=' + encodeURIComponent(form.querySelector('[name="bm_quick_phone"]').value);
@@ -906,28 +906,28 @@ document.getElementById('bm-quick-register-form').addEventListener('submit', fun
             <input type="hidden" name="page" value="bm_students">
             <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
                 <div>
-                    <label><?php _e('Buscar', 'book-manager'); ?></label>
-                    <input type="text" name="filter_search" value="<?php echo esc_attr($filter_search); ?>" placeholder="<?php _e('Nome ou e-mail', 'book-manager'); ?>" style="padding:4px 8px;" />
+                    <label><?php esc_html_e('Buscar', 'book-manager'); ?></label>
+                    <input type="text" name="filter_search" value="<?php echo esc_attr($filter_search); ?>" placeholder="<?php esc_attr_e('Nome ou e-mail', 'book-manager'); ?>" style="padding:4px 8px;" />
                 </div>
                 <div>
-                    <label><?php _e('Status', 'book-manager'); ?></label>
+                    <label><?php esc_html_e('Status', 'book-manager'); ?></label>
                     <select name="filter_status" style="padding:4px 8px;">
-                        <option value=""><?php _e('Todos', 'book-manager'); ?></option>
-                        <option value="approved" <?php selected($filter_status, 'approved'); ?>><?php _e('Aprovado', 'book-manager'); ?></option>
-                        <option value="pending" <?php selected($filter_status, 'pending'); ?>><?php _e('Pendente', 'book-manager'); ?></option>
-                        <option value="suspended" <?php selected($filter_status, 'suspended'); ?>><?php _e('Suspenso', 'book-manager'); ?></option>
+                        <option value=""><?php esc_html_e('Todos', 'book-manager'); ?></option>
+                        <option value="approved" <?php selected($filter_status, 'approved'); ?>><?php esc_html_e('Aprovado', 'book-manager'); ?></option>
+                        <option value="pending" <?php selected($filter_status, 'pending'); ?>><?php esc_html_e('Pendente', 'book-manager'); ?></option>
+                        <option value="suspended" <?php selected($filter_status, 'suspended'); ?>><?php esc_html_e('Suspenso', 'book-manager'); ?></option>
                     </select>
                 </div>
                 <div>
-                    <label><?php _e('Grupo', 'book-manager'); ?></label>
-                    <input type="text" name="filter_group" value="<?php echo esc_attr($filter_group); ?>" placeholder="<?php _e('Ex: 1º Ano', 'book-manager'); ?>" style="padding:4px 8px;width:80px;" />
+                    <label><?php esc_html_e('Grupo', 'book-manager'); ?></label>
+                    <input type="text" name="filter_group" value="<?php echo esc_attr($filter_group); ?>" placeholder="<?php esc_attr_e('Ex: 1º Ano', 'book-manager'); ?>" style="padding:4px 8px;width:80px;" />
                 </div>
                 <div>
-                    <label><input type="checkbox" name="filter_overdue" <?php checked($filter_overdue); ?> /> <?php _e('Apenas em atraso', 'book-manager'); ?></label>
+                    <label><input type="checkbox" name="filter_overdue" <?php checked($filter_overdue); ?> /> <?php esc_html_e('Apenas em atraso', 'book-manager'); ?></label>
                 </div>
                 <div>
-                    <button type="submit" class="button"><?php _e('Filtrar', 'book-manager'); ?></button>
-                    <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_students'); ?>" class="button"><?php _e('Limpar', 'book-manager'); ?></a>
+                    <button type="submit" class="button"><?php esc_html_e('Filtrar', 'book-manager'); ?></button>
+                    <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_students')); ?>" class="button"><?php esc_html_e('Limpar', 'book-manager'); ?></a>
                 </div>
             </div>
         </form>
@@ -936,30 +936,30 @@ document.getElementById('bm-quick-register-form').addEventListener('submit', fun
             <?php wp_nonce_field('bm_students_action', 'bm_students_nonce'); ?>
             <div style="margin-bottom:10px;">
                 <select name="bm_bulk_action" style="padding:4px 8px;">
-                    <option value=""><?php _e('— Ações em lote —', 'book-manager'); ?></option>
-                    <option value="approve"><?php _e('Aprovar', 'book-manager'); ?></option>
-                    <option value="suspend"><?php _e('Suspender', 'book-manager'); ?></option>
-                    <option value="delete"><?php _e('Excluir', 'book-manager'); ?></option>
+                    <option value=""><?php esc_html_e('— Ações em lote —', 'book-manager'); ?></option>
+                    <option value="approve"><?php esc_html_e('Aprovar', 'book-manager'); ?></option>
+                    <option value="suspend"><?php esc_html_e('Suspender', 'book-manager'); ?></option>
+                    <option value="delete"><?php esc_html_e('Excluir', 'book-manager'); ?></option>
                 </select>
-                <button type="submit" class="button" onclick="return confirm('<?php _e('Confirmar ação em lote?', 'book-manager'); ?>')"><?php _e('Aplicar', 'book-manager'); ?></button>
+                <button type="submit" class="button" onclick="return confirm('<?php echo esc_js(__('Confirmar ação em lote?', 'book-manager')); ?>')"><?php esc_html_e('Aplicar', 'book-manager'); ?></button>
             </div>
             
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
                         <th style="width:30px;"><input type="checkbox" id="bm-select-all-students" /></th>
-                        <th><?php _e('Aluno', 'book-manager'); ?></th>
-                        <th><?php _e('E-mail', 'book-manager'); ?></th>
-                        <th><?php _e('Status', 'book-manager'); ?></th>
-                        <th><?php _e('Grupo', 'book-manager'); ?></th>
-                        <th><?php _e('XP', 'book-manager'); ?></th>
-                        <th><?php _e('Empréstimos', 'book-manager'); ?></th>
-                        <th><?php _e('Ações', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Aluno', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('E-mail', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Status', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Grupo', 'book-manager'); ?></th>
+                        <th>XP</th>
+                        <th><?php esc_html_e('Empréstimos', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Ações', 'book-manager'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($students)): ?>
-                        <tr><td colspan="8"><?php _e('Nenhum aluno encontrado.', 'book-manager'); ?></td></tr>
+                        <tr><td colspan="8"><?php esc_html_e('Nenhum aluno encontrado.', 'book-manager'); ?></td></tr>
                     <?php else: ?>
                         <?php foreach ($students as $student): 
                             $status = get_user_meta($student->ID, 'bm_approval_status', true) ?: 'approved';
@@ -984,20 +984,20 @@ document.getElementById('bm-quick-register-form').addEventListener('submit', fun
                             $status_labels = array('approved' => '✅', 'pending' => '⏳', 'suspended' => '🚫');
                             $status_label = isset($status_labels[$status]) ? $status_labels[$status] : '✅';
                         ?>
-                            <tr style="<?php echo $row_style; ?>">
-                                <td><input type="checkbox" name="user_ids[]" value="<?php echo $student->ID; ?>" /></td>
+                            <tr style="<?php echo esc_attr($row_style); ?>">
+                                <td><input type="checkbox" name="user_ids[]" value="<?php echo esc_attr($student->ID); ?>" /></td>
                                 <td>
                                     <strong><?php echo esc_html($student->display_name); ?></strong>
-                                    <?php if ($has_overdue): ?> <span style="color:#dc3545;" title="<?php _e('Em atraso', 'book-manager'); ?>">🔴</span><?php endif; ?>
-                                    <?php if ($penalty_check): ?> <span style="color:#ff9800;" title="<?php _e('Penalidade ativa', 'book-manager'); ?>">🚫</span><?php endif; ?>
+                                    <?php if ($has_overdue): ?> <span style="color:#dc3545;" title="<?php esc_attr_e('Em atraso', 'book-manager'); ?>">🔴</span><?php endif; ?>
+                                    <?php if ($penalty_check): ?> <span style="color:#ff9800;" title="<?php esc_attr_e('Penalidade ativa', 'book-manager'); ?>">🚫</span><?php endif; ?>
                                     </td>
                                 <td><?php echo esc_html($student->user_email); ?></td>
-                                <td><?php echo $status_label . ' ' . $status; ?></td>
+                                <td><?php echo esc_html($status_label . ' ' . $status); ?></td>
                                 <td><?php echo esc_html($group); ?></td>
-                                <td><?php echo $xp; ?></td>
-                                <td><?php echo $active_loans; ?> ativo(s)</td>
+                                <td><?php echo esc_html($xp); ?></td>
+                                <td><?php echo esc_html($active_loans); ?> <?php esc_html_e('ativo(s)', 'book-manager'); ?></td>
                                 <td>
-                                    <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_student_detail&student_id=' . $student->ID); ?>" class="button button-small"><?php _e('Ver', 'book-manager'); ?></a>
+                                    <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_student_detail&student_id=' . $student->ID)); ?>" class="button button-small"><?php esc_html_e('Ver', 'book-manager'); ?></a>
                                     <?php if ($phone): ?>
                                         <?php echo bm_whatsapp_button($phone, '', 'WhatsApp'); ?>
                                     <?php endif; ?>
@@ -1009,28 +1009,14 @@ document.getElementById('bm-quick-register-form').addEventListener('submit', fun
             </table>
         </form>
     </div>
-    
-    <script>
-    (function() {
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.id === 'bm-select-all') {
-                var checkboxes = document.querySelectorAll('input[name="book_ids[]"]');
-                for (var i = 0; i < checkboxes.length; i++) {
-                    checkboxes[i].checked = e.target.checked;
-                }
-            }
-        });
-    })();
-    </script>
     <?php
 }
 
 // ==========================================
-// FASE 11C: GERAÇÃO DE ETIQUETAS
+// ACQUISITION SUGGESTIONS
 // ==========================================
-
 function bm_add_acquisition_suggestions_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Sugestões de Aquisição', 'book-manager'), __('Sugestões de Aquisição', 'book-manager'), 'edit_bm_books', 'bm_acquisition_suggestions', 'bm_render_acquisition_suggestions_page');
+    add_submenu_page('edit.php?post_type=bm_book', esc_html__('Sugestões de Aquisição', 'book-manager'), esc_html__('Sugestões de Aquisição', 'book-manager'), 'edit_bm_books', 'bm_acquisition_suggestions', 'bm_render_acquisition_suggestions_page');
 }
 add_action('admin_menu', 'bm_add_acquisition_suggestions_page');
 
@@ -1040,19 +1026,19 @@ function bm_render_acquisition_suggestions_page() {
     $suggestions = get_option('bm_acquisition_suggestions', array());
     ?>
     <div class="wrap">
-        <h1><?php _e('Sugestões de Aquisição', 'book-manager'); ?></h1>
+        <h1><?php esc_html_e('Sugestões de Aquisição', 'book-manager'); ?></h1>
         <?php if (empty($suggestions)): ?>
-            <p><?php _e('Nenhuma sugestão recebida.', 'book-manager'); ?></p>
+            <p><?php esc_html_e('Nenhuma sugestão recebida.', 'book-manager'); ?></p>
         <?php else: ?>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
-                        <th><?php _e('Usuário', 'book-manager'); ?></th>
-                        <th><?php _e('Título', 'book-manager'); ?></th>
-                        <th><?php _e('Autor', 'book-manager'); ?></th>
-                        <th><?php _e('Editora', 'book-manager'); ?></th>
-                        <th><?php _e('Motivo', 'book-manager'); ?></th>
-                        <th><?php _e('Data', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Usuário', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Título', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Autor', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Editora', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Motivo', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Data', 'book-manager'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1063,7 +1049,7 @@ function bm_render_acquisition_suggestions_page() {
                             <td><?php echo esc_html($s['author'] ?: '—'); ?></td>
                             <td><?php echo esc_html($s['publisher'] ?: '—'); ?></td>
                             <td><?php echo esc_html($s['reason'] ?: '—'); ?></td>
-                            <td><?php echo date('d/m/Y', strtotime($s['date'])); ?></td>
+                            <td><?php echo esc_html(date('d/m/Y', strtotime($s['date']))); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -1073,8 +1059,11 @@ function bm_render_acquisition_suggestions_page() {
     <?php
 }
 
+// ==========================================
+// LABELS PAGE
+// ==========================================
 function bm_add_labels_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Etiquetas', 'book-manager'), __('Etiquetas', 'book-manager'), 'edit_bm_books', 'bm_labels', 'bm_render_labels_page');
+    add_submenu_page('edit.php?post_type=bm_book', esc_html__('Etiquetas', 'book-manager'), esc_html__('Etiquetas', 'book-manager'), 'edit_bm_books', 'bm_labels', 'bm_render_labels_page');
 }
 add_action('admin_menu', 'bm_add_labels_page');
 
@@ -1087,7 +1076,7 @@ function bm_render_library_cards_page() {
     if (isset($_POST['clear_cart'])) {
         $_SESSION['bm_library_cards_cart'] = array();
         $cart = array();
-        echo '<div class="notice notice-success"><p>' . __('Carteirinhas removidas.', 'book-manager') . '</p></div>';
+        echo '<div class="notice notice-success"><p>' . esc_html__('Carteirinhas removidas.', 'book-manager') . '</p></div>';
     }
     
     $filter_search = isset($_GET['filter_search']) ? sanitize_text_field($_GET['filter_search']) : '';
@@ -1118,19 +1107,19 @@ function bm_render_library_cards_page() {
     
     ?>
     <div class="wrap">
-        <h1><?php _e('Geração de Carteirinhas', 'book-manager'); ?></h1>
+        <h1><?php esc_html_e('Geração de Carteirinhas', 'book-manager'); ?></h1>
         
         <div style="display:flex;gap:20px;flex-wrap:wrap;">
             <div style="flex:1;min-width:400px;">
-                <h2><?php _e('Selecionar Alunos', 'book-manager'); ?></h2>
+                <h2><?php esc_html_e('Selecionar Alunos', 'book-manager'); ?></h2>
                 
                 <form method="get" style="margin-bottom:15px;">
                     <input type="hidden" name="post_type" value="bm_book">
                     <input type="hidden" name="page" value="bm_library_cards">
                     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
-                        <div><label><?php _e('Buscar', 'book-manager'); ?></label><input type="text" name="filter_search" value="<?php echo esc_attr($filter_search); ?>" placeholder="<?php _e('Nome ou e-mail', 'book-manager'); ?>" style="padding:4px 8px;" /></div>
-                        <div><label><?php _e('Turma', 'book-manager'); ?></label><input type="text" name="filter_group" value="<?php echo esc_attr($filter_group); ?>" placeholder="<?php _e('Ex: 1º Ano', 'book-manager'); ?>" style="width:80px;padding:4px 8px;" /></div>
-                        <div><button type="submit" class="button"><?php _e('Filtrar', 'book-manager'); ?></button></div>
+                        <div><label><?php esc_html_e('Buscar', 'book-manager'); ?></label><input type="text" name="filter_search" value="<?php echo esc_attr($filter_search); ?>" placeholder="<?php esc_attr_e('Nome ou e-mail', 'book-manager'); ?>" style="padding:4px 8px;" /></div>
+                        <div><label><?php esc_html_e('Turma', 'book-manager'); ?></label><input type="text" name="filter_group" value="<?php echo esc_attr($filter_group); ?>" placeholder="<?php esc_attr_e('Ex: 1º Ano', 'book-manager'); ?>" style="width:80px;padding:4px 8px;" /></div>
+                        <div><button type="submit" class="button"><?php esc_html_e('Filtrar', 'book-manager'); ?></button></div>
                     </div>
                 </form>
                 
@@ -1139,10 +1128,10 @@ function bm_render_library_cards_page() {
                         <thead>
                             <tr>
                                 <th style="width:30px;"><input type="checkbox" id="bm-select-all" onclick="var cbs=document.querySelectorAll('input[name=\'user_ids[]\']');for(var i=0;i<cbs.length;i++)cbs[i].checked=this.checked;" /></th>
-                                <th><?php _e('Aluno', 'book-manager'); ?></th>
-                                <th><?php _e('Turma', 'book-manager'); ?></th>
-                                <th><?php _e('E-mail', 'book-manager'); ?></th>
-                                <th><?php _e('Foto', 'book-manager'); ?></th>
+                                <th><?php esc_html_e('Aluno', 'book-manager'); ?></th>
+                                <th><?php esc_html_e('Turma', 'book-manager'); ?></th>
+                                <th><?php esc_html_e('E-mail', 'book-manager'); ?></th>
+                                <th><?php esc_html_e('Foto', 'book-manager'); ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1151,7 +1140,7 @@ function bm_render_library_cards_page() {
                                 $group = get_user_meta($student->ID, '_bm_user_' . sanitize_key('Turma'), true);
                             ?>
                                 <tr>
-                                    <td><input type="checkbox" name="user_ids[]" value="<?php echo $student->ID; ?>" <?php checked(in_array($student->ID, $cart)); ?> /></td>
+                                    <td><input type="checkbox" name="user_ids[]" value="<?php echo esc_attr($student->ID); ?>" <?php checked(in_array($student->ID, $cart)); ?> /></td>
                                     <td><strong><?php echo esc_html($student->display_name); ?></strong></td>
                                     <td><?php echo esc_html($group); ?></td>
                                     <td><?php echo esc_html($student->user_email); ?></td>
@@ -1161,16 +1150,16 @@ function bm_render_library_cards_page() {
                         </tbody>
                     </table>
                     <p style="margin-top:10px;">
-                        <button type="submit" name="add_selected" class="button button-primary"><?php _e('Adicionar à carteirinha', 'book-manager'); ?></button>
+                        <button type="submit" name="add_selected" class="button button-primary"><?php esc_html_e('Adicionar à carteirinha', 'book-manager'); ?></button>
                     </p>
                 </form>
             </div>
             
             <div style="flex:0 0 350px;">
-                <h2>🖨️ <?php _e('Carteirinhas selecionadas', 'book-manager'); ?> (<?php echo count($cart); ?>)</h2>
+                <h2>🖨️ <?php esc_html_e('Carteirinhas selecionadas', 'book-manager'); ?> (<?php echo count($cart); ?>)</h2>
                 
                 <?php if (empty($cart)): ?>
-                    <p><?php _e('Nenhuma carteirinha selecionada.', 'book-manager'); ?></p>
+                    <p><?php esc_html_e('Nenhuma carteirinha selecionada.', 'book-manager'); ?></p>
                 <?php else: ?>
                     <ul style="max-height:400px;overflow-y:auto;list-style:none;padding:0;margin:0;">
                         <?php 
@@ -1181,19 +1170,19 @@ function bm_render_library_cards_page() {
                             $group = get_user_meta($uid, '_bm_user_' . sanitize_key('Turma'), true);
                         ?>
                             <li style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #eee;">
-                                <button type="button" class="bm-remove-card" data-user="<?php echo $uid; ?>" style="background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1;">✕</button>
+                                <button type="button" class="bm-remove-card" data-user="<?php echo esc_attr($uid); ?>" style="background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1;">✕</button>
                                 <div style="flex:1;font-size:12px;">
                                     <strong><?php echo esc_html($u->display_name); ?></strong>
                                     <?php if ($group): ?><br><small><?php echo esc_html($group); ?></small><?php endif; ?>
-                                    <?php if (!$photo): ?><br><small style="color:#f0ad4e;">⚠️ <?php _e('Sem foto', 'book-manager'); ?></small><?php endif; ?>
+                                    <?php if (!$photo): ?><br><small style="color:#f0ad4e;">⚠️ <?php esc_html_e('Sem foto', 'book-manager'); ?></small><?php endif; ?>
                                 </div>
                             </li>
                         <?php endforeach; ?>
                     </ul>
                     
                     <form method="post" style="margin-top:10px;display:flex;gap:10px;">
-                        <button type="submit" name="clear_cart" class="button"><?php _e('Limpar todas', 'book-manager'); ?></button>
-                        <button type="button" id="bm-preview-cards" class="button button-primary">🖨️ <?php _e('Visualizar Impressão', 'book-manager'); ?></button>
+                        <button type="submit" name="clear_cart" class="button"><?php esc_html_e('Limpar todas', 'book-manager'); ?></button>
+                        <button type="button" id="bm-preview-cards" class="button button-primary">🖨️ <?php esc_html_e('Visualizar Impressão', 'book-manager'); ?></button>
                     </form>
                 <?php endif; ?>
             </div>
@@ -1205,7 +1194,7 @@ function bm_render_library_cards_page() {
         if (e.target.classList.contains('bm-remove-card')) {
             var userId = e.target.getAttribute('data-user');
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.open('POST', '<?php echo esc_url(admin_url("admin-ajax.php")); ?>');
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
             xhr.onload = function() { location.reload(); };
             xhr.send('action=bm_toggle_library_card&user_id=' + userId);
@@ -1214,12 +1203,12 @@ function bm_render_library_cards_page() {
             var userId = e.target.getAttribute('data-user');
             var btn = e.target;
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.open('POST', '<?php echo esc_url(admin_url("admin-ajax.php")); ?>');
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
             xhr.onload = function() {
                 var r = JSON.parse(xhr.responseText);
                 if (r.success) {
-                    btn.textContent = r.action === 'added' ? '🪪 Remover da carteirinha' : '🪪 Adicionar à carteirinha';
+                    btn.textContent = r.action === 'added' ? '🪪 <?php echo esc_js(__('Remover da carteirinha', 'book-manager')); ?>' : '🪪 <?php echo esc_js(__('Adicionar à carteirinha', 'book-manager')); ?>';
                 }
             };
             xhr.send('action=bm_toggle_library_card&user_id=' + userId);
@@ -1230,8 +1219,8 @@ function bm_render_library_cards_page() {
     if (previewCardsBtn) {
         previewCardsBtn.addEventListener('click', function() {
             var cart = <?php echo json_encode(array_values($cart)); ?>;
-            if (cart.length === 0) { alert('<?php _e("Nenhuma carteirinha selecionada.", "book-manager"); ?>'); return; }
-            var url = '<?php echo admin_url("admin-ajax.php"); ?>?action=bm_print_library_cards_bulk&nonce=<?php echo wp_create_nonce("bm_library_cards_bulk_nonce"); ?>&ids=' + cart.join(',');
+            if (cart.length === 0) { alert('<?php echo esc_js(__("Nenhuma carteirinha selecionada.", "book-manager")); ?>'); return; }
+            var url = '<?php echo esc_url(admin_url("admin-ajax.php")); ?>?action=bm_print_library_cards_bulk&nonce=<?php echo esc_attr(wp_create_nonce("bm_library_cards_bulk_nonce")); ?>&ids=' + cart.join(',');
             window.open(url, '_blank');
         });
     }
@@ -1291,11 +1280,11 @@ function bm_label_button() {
     $book_id = get_the_ID();
     if (!session_id()) session_start();
     $in_cart = isset($_SESSION['bm_labels_cart']) && in_array($book_id, $_SESSION['bm_labels_cart']);
-    $label = $in_cart ? '➖ ' . __('Remover etiqueta', 'book-manager') : '➕ ' . __('Adicionar etiqueta', 'book-manager');
+    $label = $in_cart ? '➖ ' . esc_html__('Remover etiqueta', 'book-manager') : '➕ ' . esc_html__('Adicionar etiqueta', 'book-manager');
     $color = $in_cart ? '#dc3545' : '#111';
     ?>
     <div style="margin:10px 0;">
-        <button type="button" class="bm-label-toggle" data-book="<?php echo $book_id; ?>" style="padding:6px 12px;background:<?php echo $color; ?>;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">
+        <button type="button" class="bm-label-toggle" data-book="<?php echo esc_attr($book_id); ?>" style="padding:6px 12px;background:<?php echo esc_attr($color); ?>;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;">
             <?php echo $label; ?>
         </button>
     </div>
@@ -1306,17 +1295,17 @@ function bm_label_button() {
             var bookId = btn.getAttribute('data-book');
             btn.disabled = true;
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.open('POST', '<?php echo esc_url(admin_url("admin-ajax.php")); ?>');
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
             xhr.onload = function() {
                 var r = JSON.parse(xhr.responseText);
                 if (r.success) {
-                    btn.textContent = r.action === 'added' ? '➖ Remover etiqueta' : '➕ Adicionar etiqueta';
+                    btn.textContent = r.action === 'added' ? '➖ <?php echo esc_js(__('Remover etiqueta', 'book-manager')); ?>' : '➕ <?php echo esc_js(__('Adicionar etiqueta', 'book-manager')); ?>';
                     btn.style.background = r.action === 'added' ? '#dc3545' : '#111';
                 }
                 btn.disabled = false;
             };
-            xhr.send('action=bm_toggle_label&nonce=<?php echo wp_create_nonce("bm_toggle_label_nonce"); ?>&book_id=' + bookId);
+            xhr.send('action=bm_toggle_label&nonce=<?php echo esc_attr(wp_create_nonce("bm_toggle_label_nonce")); ?>&book_id=' + bookId);
         }
     });
     </script>
@@ -1332,7 +1321,7 @@ function bm_render_labels_page() {
     if (isset($_POST['clear_cart'])) {
         $_SESSION['bm_labels_cart'] = array();
         $cart = array();
-        echo '<div class="notice notice-success"><p>' . __('Etiquetas removidas.', 'book-manager') . '</p></div>';
+        echo '<div class="notice notice-success"><p>' . esc_html__('Etiquetas removidas.', 'book-manager') . '</p></div>';
     }
     
     $filter_genre = isset($_GET['filter_genre']) ? intval($_GET['filter_genre']) : 0;
@@ -1357,21 +1346,21 @@ function bm_render_labels_page() {
     
     ?>
     <div class="wrap">
-        <h1><?php _e('Geração de Etiquetas', 'book-manager'); ?></h1>
+        <h1><?php esc_html_e('Geração de Etiquetas', 'book-manager'); ?></h1>
         
         <div style="display:flex;gap:20px;flex-wrap:wrap;">
             <div style="flex:1;min-width:400px;">
-                <h2><?php _e('Selecionar Livros', 'book-manager'); ?></h2>
+                <h2><?php esc_html_e('Selecionar Livros', 'book-manager'); ?></h2>
                 
                 <form method="get" style="margin-bottom:15px;">
                     <input type="hidden" name="post_type" value="bm_book">
                     <input type="hidden" name="page" value="bm_labels">
                     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
-                        <div><label><?php _e('Buscar', 'book-manager'); ?></label><input type="text" name="filter_search" value="<?php echo esc_attr($filter_search); ?>" placeholder="<?php _e('Título ou autor', 'book-manager'); ?>" style="padding:4px 8px;" /></div>
-                        <div><label><?php _e('Gênero', 'book-manager'); ?></label><?php wp_dropdown_categories(array('show_option_all' => __('Todos', 'book-manager'), 'taxonomy' => 'bm_genre', 'name' => 'filter_genre', 'selected' => $filter_genre, 'hide_empty' => true)); ?></div>
-                        <div><label><?php _e('Disciplina', 'book-manager'); ?></label><?php wp_dropdown_categories(array('show_option_all' => __('Todas', 'book-manager'), 'taxonomy' => 'bm_discipline', 'name' => 'filter_discipline', 'selected' => $filter_discipline, 'hide_empty' => true)); ?></div>
-                        <div><label><?php _e('Classif.', 'book-manager'); ?></label><input type="text" name="filter_cdu" value="<?php echo esc_attr($filter_cdu); ?>" style="width:80px;padding:4px 8px;" /></div>
-                        <div><button type="submit" class="button"><?php _e('Filtrar', 'book-manager'); ?></button></div>
+                        <div><label><?php esc_html_e('Buscar', 'book-manager'); ?></label><input type="text" name="filter_search" value="<?php echo esc_attr($filter_search); ?>" placeholder="<?php esc_attr_e('Título ou autor', 'book-manager'); ?>" style="padding:4px 8px;" /></div>
+                        <div><label><?php esc_html_e('Gênero', 'book-manager'); ?></label><?php wp_dropdown_categories(array('show_option_all' => esc_html__('Todos', 'book-manager'), 'taxonomy' => 'bm_genre', 'name' => 'filter_genre', 'selected' => $filter_genre, 'hide_empty' => true)); ?></div>
+                        <div><label><?php esc_html_e('Disciplina', 'book-manager'); ?></label><?php wp_dropdown_categories(array('show_option_all' => esc_html__('Todas', 'book-manager'), 'taxonomy' => 'bm_discipline', 'name' => 'filter_discipline', 'selected' => $filter_discipline, 'hide_empty' => true)); ?></div>
+                        <div><label><?php esc_html_e('Classif.', 'book-manager'); ?></label><input type="text" name="filter_cdu" value="<?php echo esc_attr($filter_cdu); ?>" style="width:80px;padding:4px 8px;" /></div>
+                        <div><button type="submit" class="button"><?php esc_html_e('Filtrar', 'book-manager'); ?></button></div>
                     </div>
                 </form>
                 
@@ -1380,10 +1369,10 @@ function bm_render_labels_page() {
                         <thead>
                             <tr>
                                 <th style="width:30px;"><input type="checkbox" id="bm-select-all" onclick="var cbs=document.querySelectorAll('input[name=\'book_ids[]\']');for(var i=0;i<cbs.length;i++)cbs[i].checked=this.checked;" /></th>
-                                <th><?php _e('Título', 'book-manager'); ?></th>
-                                <th><?php _e('Autor', 'book-manager'); ?></th>
-                                <th><?php _e('Classif.', 'book-manager'); ?></th>
-                                <th><?php _e('Ex.', 'book-manager'); ?></th>
+                                <th><?php esc_html_e('Título', 'book-manager'); ?></th>
+                                <th><?php esc_html_e('Autor', 'book-manager'); ?></th>
+                                <th><?php esc_html_e('Classif.', 'book-manager'); ?></th>
+                                <th><?php esc_html_e('Ex.', 'book-manager'); ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1393,26 +1382,26 @@ function bm_render_labels_page() {
                                 $copies = max(1, intval(get_post_meta($book->ID, '_bm_copies', true)));
                             ?>
                                 <tr>
-                                    <td><input type="checkbox" name="book_ids[]" value="<?php echo $book->ID; ?>" <?php checked(in_array($book->ID, $cart)); ?> /></td>
+                                    <td><input type="checkbox" name="book_ids[]" value="<?php echo esc_attr($book->ID); ?>" <?php checked(in_array($book->ID, $cart)); ?> /></td>
                                     <td><?php echo esc_html($book->post_title); ?></td>
                                     <td><?php echo esc_html($author); ?></td>
                                     <td><?php echo esc_html($cdu); ?></td>
-                                    <td><?php echo $copies; ?></td>
+                                    <td><?php echo esc_html($copies); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
                     <p style="margin-top:10px;">
-                        <button type="submit" name="add_selected" class="button button-primary"><?php _e('Adicionar etiquetas', 'book-manager'); ?></button>
+                        <button type="submit" name="add_selected" class="button button-primary"><?php esc_html_e('Adicionar etiquetas', 'book-manager'); ?></button>
                     </p>
                 </form>
             </div>
             
             <div style="flex:0 0 350px;">
-                <h2>🖨️ <?php _e('Etiquetas selecionadas', 'book-manager'); ?> (<?php echo count($cart); ?>)</h2>
+                <h2>🖨️ <?php esc_html_e('Etiquetas selecionadas', 'book-manager'); ?> (<?php echo count($cart); ?>)</h2>
                 
                 <?php if (empty($cart)): ?>
-                    <p><?php _e('Nenhuma etiqueta selecionada.', 'book-manager'); ?></p>
+                    <p><?php esc_html_e('Nenhuma etiqueta selecionada.', 'book-manager'); ?></p>
                 <?php else: ?>
                     <ul style="max-height:400px;overflow-y:auto;list-style:none;padding:0;margin:0;">
                         <?php 
@@ -1424,20 +1413,20 @@ function bm_render_labels_page() {
                             $copies = max(1, intval(get_post_meta($book->ID, '_bm_copies', true)));
                         ?>
                             <li style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #eee;">
-                                <button type="button" class="bm-remove-label" data-book="<?php echo $book->ID; ?>" style="background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1;">✕</button>
+                                <button type="button" class="bm-remove-label" data-book="<?php echo esc_attr($book->ID); ?>" style="background:#dc3545;color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:14px;line-height:1;">✕</button>
                                 <div style="flex:1;font-size:12px;">
                                     <strong><?php echo esc_html($book->post_title); ?></strong>
                                     <?php if ($author): ?><br><small><?php echo esc_html($author); ?></small><?php endif; ?>
                                     <?php if ($cdu): ?><br><small>Class: <?php echo esc_html($cdu); ?> | Cutter: <?php echo esc_html($cutter); ?></small><?php endif; ?>
-                                    <br><small><?php printf(__('%d exemplares', 'book-manager'), $copies); ?></small>
+                                    <br><small><?php printf(esc_html__('%d exemplares', 'book-manager'), $copies); ?></small>
                                 </div>
                             </li>
                         <?php endforeach; ?>
                     </ul>
                     
                     <form method="post" style="margin-top:10px;display:flex;gap:10px;">
-                        <button type="submit" name="clear_cart" class="button"><?php _e('Limpar etiquetas', 'book-manager'); ?></button>
-                        <button type="button" id="bm-preview-labels" class="button button-primary">🖨️ <?php _e('Visualizar Impressão', 'book-manager'); ?></button>
+                        <button type="submit" name="clear_cart" class="button"><?php esc_html_e('Limpar etiquetas', 'book-manager'); ?></button>
+                        <button type="button" id="bm-preview-labels" class="button button-primary">🖨️ <?php esc_html_e('Visualizar Impressão', 'book-manager'); ?></button>
                     </form>
                 <?php endif; ?>
             </div>
@@ -1449,7 +1438,7 @@ function bm_render_labels_page() {
         if (e.target.classList.contains('bm-remove-label')) {
             var bookId = e.target.getAttribute('data-book');
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.open('POST', '<?php echo esc_url(admin_url("admin-ajax.php")); ?>');
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
             xhr.onload = function() { location.reload(); };
             xhr.send('action=bm_toggle_label&book_id=' + bookId);
@@ -1460,8 +1449,8 @@ function bm_render_labels_page() {
     if (previewBtn) {
         previewBtn.addEventListener('click', function() {
             var cart = <?php echo json_encode(array_values($cart)); ?>;
-            if (cart.length === 0) { alert('<?php _e("Nenhuma etiqueta selecionada.", "book-manager"); ?>'); return; }
-            var url = '<?php echo admin_url("admin-ajax.php"); ?>?action=bm_print_labels&nonce=<?php echo wp_create_nonce("bm_print_labels_nonce"); ?>&ids=' + cart.join(',');
+            if (cart.length === 0) { alert('<?php echo esc_js(__("Nenhuma etiqueta selecionada.", "book-manager")); ?>'); return; }
+            var url = '<?php echo esc_url(admin_url("admin-ajax.php")); ?>?action=bm_print_labels&nonce=<?php echo esc_attr(wp_create_nonce("bm_print_labels_nonce")); ?>&ids=' + cart.join(',');
             window.open(url, '_blank');
         });
     }
@@ -1469,13 +1458,16 @@ function bm_render_labels_page() {
     <?php
 }
 
+// ==========================================
+// LABELS PRINT VIEW
+// ==========================================
 function bm_ajax_print_labels() {
     if (!session_id()) session_start();
     check_ajax_referer('bm_print_labels_nonce', 'nonce');
-    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die('Sem permissão.');
+    if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) wp_die(esc_html__('Sem permissão.', 'book-manager'));
     
     $ids = isset($_GET['ids']) ? explode(',', sanitize_text_field($_GET['ids'])) : array();
-    if (empty($ids)) wp_die('Nenhum livro selecionado.');
+    if (empty($ids)) wp_die(esc_html__('Nenhum livro selecionado.', 'book-manager'));
     
     $books = get_posts(array('post_type' => 'bm_book', 'post__in' => $ids, 'posts_per_page' => -1, 'orderby' => 'post__in'));
     
@@ -1484,7 +1476,7 @@ function bm_ajax_print_labels() {
     <html>
     <head>
         <meta charset="UTF-8">
-        <title><?php _e('Etiquetas — Visualização', 'book-manager'); ?></title>
+        <title><?php esc_html_e('Etiquetas — Visualização', 'book-manager'); ?></title>
         <style>
             @page { size: A4; margin: 1.2cm 0.3cm 0.2cm 0.3cm; }
             body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
@@ -1506,9 +1498,9 @@ function bm_ajax_print_labels() {
     </head>
     <body>
         <div class="no-print" style="padding:20px;background:#f9f9f9;margin-bottom:20px;">
-            <h2><?php _e('Visualização de Etiquetas', 'book-manager'); ?> (<?php echo count($books); ?> livros)</h2>
-            <p><?php _e('Pressione Ctrl+P para imprimir. Ajuste as margens para "Mínimo".', 'book-manager'); ?></p>
-            <button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ <?php _e('Imprimir Agora', 'book-manager'); ?></button>
+            <h2><?php esc_html_e('Visualização de Etiquetas', 'book-manager'); ?> (<?php echo count($books); ?> <?php esc_html_e('livros', 'book-manager'); ?>)</h2>
+            <p><?php esc_html_e('Pressione Ctrl+P para imprimir. Ajuste as margens para "Mínimo".', 'book-manager'); ?></p>
+            <button onclick="window.print()" style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:16px;">🖨️ <?php esc_html_e('Imprimir Agora', 'book-manager'); ?></button>
         </div>
         
         <div class="labels-grid">
@@ -1536,7 +1528,7 @@ function bm_ajax_print_labels() {
                     <div class="cutter"><?php echo esc_html($cutter); ?></div>
                     <div class="info">
                         <?php if ($edition) echo esc_html($edition) . ' '; ?>
-                        <?php if ($copies > 1) printf(__('Ex. %d/%d', 'book-manager'), $i, $copies); ?>
+                        <?php if ($copies > 1) printf(esc_html__('Ex. %d/%d', 'book-manager'), $i, $copies); ?>
                     </div>
                     <?php if ($isbn): ?>
                         <div class="barcode">|||<?php echo esc_html($isbn); ?>|||</div>
@@ -1554,17 +1546,16 @@ function bm_ajax_print_labels() {
 add_action('wp_ajax_bm_print_labels', 'bm_ajax_print_labels');
 
 // ==========================================
-// FASE 31: SUBPÁGINA DE RELATÓRIOS
+// REPORTS SUBPAGE
 // ==========================================
 function bm_add_reports_page() {
-    add_submenu_page('edit.php?post_type=bm_book', __('Relatórios', 'book-manager'), __('Relatórios', 'book-manager'), 'manage_options', 'bm_reports', 'bm_render_reports_page');
+    add_submenu_page('edit.php?post_type=bm_book', esc_html__('Relatórios', 'book-manager'), esc_html__('Relatórios', 'book-manager'), 'manage_options', 'bm_reports', 'bm_render_reports_page');
 }
 add_action('admin_menu', 'bm_add_reports_page');
 
 function bm_render_reports_page() {
     if (!current_user_can('edit_bm_books') && !current_user_can('manage_options')) return;
     
-    // Enqueues condicionais
     wp_enqueue_style('bm-tailwind', plugin_dir_url(__FILE__) . '../assets/css/tailwind.min.css', array(), '1.0');
     wp_enqueue_script('bm-reports-dashboard', plugin_dir_url(__FILE__) . '../assets/js/reports-dashboard.js', array(), '1.0', true);
     wp_localize_script('bm-reports-dashboard', 'bmReports', array(
@@ -1586,104 +1577,104 @@ function bm_render_reports_page() {
     $custom_sort = isset($_GET['bm_custom_sort']) ? sanitize_text_field($_GET['bm_custom_sort']) : 'name';
     ?>
     <div class="wrap">
-        <h1><?php _e('Relatórios', 'book-manager'); ?></h1>
+        <h1><?php esc_html_e('Relatórios', 'book-manager'); ?></h1>
         
         <form id="bm-report-form" class="bg-white border border-gray-200 p-4 rounded-lg mb-6 flex flex-wrap gap-4 items-end">
             <input type="hidden" name="post_type" value="bm_book">
             <input type="hidden" name="page" value="bm_reports">
             
             <div>
-                <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Tipo de Relatório', 'book-manager'); ?></label>
+                <label class="block text-xs font-bold text-gray-600 mb-1"><?php esc_html_e('Tipo de Relatório', 'book-manager'); ?></label>
                 <select name="bm_report_type" class="w-48 px-3 py-2 border border-gray-300 rounded-md text-sm">
-                    <option value="overview" <?php selected($type, 'overview'); ?>><?php _e('Visão Geral', 'book-manager'); ?></option>
-                    <option value="student_performance" <?php selected($type, 'student_performance'); ?>><?php _e('Desempenho do Aluno', 'book-manager'); ?></option>
-                    <option value="class_reading" <?php selected($type, 'class_reading'); ?>><?php _e('Leitura por Turma', 'book-manager'); ?></option>
-                    <option value="active_penalties" <?php selected($type, 'active_penalties'); ?>><?php _e('Multas Ativas', 'book-manager'); ?></option>
-                    <option value="genre_ranking" <?php selected($type, 'genre_ranking'); ?>><?php _e('Ranking por Gênero', 'book-manager'); ?></option>
-                    <option value="top_books" <?php selected($type, 'top_books'); ?>><?php _e('Livros Mais Emprestados', 'book-manager'); ?></option>
-                    <option value="reading_trend" <?php selected($type, 'reading_trend'); ?>><?php _e('Tendência de Leitura', 'book-manager'); ?></option>
-                    <option value="custom" <?php selected($type, 'custom'); ?>><?php _e('Relatório Configurável', 'book-manager'); ?></option>
+                    <option value="overview" <?php selected($type, 'overview'); ?>><?php esc_html_e('Visão Geral', 'book-manager'); ?></option>
+                    <option value="student_performance" <?php selected($type, 'student_performance'); ?>><?php esc_html_e('Desempenho do Aluno', 'book-manager'); ?></option>
+                    <option value="class_reading" <?php selected($type, 'class_reading'); ?>><?php esc_html_e('Leitura por Turma', 'book-manager'); ?></option>
+                    <option value="active_penalties" <?php selected($type, 'active_penalties'); ?>><?php esc_html_e('Multas Ativas', 'book-manager'); ?></option>
+                    <option value="genre_ranking" <?php selected($type, 'genre_ranking'); ?>><?php esc_html_e('Ranking por Gênero', 'book-manager'); ?></option>
+                    <option value="top_books" <?php selected($type, 'top_books'); ?>><?php esc_html_e('Livros Mais Emprestados', 'book-manager'); ?></option>
+                    <option value="reading_trend" <?php selected($type, 'reading_trend'); ?>><?php esc_html_e('Tendência de Leitura', 'book-manager'); ?></option>
+                    <option value="custom" <?php selected($type, 'custom'); ?>><?php esc_html_e('Relatório Configurável', 'book-manager'); ?></option>
                 </select>
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Período', 'book-manager'); ?></label>
+                <label class="block text-xs font-bold text-gray-600 mb-1"><?php esc_html_e('Período', 'book-manager'); ?></label>
                 <select name="bm_period" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
-                    <option value="week" <?php selected($period, 'week'); ?>><?php _e('Última Semana', 'book-manager'); ?></option>
-                    <option value="month" <?php selected($period, 'month'); ?>><?php _e('Último Mês', 'book-manager'); ?></option>
-                    <option value="bimester" <?php selected($period, 'bimester'); ?>><?php _e('Último Bimestre', 'book-manager'); ?></option>
-                    <option value="semester" <?php selected($period, 'semester'); ?>><?php _e('Último Semestre', 'book-manager'); ?></option>
-                    <option value="year" <?php selected($period, 'year'); ?>><?php _e('Último Ano', 'book-manager'); ?></option>
-                    <option value="custom" <?php selected($period, 'custom'); ?>><?php _e('Personalizado', 'book-manager'); ?></option>
+                    <option value="week" <?php selected($period, 'week'); ?>><?php esc_html_e('Última Semana', 'book-manager'); ?></option>
+                    <option value="month" <?php selected($period, 'month'); ?>><?php esc_html_e('Último Mês', 'book-manager'); ?></option>
+                    <option value="bimester" <?php selected($period, 'bimester'); ?>><?php esc_html_e('Último Bimestre', 'book-manager'); ?></option>
+                    <option value="semester" <?php selected($period, 'semester'); ?>><?php esc_html_e('Último Semestre', 'book-manager'); ?></option>
+                    <option value="year" <?php selected($period, 'year'); ?>><?php esc_html_e('Último Ano', 'book-manager'); ?></option>
+                    <option value="custom" <?php selected($period, 'custom'); ?>><?php esc_html_e('Personalizado', 'book-manager'); ?></option>
                 </select>
             </div>
 
             <div id="bm-custom-dates" class="<?php echo $period === 'custom' ? 'flex' : 'hidden'; ?> gap-2 items-end">
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('De', 'book-manager'); ?></label>
+                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php esc_html_e('De', 'book-manager'); ?></label>
                     <input type="date" name="bm_date_start" value="<?php echo esc_attr($date_start); ?>" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Até', 'book-manager'); ?></label>
+                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php esc_html_e('Até', 'book-manager'); ?></label>
                     <input type="date" name="bm_date_end" value="<?php echo esc_attr($date_end); ?>" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
                 </div>
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Sujeito', 'book-manager'); ?></label>
+                <label class="block text-xs font-bold text-gray-600 mb-1"><?php esc_html_e('Sujeito', 'book-manager'); ?></label>
                 <select name="bm_subject" class="w-36 px-3 py-2 border border-gray-300 rounded-md text-sm">
-                    <option value="all" <?php selected($subject, 'all'); ?>><?php _e('Todos', 'book-manager'); ?></option>
-                    <option value="student" <?php selected($subject, 'student'); ?>><?php _e('Aluno Específico', 'book-manager'); ?></option>
-                    <option value="class" <?php selected($subject, 'class'); ?>><?php _e('Turma', 'book-manager'); ?></option>
+                    <option value="all" <?php selected($subject, 'all'); ?>><?php esc_html_e('Todos', 'book-manager'); ?></option>
+                    <option value="student" <?php selected($subject, 'student'); ?>><?php esc_html_e('Aluno Específico', 'book-manager'); ?></option>
+                    <option value="class" <?php selected($subject, 'class'); ?>><?php esc_html_e('Turma', 'book-manager'); ?></option>
                 </select>
             </div>
 
             <div id="bm-subject-options">
                 <div id="bm-student-select" class="<?php echo $subject === 'student' ? '' : 'hidden'; ?>">
-                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Aluno', 'book-manager'); ?></label>
-                    <input type="text" id="bm-student-search-input" placeholder="<?php _e('Digite o nome...', 'book-manager'); ?>" class="w-48 px-3 py-2 border border-gray-300 rounded-md text-sm">
+                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php esc_html_e('Aluno', 'book-manager'); ?></label>
+                    <input type="text" id="bm-student-search-input" placeholder="<?php esc_attr_e('Digite o nome...', 'book-manager'); ?>" class="w-48 px-3 py-2 border border-gray-300 rounded-md text-sm">
                     <div id="bm-student-search-results" class="max-h-32 overflow-y-auto mt-1"></div>
-                    <input type="hidden" name="bm_subject_id" id="bm-subject-id" value="<?php echo $subject_id ?: ''; ?>">
+                    <input type="hidden" name="bm_subject_id" id="bm-subject-id" value="<?php echo $subject_id ? esc_attr($subject_id) : ''; ?>">
                 </div>
                 <div id="bm-class-select" class="<?php echo $subject === 'class' ? '' : 'hidden'; ?>">
-                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php _e('Turma', 'book-manager'); ?></label>
-                    <input type="text" name="bm_group" value="<?php echo esc_attr($group); ?>" placeholder="Ex: 1º Ano" class="w-28 px-3 py-2 border border-gray-300 rounded-md text-sm">
+                    <label class="block text-xs font-bold text-gray-600 mb-1"><?php esc_html_e('Turma', 'book-manager'); ?></label>
+                    <input type="text" name="bm_group" value="<?php echo esc_attr($group); ?>" placeholder="<?php esc_attr_e('Ex: 1º Ano', 'book-manager'); ?>" class="w-28 px-3 py-2 border border-gray-300 rounded-md text-sm">
                 </div>
             </div>
 
             <div id="bm-custom-options" class="<?php echo $type === 'custom' ? '' : 'hidden'; ?> w-full mt-2 p-3 bg-gray-50 rounded-md">
-                <label class="text-sm font-bold text-gray-700"><?php _e('Colunas:', 'book-manager'); ?></label>
+                <label class="text-sm font-bold text-gray-700"><?php esc_html_e('Colunas:', 'book-manager'); ?></label>
                 <div class="flex flex-wrap gap-4 mt-2">
-                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="name" <?php checked(in_array('name', $custom_columns)); ?>> <?php _e('Nome', 'book-manager'); ?></label>
-                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="group" <?php checked(in_array('group', $custom_columns)); ?>> <?php _e('Turma', 'book-manager'); ?></label>
-                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="books_read" <?php checked(in_array('books_read', $custom_columns)); ?>> <?php _e('Livros Lidos', 'book-manager'); ?></label>
-                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="reviews" <?php checked(in_array('reviews', $custom_columns)); ?>> <?php _e('Resenhas', 'book-manager'); ?></label>
-                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="videos" <?php checked(in_array('videos', $custom_columns)); ?>> <?php _e('Vídeos', 'book-manager'); ?></label>
-                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="xp" <?php checked(in_array('xp', $custom_columns)); ?>> <?php _e('XP', 'book-manager'); ?></label>
-                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="badges" <?php checked(in_array('badges', $custom_columns)); ?>> <?php _e('Medalhas', 'book-manager'); ?></label>
-                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="penalties" <?php checked(in_array('penalties', $custom_columns)); ?>> <?php _e('Multas', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="name" <?php checked(in_array('name', $custom_columns)); ?>> <?php esc_html_e('Nome', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="group" <?php checked(in_array('group', $custom_columns)); ?>> <?php esc_html_e('Turma', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="books_read" <?php checked(in_array('books_read', $custom_columns)); ?>> <?php esc_html_e('Livros Lidos', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="reviews" <?php checked(in_array('reviews', $custom_columns)); ?>> <?php esc_html_e('Resenhas', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="videos" <?php checked(in_array('videos', $custom_columns)); ?>> <?php esc_html_e('Vídeos', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="xp" <?php checked(in_array('xp', $custom_columns)); ?>> XP</label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="badges" <?php checked(in_array('badges', $custom_columns)); ?>> <?php esc_html_e('Medalhas', 'book-manager'); ?></label>
+                    <label class="flex items-center gap-1 text-sm text-gray-700"><input type="checkbox" name="bm_custom_columns[]" value="penalties" <?php checked(in_array('penalties', $custom_columns)); ?>> <?php esc_html_e('Multas', 'book-manager'); ?></label>
                 </div>
                 <div class="mt-3">
-                    <label class="text-sm font-bold text-gray-700"><?php _e('Ordenar por:', 'book-manager'); ?></label>
+                    <label class="text-sm font-bold text-gray-700"><?php esc_html_e('Ordenar por:', 'book-manager'); ?></label>
                     <select name="bm_custom_sort" class="ml-2 px-3 py-2 border border-gray-300 rounded-md text-sm">
-                        <option value="name" <?php selected($custom_sort, 'name'); ?>><?php _e('Nome', 'book-manager'); ?></option>
-                        <option value="xp" <?php selected($custom_sort, 'xp'); ?>><?php _e('XP', 'book-manager'); ?></option>
-                        <option value="books_read" <?php selected($custom_sort, 'books_read'); ?>><?php _e('Livros Lidos', 'book-manager'); ?></option>
+                        <option value="name" <?php selected($custom_sort, 'name'); ?>><?php esc_html_e('Nome', 'book-manager'); ?></option>
+                        <option value="xp" <?php selected($custom_sort, 'xp'); ?>>XP</option>
+                        <option value="books_read" <?php selected($custom_sort, 'books_read'); ?>><?php esc_html_e('Livros Lidos', 'book-manager'); ?></option>
                     </select>
                 </div>
             </div>
 
-            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"><?php _e('Gerar Relatório', 'book-manager'); ?></button>
-            <button type="button" id="bm-export-pdf" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium text-sm transition-colors"><?php _e('Exportar PDF', 'book-manager'); ?></button>
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"><?php esc_html_e('Gerar Relatório', 'book-manager'); ?></button>
+            <button type="button" id="bm-export-pdf" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 font-medium text-sm transition-colors"><?php esc_html_e('Exportar PDF', 'book-manager'); ?></button>
         </form>
 
         <div id="bm-report-result" class="space-y-6">
             <div id="bm-dashboard" class="hidden"></div>
             <div id="bm-welcome" class="text-center py-12 text-gray-400">
-                <?php _e('Selecione os filtros e clique em Gerar Relatório', 'book-manager'); ?>
+                <?php esc_html_e('Selecione os filtros e clique em Gerar Relatório', 'book-manager'); ?>
             </div>
             <div id="bm-loading" class="hidden text-center py-8">
-                <span class="animate-pulse text-gray-500"><?php _e('Carregando...', 'book-manager'); ?></span>
+                <span class="animate-pulse text-gray-500"><?php esc_html_e('Carregando...', 'book-manager'); ?></span>
             </div>
             <div id="bm-empty" class="hidden text-center py-8">
                 <svg class="w-12 h-12 mx-auto text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -1691,7 +1682,7 @@ function bm_render_reports_page() {
                     <path d="M3 8l9 5 9-5" stroke-linecap="round" stroke-linejoin="round"></path>
                     <path d="M12 13v8" stroke-linecap="round" stroke-linejoin="round"></path>
                 </svg>
-                <p class="mt-2 text-gray-500"><?php _e('Nenhum dado encontrado para este período.', 'book-manager'); ?></p>
+                <p class="mt-2 text-gray-500"><?php esc_html_e('Nenhum dado encontrado para este período.', 'book-manager'); ?></p>
             </div>
 
             <div data-section="report-title" class="hidden">
@@ -1769,7 +1760,7 @@ function bm_render_reports_page() {
                 </div>
             </div>
             <div data-section="inactive-alerts" class="hidden bg-red-50 rounded-xl p-5 shadow-sm border-l-4 border-red-500">
-                <h3 class="text-base font-semibold text-red-800 mb-2">⚠️ Alunos sem leitura no período</h3>
+                <h3 class="text-base font-semibold text-red-800 mb-2">⚠️ <?php esc_html_e('Alunos sem leitura no período', 'book-manager'); ?></h3>
                 <div id="bm-inactive-list" class="flex flex-wrap gap-2"></div>
             </div>
 
@@ -1781,15 +1772,14 @@ function bm_render_reports_page() {
             </div>
         </div>
     </div>
-        
     <?php
 }
 
 // ==========================================
-// FASE 32: PÁGINA DE DETALHES DO EMPRÉSTIMO
+// LOAN DETAIL PAGE
 // ==========================================
 function bm_add_loan_detail_page() {
-    add_submenu_page(null, __('Detalhes do Empréstimo', 'book-manager'), __('Detalhes do Empréstimo', 'book-manager'), 'edit_bm_books', 'bm_loan_detail', 'bm_render_loan_detail_page');
+    add_submenu_page(null, esc_html__('Detalhes do Empréstimo', 'book-manager'), esc_html__('Detalhes do Empréstimo', 'book-manager'), 'edit_bm_books', 'bm_loan_detail', 'bm_render_loan_detail_page');
 }
 add_action('admin_menu', 'bm_add_loan_detail_page');
 
@@ -1834,9 +1824,9 @@ function bm_render_loan_detail_page() {
                     }
                 }
                 update_user_meta($user_id, '_bm_loan_history', $loan_history);
-                $result = array('success' => true, 'message' => __('Renovado por mais 7 dias!', 'book-manager'));
+                $result = array('success' => true, 'message' => esc_html__('Renovado por mais 7 dias!', 'book-manager'));
             } else {
-                $result = array('error' => __('Empréstimo não encontrado.', 'book-manager'));
+                $result = array('error' => esc_html__('Empréstimo não encontrado.', 'book-manager'));
             }
         }
         
@@ -1848,7 +1838,7 @@ function bm_render_loan_detail_page() {
     }
     
     if (!$book_id || !$user_id) {
-        echo '<div class="wrap"><p>' . __('Empréstimo não encontrado.', 'book-manager') . '</p></div>';
+        echo '<div class="wrap"><p>' . esc_html__('Empréstimo não encontrado.', 'book-manager') . '</p></div>';
         return;
     }
     
@@ -1856,14 +1846,14 @@ function bm_render_loan_detail_page() {
     $student = get_userdata($user_id);
     
     if (!$book || !$student) {
-        echo '<div class="wrap"><p>' . __('Empréstimo não encontrado.', 'book-manager') . '</p></div>';
+        echo '<div class="wrap"><p>' . esc_html__('Empréstimo não encontrado.', 'book-manager') . '</p></div>';
         return;
     }
     
     ?>
     <div class="wrap" style="max-width:800px;">
-        <h1><?php _e('Detalhes do Empréstimo', 'book-manager'); ?></h1>
-        <p><a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_service_desk'); ?>">← <?php _e('Voltar para Empréstimos', 'book-manager'); ?></a></p>
+        <h1><?php esc_html_e('Detalhes do Empréstimo', 'book-manager'); ?></h1>
+        <p><a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_service_desk')); ?>">← <?php esc_html_e('Voltar para Empréstimos', 'book-manager'); ?></a></p>
         
         <?php
         $reservations = get_post_meta($book_id, '_bm_reservations', true) ?: array();
@@ -1891,72 +1881,72 @@ function bm_render_loan_detail_page() {
         
         <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:15px;">
             <div style="flex:0 0 150px;">
-                <a href="<?php echo admin_url('post.php?post=' . $book_id . '&action=edit'); ?>">
+                <a href="<?php echo esc_url(admin_url('post.php?post=' . $book_id . '&action=edit')); ?>">
                     <?php if (has_post_thumbnail($book_id)): ?>
                         <?php echo get_the_post_thumbnail($book_id, 'medium', array('style' => 'width:100%;height:auto;border-radius:4px;')); ?>
                     <?php else: ?>
-                        <div style="width:100%;height:200px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999;border-radius:4px;"><?php _e('Sem capa', 'book-manager'); ?></div>
+                        <div style="width:100%;height:200px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999;border-radius:4px;"><?php esc_html_e('Sem capa', 'book-manager'); ?></div>
                     <?php endif; ?>
                 </a>
             </div>
             <div style="flex:1;min-width:300px;">
-                <h2 style="margin:0;"><a href="<?php echo admin_url('post.php?post=' . $book_id . '&action=edit'); ?>"><?php echo esc_html($book->post_title); ?></a></h2>
+                <h2 style="margin:0;"><a href="<?php echo esc_url(admin_url('post.php?post=' . $book_id . '&action=edit')); ?>"><?php echo esc_html($book->post_title); ?></a></h2>
                 <?php $author = get_post_meta($book_id, '_bm_author', true); ?>
-                <?php if ($author): ?><p><strong><?php _e('Autor:', 'book-manager'); ?></strong> <?php echo esc_html($author); ?></p><?php endif; ?>
+                <?php if ($author): ?><p><strong><?php esc_html_e('Autor:', 'book-manager'); ?></strong> <?php echo esc_html($author); ?></p><?php endif; ?>
                 
                 <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
                     <?php if ($loan_data['status'] === 'waiting'): ?>
                         <form method="post" style="display:inline;">
                             <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
-                            <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
-                            <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
+                            <input type="hidden" name="book_id" value="<?php echo esc_attr($book_id); ?>">
+                            <input type="hidden" name="user_id" value="<?php echo esc_attr($user_id); ?>">
                             <input type="number" name="loan_days" value="14" min="0" max="60" style="width:50px;padding:4px 6px;font-size:13px;text-align:center;" />
                             <input type="hidden" name="bm_loan_action" value="confirm">
-                            <button type="submit" class="button button-small" style="background:#0073aa;color:#fff;border-color:#0073aa;">✅ <?php _e('Emprestar', 'book-manager'); ?></button>
+                            <button type="submit" class="button button-small" style="background:#0073aa;color:#fff;border-color:#0073aa;">✅ <?php esc_html_e('Emprestar', 'book-manager'); ?></button>
                         </form>
                         <form method="post" style="display:inline;">
                             <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
-                            <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
-                            <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
+                            <input type="hidden" name="book_id" value="<?php echo esc_attr($book_id); ?>">
+                            <input type="hidden" name="user_id" value="<?php echo esc_attr($user_id); ?>">
                             <input type="hidden" name="bm_loan_action" value="reject">
-                            <button type="submit" class="button button-small" style="background:#dc3545;color:#fff;border-color:#dc3545;">❌ <?php _e('Rejeitar', 'book-manager'); ?></button>
+                            <button type="submit" class="button button-small" style="background:#dc3545;color:#fff;border-color:#dc3545;">❌ <?php esc_html_e('Rejeitar', 'book-manager'); ?></button>
                         </form>
                     <?php endif; ?>
                     <?php if ($loan_data['status'] === 'active'): ?>
                         <form method="post" style="display:inline;">
                             <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
-                            <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
-                            <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
+                            <input type="hidden" name="book_id" value="<?php echo esc_attr($book_id); ?>">
+                            <input type="hidden" name="user_id" value="<?php echo esc_attr($user_id); ?>">
                             <input type="hidden" name="bm_loan_action" value="return">
-                            <button type="submit" class="button button-small" style="background:#46b450;color:#fff;border-color:#46b450;">📥 <?php _e('Devolver', 'book-manager'); ?></button>
+                            <button type="submit" class="button button-small" style="background:#46b450;color:#fff;border-color:#46b450;">📥 <?php esc_html_e('Devolver', 'book-manager'); ?></button>
                         </form>
                         <form method="post" style="display:inline;">
                             <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
-                            <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
-                            <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
+                            <input type="hidden" name="book_id" value="<?php echo esc_attr($book_id); ?>">
+                            <input type="hidden" name="user_id" value="<?php echo esc_attr($user_id); ?>">
                             <input type="hidden" name="bm_loan_action" value="renew">
-                            <button type="submit" class="button button-small" style="background:#ffc107;color:#111;border-color:#ffc107;">🔄 <?php _e('Renovar +7', 'book-manager'); ?></button>
+                            <button type="submit" class="button button-small" style="background:#ffc107;color:#111;border-color:#ffc107;">🔄 <?php esc_html_e('Renovar +7', 'book-manager'); ?></button>
                         </form>
                         <form method="post" style="display:inline;">
                             <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
-                            <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
-                            <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
+                            <input type="hidden" name="book_id" value="<?php echo esc_attr($book_id); ?>">
+                            <input type="hidden" name="user_id" value="<?php echo esc_attr($user_id); ?>">
                             <input type="hidden" name="bm_loan_action" value="undo">
-                            <button type="submit" class="button button-small" style="background:#dc3545;color:#fff;border-color:#dc3545;">↩️ <?php _e('Desfazer', 'book-manager'); ?></button>
+                            <button type="submit" class="button button-small" style="background:#dc3545;color:#fff;border-color:#dc3545;">↩️ <?php esc_html_e('Desfazer', 'book-manager'); ?></button>
                         </form>
                     <?php endif; ?>
                     <?php if ($loan_data['status'] === 'returned' || $loan_data['status'] === 'cancelled' || $loan_data['status'] === 'rejected'): ?>
-                        <button type="button" class="button button-small" id="bm-archive-btn-top" data-book="<?php echo $book_id; ?>" data-user="<?php echo $user_id; ?>" data-loan="<?php echo esc_attr($loan_id); ?>">🗄️ <?php _e('Arquivar', 'book-manager'); ?></button>
+                        <button type="button" class="button button-small" id="bm-archive-btn-top" data-book="<?php echo esc_attr($book_id); ?>" data-user="<?php echo esc_attr($user_id); ?>" data-loan="<?php echo esc_attr($loan_id); ?>">🗄️ <?php esc_html_e('Arquivar', 'book-manager'); ?></button>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
         
         <div style="background:#f9f9f9;padding:15px;border-radius:6px;margin-top:15px;">
-            <h3 style="margin:0 0 10px 0;">👤 <?php _e('Aluno', 'book-manager'); ?></h3>
-            <p><strong><a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_student_detail&student_id=' . $user_id); ?>"><?php echo esc_html($student->display_name); ?></a></strong></p>
+            <h3 style="margin:0 0 10px 0;">👤 <?php esc_html_e('Aluno', 'book-manager'); ?></h3>
+            <p><strong><a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_student_detail&student_id=' . $user_id)); ?>"><?php echo esc_html($student->display_name); ?></a></strong></p>
             <?php $student_group = get_user_meta($user_id, '_bm_user_' . sanitize_key('Turma'), true); ?>
-            <?php if ($student_group): ?><p><strong><?php _e('Turma:', 'book-manager'); ?></strong> <?php echo esc_html($student_group); ?></p><?php endif; ?>
+            <?php if ($student_group): ?><p><strong><?php esc_html_e('Turma:', 'book-manager'); ?></strong> <?php echo esc_html($student_group); ?></p><?php endif; ?>
             <?php $student_phone = get_user_meta($user_id, '_bm_user_' . sanitize_key('Telefone'), true); ?>
             <?php if ($student_phone): ?>
                 <p><?php echo bm_whatsapp_button($student_phone, '', '📱 WhatsApp'); ?></p>
@@ -1964,12 +1954,12 @@ function bm_render_loan_detail_page() {
         </div>
                 
         <div style="background:#f9f9f9;padding:15px;border-radius:6px;margin-top:15px;">
-            <h3 style="margin:0 0 10px 0;">📅 <?php _e('Linha do Tempo', 'book-manager'); ?></h3>
+            <h3 style="margin:0 0 10px 0;">📅 <?php esc_html_e('Linha do Tempo', 'book-manager'); ?></h3>
             <table class="widefat fixed" style="border:none;">
-                <tr><td style="width:200px;padding:5px;border:none;"><?php _e('Data da reserva:', 'book-manager'); ?></td><td style="padding:5px;border:none;"><strong><?php echo isset($loan_data['date']) ? date('d/m/Y H:i', strtotime($loan_data['date'])) : '—'; ?></strong></td></tr>
-                <tr><td style="padding:5px;border:none;"><?php _e('Data do empréstimo:', 'book-manager'); ?></td><td style="padding:5px;border:none;"><strong><?php echo isset($loan_data['loan_date']) ? date('d/m/Y H:i', strtotime($loan_data['loan_date'])) : '—'; ?></strong></td></tr>
-                <tr><td style="padding:5px;border:none;"><?php _e('Devolução prevista:', 'book-manager'); ?></td><td style="padding:5px;border:none;"><strong><?php echo isset($loan_data['due_date']) ? date('d/m/Y', strtotime($loan_data['due_date'])) : '—'; ?></strong></td></tr>
-                <tr><td style="padding:5px;border:none;"><?php _e('Devolução real:', 'book-manager'); ?></td><td style="padding:5px;border:none;"><strong><?php echo isset($loan_data['returned_date']) ? date('d/m/Y H:i', strtotime($loan_data['returned_date'])) : '—'; ?></strong></td></tr>
+                <tr><td style="width:200px;padding:5px;border:none;"><?php esc_html_e('Data da reserva:', 'book-manager'); ?></td><td style="padding:5px;border:none;"><strong><?php echo isset($loan_data['date']) ? esc_html(date('d/m/Y H:i', strtotime($loan_data['date']))) : '—'; ?></strong></td></tr>
+                <tr><td style="padding:5px;border:none;"><?php esc_html_e('Data do empréstimo:', 'book-manager'); ?></td><td style="padding:5px;border:none;"><strong><?php echo isset($loan_data['loan_date']) ? esc_html(date('d/m/Y H:i', strtotime($loan_data['loan_date']))) : '—'; ?></strong></td></tr>
+                <tr><td style="padding:5px;border:none;"><?php esc_html_e('Devolução prevista:', 'book-manager'); ?></td><td style="padding:5px;border:none;"><strong><?php echo isset($loan_data['due_date']) ? esc_html(date('d/m/Y', strtotime($loan_data['due_date']))) : '—'; ?></strong></td></tr>
+                <tr><td style="padding:5px;border:none;"><?php esc_html_e('Devolução real:', 'book-manager'); ?></td><td style="padding:5px;border:none;"><strong><?php echo isset($loan_data['returned_date']) ? esc_html(date('d/m/Y H:i', strtotime($loan_data['returned_date']))) : '—'; ?></strong></td></tr>
             </table>
         </div>
         
@@ -1993,17 +1983,17 @@ function bm_render_loan_detail_page() {
         ?>
         
         <div style="background:#f9f9f9;padding:15px;border-radius:6px;margin-top:15px;">
-            <h3 style="margin:0 0 10px 0;">⚠️ <?php _e('Atraso e Multa', 'book-manager'); ?></h3>
+            <h3 style="margin:0 0 10px 0;">⚠️ <?php esc_html_e('Atraso e Multa', 'book-manager'); ?></h3>
             <?php if ($days_late > 0): ?>
-                <p><strong><?php _e('Dias de atraso:', 'book-manager'); ?></strong> <span style="color:#dc3545;"><?php echo $days_late; ?></span></p>
+                <p><strong><?php esc_html_e('Dias de atraso:', 'book-manager'); ?></strong> <span style="color:#dc3545;"><?php echo esc_html($days_late); ?></span></p>
             <?php else: ?>
-                <p><?php _e('Sem atraso.', 'book-manager'); ?></p>
+                <p><?php esc_html_e('Sem atraso.', 'book-manager'); ?></p>
             <?php endif; ?>
             <?php if ($penalty_info): ?>
-                <?php $type_label = $penalty_info['type'] === 'warning' ? __('Advertência', 'book-manager') : ($penalty_info['type'] === 'suspension' ? __('Suspensão', 'book-manager') : __('Multa', 'book-manager')); ?>
-                <p><strong><?php _e('Multa aplicada:', 'book-manager'); ?></strong> <?php echo $type_label; ?> — <?php echo esc_html($penalty_info['note']); ?></p>
+                <?php $type_label = $penalty_info['type'] === 'warning' ? esc_html__('Advertência', 'book-manager') : ($penalty_info['type'] === 'suspension' ? esc_html__('Suspensão', 'book-manager') : esc_html__('Multa', 'book-manager')); ?>
+                <p><strong><?php esc_html_e('Multa aplicada:', 'book-manager'); ?></strong> <?php echo $type_label; ?> — <?php echo esc_html($penalty_info['note']); ?></p>
             <?php else: ?>
-                <p><?php _e('Nenhuma multa aplicada.', 'book-manager'); ?></p>
+                <p><?php esc_html_e('Nenhuma multa aplicada.', 'book-manager'); ?></p>
             <?php endif; ?>
             
             <?php
@@ -2017,11 +2007,11 @@ function bm_render_loan_detail_page() {
             }
             ?>
             <?php if ($condition_info): ?>
-                <p><strong><?php _e('Condição da devolução:', 'book-manager'); ?></strong> 
-                <?php echo $condition_info['condition'] === 'good' ? '✅ ' . __('Bom', 'book-manager') : ($condition_info['condition'] === 'acceptable' ? '⚠️ ' . __('Aceitável', 'book-manager') : '❌ ' . __('Danificado', 'book-manager')); ?>
+                <p><strong><?php esc_html_e('Condição da devolução:', 'book-manager'); ?></strong> 
+                <?php echo $condition_info['condition'] === 'good' ? '✅ ' . esc_html__('Bom', 'book-manager') : ($condition_info['condition'] === 'acceptable' ? '⚠️ ' . esc_html__('Aceitável', 'book-manager') : '❌ ' . esc_html__('Danificado', 'book-manager')); ?>
                 </p>
                 <?php if (!empty($condition_info['note'])): ?>
-                    <p><strong><?php _e('Observação:', 'book-manager'); ?></strong> <?php echo esc_html($condition_info['note']); ?></p>
+                    <p><strong><?php esc_html_e('Observação:', 'book-manager'); ?></strong> <?php echo esc_html($condition_info['note']); ?></p>
                 <?php endif; ?>
             <?php endif; ?>
         </div>
@@ -2038,20 +2028,20 @@ function bm_render_loan_detail_page() {
         ?>
         
         <div style="background:#f9f9f9;padding:15px;border-radius:6px;margin-top:15px;">
-            <h3 style="margin:0 0 10px 0;">📝 <?php _e('Resenha do Aluno', 'book-manager'); ?></h3>
+            <h3 style="margin:0 0 10px 0;">📝 <?php esc_html_e('Resenha do Aluno', 'book-manager'); ?></h3>
             <?php if ($student_review && !empty($student_review['review'])): ?>
                 <p><?php echo esc_html($student_review['review']); ?></p>
                 <?php if ($student_review['rating'] > 0): ?>
-                    <p style="color:#ffc107;"><?php echo str_repeat('★', $student_review['rating']) . str_repeat('☆', 5 - $student_review['rating']); ?></p>
+                    <p style="color:#ffc107;"><?php echo esc_html(str_repeat('★', $student_review['rating']) . str_repeat('☆', 5 - $student_review['rating'])); ?></p>
                 <?php endif; ?>
-                <small style="color:#999;"><?php echo date('d/m/Y', strtotime($student_review['date'])); ?> — <?php echo $student_review['status'] === 'approved' ? '✅ ' . __('Aprovada', 'book-manager') : '⏳ ' . __('Pendente', 'book-manager'); ?></small>
+                <small style="color:#999;"><?php echo esc_html(date('d/m/Y', strtotime($student_review['date']))); ?> — <?php echo $student_review['status'] === 'approved' ? '✅ ' . esc_html__('Aprovada', 'book-manager') : '⏳ ' . esc_html__('Pendente', 'book-manager'); ?></small>
             <?php else: ?>
-                <p style="color:#999;"><?php _e('O aluno ainda não fez resenha deste livro.', 'book-manager'); ?></p>
+                <p style="color:#999;"><?php esc_html_e('O aluno ainda não fez resenha deste livro.', 'book-manager'); ?></p>
             <?php endif; ?>
         </div>
       
         <div style="background:#f9f9f9;padding:15px;border-radius:6px;margin-top:15px;">
-            <h3 style="margin:0 0 10px 0;">🎬 <?php _e('Vídeo-Resenha', 'book-manager'); ?></h3>
+            <h3 style="margin:0 0 10px 0;">🎬 <?php esc_html_e('Vídeo-Resenha', 'book-manager'); ?></h3>
             <?php if ($student_review && !empty($student_review['video_url'])): ?>
                 <?php
                 $embed_url = '';
@@ -2066,17 +2056,17 @@ function bm_render_loan_detail_page() {
                 <?php if ($embed_url): ?>
                     <iframe src="<?php echo esc_url($embed_url); ?>" style="width:100%;aspect-ratio:16/9;border:none;border-radius:4px;" allowfullscreen></iframe>
                 <?php else: ?>
-                    <p><a href="<?php echo esc_url($student_review['video_url']); ?>" target="_blank">🔗 <?php _e('Ver vídeo-resenha', 'book-manager'); ?></a></p>
+                    <p><a href="<?php echo esc_url($student_review['video_url']); ?>" target="_blank">🔗 <?php esc_html_e('Ver vídeo-resenha', 'book-manager'); ?></a></p>
                 <?php endif; ?>
             <?php else: ?>
-                <p style="color:#999;"><?php _e('O aluno ainda não fez vídeo-resenha deste livro.', 'book-manager'); ?></p>
+                <p style="color:#999;"><?php esc_html_e('O aluno ainda não fez vídeo-resenha deste livro.', 'book-manager'); ?></p>
             <?php endif; ?>
         </div>
         
         <div style="background:#f9f9f9;padding:15px;border-radius:6px;margin-top:15px;">
-            <h3 style="margin:0 0 10px 0;">💬 <?php _e('Mensagens WhatsApp', 'book-manager'); ?></h3>
+            <h3 style="margin:0 0 10px 0;">💬 <?php esc_html_e('Mensagens WhatsApp', 'book-manager'); ?></h3>
             <?php $whatsapp_count = isset($loan_data['loan_id']) ? bm_get_whatsapp_count($loan_data['loan_id']) : 0; ?>
-            <p><strong><?php _e('Mensagens enviadas:', 'book-manager'); ?></strong> <?php echo $whatsapp_count; ?></p>
+            <p><strong><?php esc_html_e('Mensagens enviadas:', 'book-manager'); ?></strong> <?php echo esc_html($whatsapp_count); ?></p>
         </div>
         
         <?php
@@ -2094,14 +2084,14 @@ function bm_render_loan_detail_page() {
         ?>
         
         <div style="background:#f9f9f9;padding:15px;border-radius:6px;margin-top:15px;">
-            <h3 style="margin:0 0 10px 0;">👤 <?php _e('Gestores', 'book-manager'); ?></h3>
+            <h3 style="margin:0 0 10px 0;">👤 <?php esc_html_e('Gestores', 'book-manager'); ?></h3>
             <?php if ($confirmed_by): ?>
-                <p><strong><?php _e('Empréstimo confirmado por:', 'book-manager'); ?></strong> <?php echo esc_html($confirmed_by->display_name); ?></p>
+                <p><strong><?php esc_html_e('Empréstimo confirmado por:', 'book-manager'); ?></strong> <?php echo esc_html($confirmed_by->display_name); ?></p>
             <?php endif; ?>
             <?php if ($received_by): ?>
-                <p><strong><?php _e('Devolução recebida por:', 'book-manager'); ?></strong> <?php echo esc_html($received_by->display_name); ?></p>
+                <p><strong><?php esc_html_e('Devolução recebida por:', 'book-manager'); ?></strong> <?php echo esc_html($received_by->display_name); ?></p>
             <?php elseif (isset($loan_data['returned_date'])): ?>
-                <p><strong><?php _e('Devolução recebida por:', 'book-manager'); ?></strong> <?php _e('Sistema', 'book-manager'); ?></p>
+                <p><strong><?php esc_html_e('Devolução recebida por:', 'book-manager'); ?></strong> <?php esc_html_e('Sistema', 'book-manager'); ?></p>
             <?php endif; ?>
         </div>
         
@@ -2116,16 +2106,16 @@ function bm_render_loan_detail_page() {
         ?>
         
         <div style="background:#f9f9f9;padding:15px;border-radius:6px;margin-top:15px;">
-            <h3 style="margin:0 0 10px 0;">📋 <?php _e('Fila de Espera', 'book-manager'); ?></h3>
+            <h3 style="margin:0 0 10px 0;">📋 <?php esc_html_e('Fila de Espera', 'book-manager'); ?></h3>
             <?php if (!empty($queue)): ?>
-                <p><?php echo count($queue); ?> <?php _e('aluno(s) aguardando:', 'book-manager'); ?></p>
+                <p><?php echo count($queue); ?> <?php esc_html_e('aluno(s) aguardando:', 'book-manager'); ?></p>
                 <ol style="margin:5px 0;padding-left:20px;">
                     <?php foreach ($queue as $q_name): ?>
                         <li><?php echo esc_html($q_name); ?></li>
                     <?php endforeach; ?>
                 </ol>
             <?php else: ?>
-                <p style="color:#999;"><?php _e('Nenhum aluno na fila de espera.', 'book-manager'); ?></p>
+                <p style="color:#999;"><?php esc_html_e('Nenhum aluno na fila de espera.', 'book-manager'); ?></p>
             <?php endif; ?>
         </div>
         
@@ -2136,21 +2126,21 @@ function bm_render_loan_detail_page() {
             if ($loan['status'] === 'active' && isset($loan['due_date']) && strtotime($loan['due_date']) < time() && $loan['book_id'] != $book_id) {
                 $other_book = get_post($loan['book_id']);
                 $other_overdue[] = array(
-                    'title' => $other_book ? $other_book->post_title : __('Livro #', 'book-manager') . $loan['book_id'],
-                    'due_date' => date('d/m/Y', strtotime($loan['due_date'])),
+                    'title' => $other_book ? $other_book->post_title : esc_html__('Livro #', 'book-manager') . $loan['book_id'],
+                    'due_date' => esc_html(date('d/m/Y', strtotime($loan['due_date']))),
                 );
             }
         }
         ?>
         
         <div style="background:#fff3f3;padding:15px;border-radius:6px;margin-top:15px;">
-            <h3 style="margin:0 0 10px 0;">🔴 <?php _e('Outros Livros em Atraso', 'book-manager'); ?></h3>
+            <h3 style="margin:0 0 10px 0;">🔴 <?php esc_html_e('Outros Livros em Atraso', 'book-manager'); ?></h3>
             <?php if (!empty($other_overdue)): ?>
                 <?php foreach ($other_overdue as $overdue): ?>
-                    <p><strong><?php echo esc_html($overdue['title']); ?></strong> — <?php printf(__('Devolução: %s', 'book-manager'), $overdue['due_date']); ?></p>
+                    <p><strong><?php echo esc_html($overdue['title']); ?></strong> — <?php printf(esc_html__('Devolução: %s', 'book-manager'), esc_html($overdue['due_date'])); ?></p>
                 <?php endforeach; ?>
             <?php else: ?>
-                <p style="color:#999;"><?php _e('Nenhum outro livro em atraso.', 'book-manager'); ?></p>
+                <p style="color:#999;"><?php esc_html_e('Nenhum outro livro em atraso.', 'book-manager'); ?></p>
             <?php endif; ?>
         </div>
                 
@@ -2158,93 +2148,70 @@ function bm_render_loan_detail_page() {
             <?php if ($loan_data['status'] === 'waiting'): ?>
                 <form method="post" style="display:inline;">
                     <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
-                    <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
-                    <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
+                    <input type="hidden" name="book_id" value="<?php echo esc_attr($book_id); ?>">
+                    <input type="hidden" name="user_id" value="<?php echo esc_attr($user_id); ?>">
                     <input type="number" name="loan_days" value="14" min="0" max="60" style="width:60px;padding:4px 8px;font-size:14px;text-align:center;" />
                     <input type="hidden" name="bm_loan_action" value="confirm">
-                    <button type="submit" class="button" style="background:#0073aa;color:#fff;border-color:#0073aa;">✅ <?php _e('Confirmar Empréstimo', 'book-manager'); ?></button>
+                    <button type="submit" class="button" style="background:#0073aa;color:#fff;border-color:#0073aa;">✅ <?php esc_html_e('Confirmar Empréstimo', 'book-manager'); ?></button>
                 </form>
                 <form method="post" style="display:inline;">
                     <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
-                    <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
-                    <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
+                    <input type="hidden" name="book_id" value="<?php echo esc_attr($book_id); ?>">
+                    <input type="hidden" name="user_id" value="<?php echo esc_attr($user_id); ?>">
                     <input type="hidden" name="bm_loan_action" value="reject">
-                    <button type="submit" class="button" style="background:#dc3545;color:#fff;border-color:#dc3545;">❌ <?php _e('Rejeitar', 'book-manager'); ?></button>
+                    <button type="submit" class="button" style="background:#dc3545;color:#fff;border-color:#dc3545;">❌ <?php esc_html_e('Rejeitar', 'book-manager'); ?></button>
                 </form>
             <?php endif; ?>
             <?php if ($loan_data['status'] === 'active'): ?>
                 <form method="post" style="display:inline;">
                     <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
-                    <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
-                    <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
+                    <input type="hidden" name="book_id" value="<?php echo esc_attr($book_id); ?>">
+                    <input type="hidden" name="user_id" value="<?php echo esc_attr($user_id); ?>">
                     <input type="hidden" name="bm_loan_action" value="return">
-                    <button type="submit" class="button" style="background:#46b450;color:#fff;border-color:#46b450;">📥 <?php _e('Devolver', 'book-manager'); ?></button>
+                    <button type="submit" class="button" style="background:#46b450;color:#fff;border-color:#46b450;">📥 <?php esc_html_e('Devolver', 'book-manager'); ?></button>
                 </form>
                 <form method="post" style="display:inline;">
                     <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
-                    <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
-                    <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
+                    <input type="hidden" name="book_id" value="<?php echo esc_attr($book_id); ?>">
+                    <input type="hidden" name="user_id" value="<?php echo esc_attr($user_id); ?>">
                     <input type="hidden" name="bm_loan_action" value="renew">
-                    <button type="submit" class="button" style="background:#ffc107;color:#111;border-color:#ffc107;">🔄 <?php _e('Renovar +7 dias', 'book-manager'); ?></button>
+                    <button type="submit" class="button" style="background:#ffc107;color:#111;border-color:#ffc107;">🔄 <?php esc_html_e('Renovar +7 dias', 'book-manager'); ?></button>
                 </form>
                 <form method="post" style="display:inline;">
                     <?php wp_nonce_field('bm_loan_action', 'bm_loan_nonce'); ?>
-                    <input type="hidden" name="book_id" value="<?php echo $book_id; ?>">
-                    <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
+                    <input type="hidden" name="book_id" value="<?php echo esc_attr($book_id); ?>">
+                    <input type="hidden" name="user_id" value="<?php echo esc_attr($user_id); ?>">
                     <input type="hidden" name="bm_loan_action" value="undo">
-                    <button type="submit" class="button" style="background:#dc3545;color:#fff;border-color:#dc3545;">↩️ <?php _e('Desfazer', 'book-manager'); ?></button>
+                    <button type="submit" class="button" style="background:#dc3545;color:#fff;border-color:#dc3545;">↩️ <?php esc_html_e('Desfazer', 'book-manager'); ?></button>
                 </form>
             <?php endif; ?>
 
             <script>
-            var bmArchiveNonce = '<?php echo wp_create_nonce("bm_service_nonce"); ?>';
+            var bmArchiveNonce = '<?php echo esc_attr(wp_create_nonce("bm_service_nonce")); ?>';
             document.getElementById('bm-archive-btn-top')?.addEventListener('click', function() {
-                if (!confirm('<?php _e('Arquivar este registro?', 'book-manager'); ?>')) return;
+                if (!confirm('<?php echo esc_js(__('Arquivar este registro?', 'book-manager')); ?>')) return;
                 var btn = this;
                 btn.disabled = true;
                 btn.textContent = '...';
                 var xhr = new XMLHttpRequest();
-                xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+                xhr.open('POST', '<?php echo esc_url(admin_url("admin-ajax.php")); ?>');
                 xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
                 xhr.onload = function() {
                     var r = JSON.parse(xhr.responseText);
                     if (r.success) {
-                        btn.textContent = '✅ <?php _e('Arquivado', 'book-manager'); ?>';
+                        btn.textContent = '✅ <?php echo esc_js(__('Arquivado', 'book-manager')); ?>';
                         btn.style.background = '#6c757d';
                     } else {
                         alert(r.message || 'Erro');
                         btn.disabled = false;
-                        btn.textContent = '🗄️ <?php _e('Arquivar', 'book-manager'); ?>';
-                    }
-                };
-                xhr.send('action=bm_archive_loan&book_id=' + btn.getAttribute('data-book') + '&loan_id=' + btn.getAttribute('data-loan') + '&nonce=' + bmArchiveNonce);
-            });
-            </script>
-            <script>
-            document.getElementById('bm-archive-btn')?.addEventListener('click', function() {
-                if (!confirm('<?php _e('Arquivar este registro?', 'book-manager'); ?>')) return;
-                var btn = this;
-                btn.disabled = true;
-                btn.textContent = '...';
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
-                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                xhr.onload = function() {
-                    var r = JSON.parse(xhr.responseText);
-                    if (r.success) {
-                        btn.textContent = '✅ <?php _e('Arquivado', 'book-manager'); ?>';
-                        btn.style.background = '#6c757d';
-                    } else {
-                        alert(r.message || 'Erro');
-                        btn.disabled = false;
-                        btn.textContent = '🗄️ <?php _e('Arquivar', 'book-manager'); ?>';
+                        btn.textContent = '🗄️ <?php echo esc_js(__('Arquivar', 'book-manager')); ?>';
                     }
                 };
                 xhr.send('action=bm_archive_loan&book_id=' + btn.getAttribute('data-book') + '&loan_id=' + btn.getAttribute('data-loan') + '&nonce=' + bmArchiveNonce);
             });
             </script>
             <?php if ($loan_data['status'] === 'returned' || $loan_data['status'] === 'cancelled' || $loan_data['status'] === 'rejected'): ?>
-                <button type="button" class="button" id="bm-archive-btn-top" data-book="<?php echo $book_id; ?>" data-user="<?php echo $user_id; ?>" data-loan="<?php echo esc_attr($loan_id); ?>">🗄️ <?php _e('Arquivar', 'book-manager'); ?></button>
+                <button type="button" class="button" id="bm-archive-btn-top" data-book="<?php echo esc_attr($book_id); ?>" data-user="<?php echo esc_attr($user_id); ?>" data-loan="<?php echo esc_attr($loan_id); ?>">🗄️ <?php esc_html_e('Arquivar', 'book-manager'); ?></button>
             <?php endif; ?>
         </div>
 

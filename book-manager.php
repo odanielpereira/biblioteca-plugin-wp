@@ -3,9 +3,8 @@
  * Plugin Name:       Gestão de Livros
  * Plugin URI:        https://github.com/odanielpereira/biblioteca-plugin-wp
  * Description:       Gerenciador de livros para o tema Biblioteca.
- * Version:           11.0.0
+ * Version:           12.0.0
  * Author:            Daniel Pereira
- * Author URI:        https://odanielpereira.com/
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       book-manager
@@ -15,7 +14,7 @@
 defined('ABSPATH') || exit;
 
 // ==========================================
-// MÓDULOS DO PLUGIN
+// MODULE LOADING
 // ==========================================
 require_once plugin_dir_path(__FILE__) . 'includes/admin-settings.php';
 require_once plugin_dir_path(__FILE__) . 'includes/admin-fields.php';
@@ -28,7 +27,25 @@ require_once plugin_dir_path(__FILE__) . 'includes/frontend.php';
 require_once plugin_dir_path(__FILE__) . 'includes/reports.php';
 
 // ==========================================
-// FASE 1: CUSTOM POST TYPE
+// ASSETS: ENQUEUE CSS AND JS
+// ==========================================
+function bm_enqueue_assets() {
+    wp_enqueue_style('bm-book-manager', plugin_dir_url(__FILE__) . 'assets/css/book-manager.css', array(), '12.0.0');
+    wp_enqueue_script('bm-book-manager', plugin_dir_url(__FILE__) . 'assets/js/book-manager.js', array('jquery'), '12.0.0', true);
+}
+add_action('wp_enqueue_scripts', 'bm_enqueue_assets');
+add_action('admin_enqueue_scripts', 'bm_enqueue_assets');
+
+// Force JS load on import history page (loaded via AJAX)
+function bm_enqueue_on_import_history() {
+    if (isset($_GET['page']) && $_GET['page'] === 'bm_data_io' && isset($_GET['subtab']) && $_GET['subtab'] === 'history') {
+        wp_enqueue_script('bm-book-manager', plugin_dir_url(__FILE__) . 'assets/js/book-manager.js', array('jquery'), '12.0.0', true);
+    }
+}
+add_action('admin_print_scripts', 'bm_enqueue_on_import_history');
+
+// ==========================================
+// CUSTOM POST TYPE
 // ==========================================
 function bm_register_book_cpt() {
     $labels = array(
@@ -65,16 +82,15 @@ function bm_register_book_cpt() {
 }
 add_action( 'init', 'bm_register_book_cpt' );
 
-
 // ==========================================
-// FASE 8G: TAXONOMIA DE DISCIPLINAS ESCOLARES
+// DISCIPLINE TAXONOMY
 // ==========================================
 function bm_register_discipline_taxonomy() {
     $taxonomies = get_option('bm_dynamic_taxonomies', array());
-    $label_plural = isset($taxonomies['bm_discipline']['label']) ? $taxonomies['bm_discipline']['label'] : __('Disciplinas', 'book-manager');
-    $label_singular = rtrim($label_plural, 's'); // Remove 's' final para singular simples
+    $label_plural = isset($taxonomies['bm_discipline']['label']) ? $taxonomies['bm_discipline']['label'] : esc_html__('Disciplinas', 'book-manager');
+    $label_singular = rtrim($label_plural, 's');
     if (mb_substr($label_plural, -2) === 'as') {
-        $label_singular = mb_substr($label_plural, 0, -1); // 'Disciplinas' -> 'Disciplina'
+        $label_singular = mb_substr($label_plural, 0, -1);
     }
     
     register_taxonomy('bm_discipline', 'bm_book', array(
@@ -82,14 +98,14 @@ function bm_register_discipline_taxonomy() {
         'labels'       => array(
             'name'              => $label_plural,
             'singular_name'     => $label_singular,
-            'search_items'      => sprintf(__('Buscar %s', 'book-manager'), $label_plural),
-            'all_items'         => sprintf(__('Todas as %s', 'book-manager'), $label_plural),
-            'parent_item'       => sprintf(__('%s Pai', 'book-manager'), $label_singular),
-            'parent_item_colon' => sprintf(__('%s Pai:', 'book-manager'), $label_singular),
-            'edit_item'         => sprintf(__('Editar %s', 'book-manager'), $label_singular),
-            'update_item'       => sprintf(__('Atualizar %s', 'book-manager'), $label_singular),
-            'add_new_item'      => sprintf(__('Adicionar Nova %s', 'book-manager'), $label_singular),
-            'new_item_name'     => sprintf(__('Nome da Nova %s', 'book-manager'), $label_singular),
+            'search_items'      => sprintf(esc_html__('Buscar %s', 'book-manager'), $label_plural),
+            'all_items'         => sprintf(esc_html__('Todas as %s', 'book-manager'), $label_plural),
+            'parent_item'       => sprintf(esc_html__('%s Pai', 'book-manager'), $label_singular),
+            'parent_item_colon' => sprintf(esc_html__('%s Pai:', 'book-manager'), $label_singular),
+            'edit_item'         => sprintf(esc_html__('Editar %s', 'book-manager'), $label_singular),
+            'update_item'       => sprintf(esc_html__('Atualizar %s', 'book-manager'), $label_singular),
+            'add_new_item'      => sprintf(esc_html__('Adicionar Nova %s', 'book-manager'), $label_singular),
+            'new_item_name'     => sprintf(esc_html__('Nome da Nova %s', 'book-manager'), $label_singular),
             'menu_name'         => $label_plural,
         ),
         'rewrite'      => false,
@@ -105,21 +121,21 @@ function bm_register_discipline_taxonomy() {
 add_action('init', 'bm_register_discipline_taxonomy');
 
 // ==========================================
-// FASE 39: TAXONOMIA DE NÍVEL DE LEITURA
+// READING LEVEL TAXONOMY
 // ==========================================
 function bm_register_reading_level_taxonomy() {
     register_taxonomy('bm_reading_level', 'bm_book', array(
-        'label'        => isset($taxonomies['bm_reading_level']['label']) ? $taxonomies['bm_reading_level']['label'] : __('Nível de Leitura', 'book-manager'),
+        'label'        => isset($taxonomies['bm_reading_level']['label']) ? $taxonomies['bm_reading_level']['label'] : esc_html__('Nível de Leitura', 'book-manager'),
         'labels'       => array(
-            'name'              => __('Níveis de Leitura', 'book-manager'),
-            'singular_name'     => __('Nível de Leitura', 'book-manager'),
-            'search_items'      => __('Buscar Níveis de Leitura', 'book-manager'),
-            'all_items'         => __('Todos os Níveis de Leitura', 'book-manager'),
-            'edit_item'         => __('Editar Nível de Leitura', 'book-manager'),
-            'update_item'       => __('Atualizar Nível de Leitura', 'book-manager'),
-            'add_new_item'      => __('Adicionar Novo Nível de Leitura', 'book-manager'),
-            'new_item_name'     => __('Nome do Novo Nível', 'book-manager'),
-            'menu_name'         => __('Níveis de Leitura', 'book-manager'),
+            'name'              => esc_html__('Níveis de Leitura', 'book-manager'),
+            'singular_name'     => esc_html__('Nível de Leitura', 'book-manager'),
+            'search_items'      => esc_html__('Buscar Níveis de Leitura', 'book-manager'),
+            'all_items'         => esc_html__('Todos os Níveis de Leitura', 'book-manager'),
+            'edit_item'         => esc_html__('Editar Nível de Leitura', 'book-manager'),
+            'update_item'       => esc_html__('Atualizar Nível de Leitura', 'book-manager'),
+            'add_new_item'      => esc_html__('Adicionar Novo Nível de Leitura', 'book-manager'),
+            'new_item_name'     => esc_html__('Nome do Novo Nível', 'book-manager'),
+            'menu_name'         => esc_html__('Níveis de Leitura', 'book-manager'),
         ),
         'rewrite'      => false,
         'hierarchical' => true,
@@ -134,7 +150,7 @@ function bm_register_reading_level_taxonomy() {
 add_action('init', 'bm_register_reading_level_taxonomy');
 
 // ==========================================
-// FASE 1/5: CAPABILITIES E CICLO DE VIDA
+// CAPABILITIES AND LIFECYCLE HOOKS
 // ==========================================
 function bm_add_admin_caps() {
     $admin_role = get_role('administrator');
@@ -152,20 +168,20 @@ function bm_remove_admin_caps() {
 }
 
 function bm_register_roles() {
-    add_role('bm_student', __('Aluno', 'book-manager'), array(
+    add_role('bm_student', esc_html__('Aluno', 'book-manager'), array(
         'read' => true,
         'read_bm_book' => true,
         'read_private_bm_books' => true,
     ));
 
-    add_role('bm_teacher', __('Professor', 'book-manager'), array(
+    add_role('bm_teacher', esc_html__('Professor', 'book-manager'), array(
         'read' => true,
         'read_bm_book' => true,
         'read_private_bm_books' => true,
         'edit_bm_book' => true,
     ));
 
-    add_role('bm_librarian', __('Gestor da Biblioteca', 'book-manager'), array(
+    add_role('bm_librarian', esc_html__('Gestor da Biblioteca', 'book-manager'), array(
         'read' => true,
         'read_bm_book' => true,
         'edit_bm_book' => true,
@@ -181,8 +197,6 @@ function bm_register_roles() {
         'edit_private_bm_books' => true,
         'edit_published_bm_books' => true,
     ));
-
-    
 }
 
 function bm_remove_roles() {
@@ -191,7 +205,7 @@ function bm_remove_roles() {
     remove_role('bm_librarian');
 }
 
-// FASE 12G: Pré-instalar campos dinâmicos padrão para alunos
+// Pre-install default dynamic user fields
 function bm_install_default_user_fields() {
     $existing = get_option('bm_user_dynamic_fields', array());
     if (!is_array($existing)) $existing = array();
@@ -205,7 +219,6 @@ function bm_install_default_user_fields() {
         'Turma' => array('type' => 'text', 'locked' => false),
     );
     
-    // Remove duplicados antigos (case-insensitive)
     $default_keys_lower = array_map('mb_strtolower', array_keys($defaults));
     foreach ($existing as $key => $info) {
         if (in_array(mb_strtolower($key), $default_keys_lower) && !isset($defaults[$key])) {
@@ -213,7 +226,6 @@ function bm_install_default_user_fields() {
         }
     }
     
-    // Garante que os defaults existam com os valores corretos
     foreach ($defaults as $name => $info) {
         $existing[$name] = $info;
     }
@@ -221,16 +233,16 @@ function bm_install_default_user_fields() {
     update_option('bm_user_dynamic_fields', $existing);
 }
 
-// FASE 34.2: Pré-instalar taxonomias padrão como dinâmicas protegidas
+// Pre-install default taxonomies as protected dynamic
 function bm_install_default_taxonomies() {
     $existing = get_option('bm_dynamic_taxonomies', array());
     if (!is_array($existing)) $existing = array();
     
     $defaults = array(
-        'bm_genre'      => array('label' => 'Gêneros',    'hierarchical' => true, 'protected' => true),
-        'bm_category'   => array('label' => 'Categorias',  'hierarchical' => true, 'protected' => true),
-        'bm_discipline'     => array('label' => 'Disciplinas',       'hierarchical' => true, 'protected' => true),
-        'bm_reading_level'  => array('label' => 'Nível de Leitura',  'hierarchical' => true, 'protected' => true),
+        'bm_genre'      => array('label' => esc_html__('Gêneros', 'book-manager'),    'hierarchical' => true, 'protected' => true),
+        'bm_category'   => array('label' => esc_html__('Categorias', 'book-manager'),  'hierarchical' => true, 'protected' => true),
+        'bm_discipline'     => array('label' => esc_html__('Disciplinas', 'book-manager'),       'hierarchical' => true, 'protected' => true),
+        'bm_reading_level'  => array('label' => esc_html__('Nível de Leitura', 'book-manager'),  'hierarchical' => true, 'protected' => true),
     );
     
     foreach ($defaults as $slug => $info) {
@@ -242,15 +254,14 @@ function bm_install_default_taxonomies() {
     update_option('bm_dynamic_taxonomies', $existing);
 }
 
-
-// FASE 39: Instalar termos padrão da taxonomia Nível de Leitura
+// Install default reading level terms
 function bm_install_default_reading_level_terms() {
     $terms = array(
-        'muito-facil'    => __('Muito fácil', 'book-manager'),
-        'facil'          => __('Fácil', 'book-manager'),
-        'intermediario'  => __('Intermediário', 'book-manager'),
-        'avancado'       => __('Avançado', 'book-manager'),
-        'muito-avancado' => __('Muito avançado', 'book-manager'),
+        'muito-facil'    => esc_html__('Muito fácil', 'book-manager'),
+        'facil'          => esc_html__('Fácil', 'book-manager'),
+        'intermediario'  => esc_html__('Intermediário', 'book-manager'),
+        'avancado'       => esc_html__('Avançado', 'book-manager'),
+        'muito-avancado' => esc_html__('Muito avançado', 'book-manager'),
     );
     
     foreach ($terms as $slug => $name) {
@@ -260,7 +271,7 @@ function bm_install_default_reading_level_terms() {
     }
 }
 
-// FASE 12E-T4: Limpar roles sujas na ativação
+// Clean dirty roles on activation
 function bm_clean_dirty_roles() {
     $dirty_roles = array(
         'gestor_biblioteca' => 'bm_librarian',
@@ -295,9 +306,8 @@ register_activation_hook(__FILE__, 'bm_plugin_activation');
 function bm_plugin_deactivation() { flush_rewrite_rules(); }
 register_deactivation_hook(__FILE__, 'bm_plugin_deactivation');
 
-
 // ==========================================
-// FASE 15: CACHE DE QUERIES (TRANSIENTS)
+// QUERY CACHE (TRANSIENTS)
 // ==========================================
 function bm_get_cached($key) {
     return get_transient('bm_cache_' . $key);
@@ -307,7 +317,7 @@ function bm_set_cached($key, $data, $expiry = 300) {
     set_transient('bm_cache_' . $key, $data, $expiry);
 }
 
-// FASE 12E: Renomear submenu "Biblioteca" para "Livros"
+// Reorder admin submenus
 function bm_reorder_submenus() {
     global $submenu;
     $parent = 'edit.php?post_type=bm_book';
@@ -315,7 +325,6 @@ function bm_reorder_submenus() {
     
     $items = $submenu[$parent];
     
-    // Apenas estes itens aparecerão no menu (ordem exata)
     $allowed = array(
         'edit.php?post_type=bm_book' => 'Livros',
         'post-new.php?post_type=bm_book' => 'Adicionar Novo',
@@ -367,7 +376,7 @@ function bm_hide_librarian_submenus() {
 add_action('admin_menu', 'bm_hide_librarian_submenus', 999);
 
 // ==========================================
-// FASE 7F: SOFT DELETE E AUDITORIA
+// SOFT DELETE AND AUDIT LOG
 // ==========================================
 function bm_log_audit($post_id,$action) {
     $user=wp_get_current_user(); $un=$user?$user->user_login:'sistema'; $time=current_time('mysql');

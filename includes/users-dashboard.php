@@ -6,12 +6,9 @@
 
 defined('ABSPATH') || exit;
 
-// ==========================================
-// FASE 9G: DASHBOARD POR PERFIL
-// ==========================================
 function bm_user_dashboard() {
     if (!is_user_logged_in()) {
-        return '<p>' . __('Faça login para acessar seu painel.', 'book-manager') . '</p>';
+        return '<p>' . esc_html__('Faça login para acessar seu painel.', 'book-manager') . '</p>';
     }
     
     $role = bm_get_user_role();
@@ -20,7 +17,7 @@ function bm_user_dashboard() {
     if ($role === 'teacher') return bm_teacher_dashboard_content();
     if ($role === 'librarian' || $role === 'admin') return bm_librarian_dashboard_content();
     
-    return '<p>' . __('Acesso restrito.', 'book-manager') . '</p>';
+    return '<p>' . esc_html__('Acesso restrito.', 'book-manager') . '</p>';
 }
 add_shortcode('bm_dashboard', 'bm_user_dashboard');
 
@@ -140,9 +137,9 @@ function bm_student_dashboard_content() {
     ob_start();
     ?>
     <div class="bm-dashboard" style="max-width:800px;margin:0 auto;padding:20px;">
-        <h1><?php _e('Painel do Aluno', 'book-manager'); ?></h1>
-        <p><?php printf(__('Bem-vindo, %s!', 'book-manager'), esc_html($user->display_name)); ?></p>
-                <?php
+        <h1><?php esc_html_e('Painel do Aluno', 'book-manager'); ?></h1>
+        <p><?php printf(esc_html__('Bem-vindo, %s!', 'book-manager'), esc_html($user->display_name)); ?></p>
+        <?php
         $profile_photo = get_user_meta($user_id, '_bm_profile_photo', true);
         ?>
         <div style="text-align:center;margin-bottom:15px;">
@@ -154,43 +151,43 @@ function bm_student_dashboard_content() {
             <form id="bm-photo-form" enctype="multipart/form-data" style="margin-top:8px;">
                 <?php wp_nonce_field('bm_photo_upload', 'bm_photo_nonce'); ?>
                 <input type="file" id="bm-photo-input" name="bm_photo" accept="image/jpeg,image/png,image/webp" style="display:none;" />
-                <button type="button" id="bm-photo-btn" class="bm-btn-filter" style="padding:4px 12px;font-size:12px;">📷 <?php echo $profile_photo ? __('Trocar foto', 'book-manager') : __('Adicionar foto', 'book-manager'); ?></button>
+                <button type="button" id="bm-photo-btn" class="bm-btn-filter" style="padding:4px 12px;font-size:12px;">📷 <?php echo $profile_photo ? esc_html__('Trocar foto', 'book-manager') : esc_html__('Adicionar foto', 'book-manager'); ?></button>
                 <span id="bm-photo-status" style="display:none;margin-left:8px;font-size:12px;"></span>
             </form>
-                    <script>
-        document.getElementById('bm-photo-btn').addEventListener('click', function() {
-            document.getElementById('bm-photo-input').click();
-        });
-        document.getElementById('bm-photo-input').addEventListener('change', function() {
-            var file = this.files[0];
-            if (!file) return;
-            var formData = new FormData();
-            formData.append('bm_photo', file);
-            formData.append('action', 'bm_upload_photo');
-            formData.append('nonce', document.querySelector('#bm-photo-form [name="bm_photo_nonce"]').value);
-            
-            var status = document.getElementById('bm-photo-status');
-            status.style.display = 'inline';
-            status.textContent = 'Enviando...';
-            
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
-            xhr.onload = function() {
-                var r = JSON.parse(xhr.responseText);
-                if (r.success) {
-                    status.textContent = '✅ ' + r.message;
-                    setTimeout(function() { location.reload(); }, 1000);
-                } else {
-                    status.textContent = '❌ ' + r.message;
-                }
-            };
-            xhr.send(formData);
-        });
-        </script>
+            <script>
+            document.getElementById('bm-photo-btn').addEventListener('click', function() {
+                document.getElementById('bm-photo-input').click();
+            });
+            document.getElementById('bm-photo-input').addEventListener('change', function() {
+                var file = this.files[0];
+                if (!file) return;
+                var formData = new FormData();
+                formData.append('bm_photo', file);
+                formData.append('action', 'bm_upload_photo');
+                formData.append('nonce', document.querySelector('#bm-photo-form [name="bm_photo_nonce"]').value);
+                
+                var status = document.getElementById('bm-photo-status');
+                status.style.display = 'inline';
+                status.textContent = 'Enviando...';
+                
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '<?php echo esc_url(admin_url("admin-ajax.php")); ?>');
+                xhr.onload = function() {
+                    var r = JSON.parse(xhr.responseText);
+                    if (r.success) {
+                        status.textContent = '✅ ' + r.message;
+                        setTimeout(function() { location.reload(); }, 1000);
+                    } else {
+                        status.textContent = '❌ ' + r.message;
+                    }
+                };
+                xhr.send(formData);
+            });
+            </script>
         </div>
 
         <?php
-        // FASE 36.4: Notificação de suspensão encerrada
+        // Notificação de suspensão encerrada
         $penalty_active = get_user_meta($user_id, '_bm_penalty_active', true);
         $penalty_until = get_user_meta($user_id, '_bm_penalty_until', true);
         if ($penalty_active === '1' && !empty($penalty_until) && strtotime($penalty_until) < time()) {
@@ -198,8 +195,8 @@ function bm_student_dashboard_content() {
             delete_user_meta($user_id, '_bm_penalty_until');
             ?>
             <div style="background:#e8f5e9;padding:15px;border-radius:8px;border-left:4px solid #46b450;margin-bottom:15px;">
-                <strong>✅ <?php _e('Sua suspensão foi encerrada!', 'book-manager'); ?></strong>
-                <p style="margin:5px 0 0 0;"><?php _e('Você já pode pegar livros novamente.', 'book-manager'); ?></p>
+                <strong>✅ <?php esc_html_e('Sua suspensão foi encerrada!', 'book-manager'); ?></strong>
+                <p style="margin:5px 0 0 0;"><?php esc_html_e('Você já pode pegar livros novamente.', 'book-manager'); ?></p>
             </div>
             <?php
         }
@@ -207,19 +204,19 @@ function bm_student_dashboard_content() {
         
         <div style="margin:10px 0;">
             <select id="bm-period-select" onchange="bmLoadPeriod()" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;">
-                <option value="all" <?php selected($period, 'all'); ?>><?php _e('Todo o período', 'book-manager'); ?></option>
-                <option value="month" <?php selected($period, 'month'); ?>><?php _e('Último mês', 'book-manager'); ?></option>
-                <option value="bimester" <?php selected($period, 'bimester'); ?>><?php _e('Último bimestre', 'book-manager'); ?></option>
-                <option value="year" <?php selected($period, 'year'); ?>><?php _e('Este ano', 'book-manager'); ?></option>
+                <option value="all" <?php selected($period, 'all'); ?>><?php esc_html_e('Todo o período', 'book-manager'); ?></option>
+                <option value="month" <?php selected($period, 'month'); ?>><?php esc_html_e('Último mês', 'book-manager'); ?></option>
+                <option value="bimester" <?php selected($period, 'bimester'); ?>><?php esc_html_e('Último bimestre', 'book-manager'); ?></option>
+                <option value="year" <?php selected($period, 'year'); ?>><?php esc_html_e('Este ano', 'book-manager'); ?></option>
             </select>
-            <span id="bm-period-loading" style="display:none;margin-left:8px;color:#666;"><?php _e('Carregando...', 'book-manager'); ?></span>
+            <span id="bm-period-loading" style="display:none;margin-left:8px;color:#666;"><?php esc_html_e('Carregando...', 'book-manager'); ?></span>
         </div>
                 
         <div style="background:#f0f7ff;padding:15px;border-radius:8px;margin:15px 0;border-left:4px solid #2196f3;">
-            <h3 style="margin:0 0 10px 0;">🔍 <?php _e('Buscar livro no acervo', 'book-manager'); ?></h3>
+            <h3 style="margin:0 0 10px 0;">🔍 <?php esc_html_e('Buscar livro no acervo', 'book-manager'); ?></h3>
             <div style="display:flex;gap:10px;">
-                <input type="text" id="bm-quick-search" placeholder="<?php _e('Digite o nome do livro...', 'book-manager'); ?>" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:4px;" />
-                <button type="button" id="bm-quick-search-btn" class="bm-btn-filter" style="padding:8px 16px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;"><?php _e('Buscar', 'book-manager'); ?></button>
+                <input type="text" id="bm-quick-search" placeholder="<?php esc_attr_e('Digite o nome do livro...', 'book-manager'); ?>" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:4px;" />
+                <button type="button" id="bm-quick-search-btn" class="bm-btn-filter" style="padding:8px 16px;background:#111;color:#fff;border:none;border-radius:4px;cursor:pointer;"><?php esc_html_e('Buscar', 'book-manager'); ?></button>
             </div>
             <div id="bm-quick-results" style="margin-top:10px;display:none;"></div>
         </div>
@@ -239,7 +236,7 @@ function bm_student_dashboard_content() {
             results.innerHTML = '<p style="color:#666;">Buscando...</p>';
             
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.open('POST', '<?php echo esc_url(admin_url("admin-ajax.php")); ?>');
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
             xhr.onload = function() {
                 try {
@@ -264,28 +261,28 @@ function bm_student_dashboard_content() {
                     results.innerHTML = '<p style="color:red;">Erro na busca.</p>';
                 }
             };
-            xhr.send('action=bm_quick_search&nonce=<?php echo wp_create_nonce("bm_quick_search_nonce"); ?>&query=' + encodeURIComponent(query));
+            xhr.send('action=bm_quick_search&nonce=<?php echo esc_attr(wp_create_nonce("bm_quick_search_nonce")); ?>&query=' + encodeURIComponent(query));
         }
         </script>
         
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin:20px 0;">
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
                 <h3 style="margin:0;font-size:28px;"><?php echo count($active_loans); ?></h3>
-                <p style="margin:5px 0 0 0;color:#666;"><?php _e('Empréstimos ativos', 'book-manager'); ?></p>
+                <p style="margin:5px 0 0 0;color:#666;"><?php esc_html_e('Empréstimos ativos', 'book-manager'); ?></p>
             </div>
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
                 <h3 style="margin:0;font-size:28px;"><?php echo count($user_reservations); ?></h3>
-                <p style="margin:5px 0 0 0;color:#666;"><?php _e('Reservas na fila', 'book-manager'); ?></p>
+                <p style="margin:5px 0 0 0;color:#666;"><?php esc_html_e('Reservas na fila', 'book-manager'); ?></p>
             </div>
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
                 <h3 style="margin:0;font-size:28px;"><?php echo max(0, 3 - $active_count); ?></h3>
-                <p style="margin:5px 0 0 0;color:#666;"><?php _e('Reservas disponíveis', 'book-manager'); ?></p>
+                <p style="margin:5px 0 0 0;color:#666;"><?php esc_html_e('Reservas disponíveis', 'book-manager'); ?></p>
             </div>
             <?php $settings = bm_get_settings(); ?>
             <?php if ($settings['xp_enabled'] === '1'): ?>
             <div style="background:#fff8e1;padding:15px;border-radius:6px;text-align:center;border:1px solid #ffc107;">
-                <h3 style="margin:0;font-size:28px;color:#f0ad4e;"><?php echo $xp; ?> XP</h3>
-                <p style="margin:5px 0 0 0;color:#666;"><?php _e('Pontos acumulados', 'book-manager'); ?></p>
+                <h3 style="margin:0;font-size:28px;color:#f0ad4e;"><?php echo esc_html($xp); ?> XP</h3>
+                <p style="margin:5px 0 0 0;color:#666;"><?php esc_html_e('Pontos acumulados', 'book-manager'); ?></p>
             </div>
             <?php endif; ?>
         </div>
@@ -298,12 +295,12 @@ function bm_student_dashboard_content() {
         elseif ($rank['position'] === 2) { $medal = '🥈'; $bg_rank = '#f5f5f5'; $border_rank = '#9e9e9e'; }
         elseif ($rank['position'] === 3) { $medal = '🥉'; $bg_rank = '#fff3e0'; $border_rank = '#ff9800'; }
         ?>
-        <div style="background:<?php echo $bg_rank; ?>;padding:15px;border-radius:6px;text-align:center;border:2px solid <?php echo $border_rank; ?>;margin-top:15px;">
-            <h3 style="margin:0;font-size:28px;"><?php echo $medal; ?> <?php printf(__('%dº de %d alunos', 'book-manager'), $rank['position'], $rank['total']); ?></h3>
-            <p style="margin:5px 0 0 0;color:#666;"><?php _e('Sua posição no ranking', 'book-manager'); ?></p>
-            <p style="margin:8px 0 0 0;font-size:13px;color:#333;"><?php printf(__('Você leu mais que %d%% dos alunos!', 'book-manager'), $rank['percentile']); ?></p>
+        <div style="background:<?php echo esc_attr($bg_rank); ?>;padding:15px;border-radius:6px;text-align:center;border:2px solid <?php echo esc_attr($border_rank); ?>;margin-top:15px;">
+            <h3 style="margin:0;font-size:28px;"><?php echo esc_html($medal); ?> <?php printf(esc_html__('%dº de %d alunos', 'book-manager'), $rank['position'], $rank['total']); ?></h3>
+            <p style="margin:5px 0 0 0;color:#666;"><?php esc_html_e('Sua posição no ranking', 'book-manager'); ?></p>
+            <p style="margin:8px 0 0 0;font-size:13px;color:#333;"><?php printf(esc_html__('Você leu mais que %d%% dos alunos!', 'book-manager'), $rank['percentile']); ?></p>
             <div style="background:#ddd;border-radius:10px;height:8px;margin-top:8px;">
-                <div style="background:#4caf50;height:8px;border-radius:10px;width:<?php echo $rank['percentile']; ?>%;"></div>
+                <div style="background:#4caf50;height:8px;border-radius:10px;width:<?php echo intval($rank['percentile']); ?>%;"></div>
             </div>
         </div>
         <?php endif; ?>
@@ -316,7 +313,7 @@ function bm_student_dashboard_content() {
             $value = get_user_meta($user_id, $meta_key, true);
             if (!empty($value)) {
                 if (!$has_user_data) {
-                    echo '<h2>' . __('Meus Dados', 'book-manager') . '</h2>';
+                    echo '<h2>' . esc_html__('Meus Dados', 'book-manager') . '</h2>';
                     echo '<div style="background:#f9f9f9;padding:15px;border-radius:8px;margin-bottom:20px;">';
                     $has_user_data = true;
                 }
@@ -327,13 +324,13 @@ function bm_student_dashboard_content() {
         ?>
         
         <?php if ($settings['xp_enabled'] === '1' && !empty($badges)): ?>
-            <h2><?php _e('Minhas Medalhas', 'book-manager'); ?></h2>
+            <h2><?php esc_html_e('Minhas Medalhas', 'book-manager'); ?></h2>
             <div style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 20px 0;">
                 <?php foreach ($badges as $badge_key): 
                     $info = bm_get_badge_info($badge_key);
                 ?>
                     <div style="background:#fff8e1;padding:10px 15px;border-radius:8px;text-align:center;border:1px solid #ffc107;" title="<?php echo esc_attr($info['desc']); ?>">
-                        <div style="font-size:28px;"><?php echo $info['icon']; ?></div>
+                        <div style="font-size:28px;"><?php echo esc_html($info['icon']); ?></div>
                         <div style="font-size:11px;font-weight:bold;margin-top:3px;"><?php echo esc_html($info['name']); ?></div>
                     </div>
                 <?php endforeach; ?>
@@ -341,10 +338,10 @@ function bm_student_dashboard_content() {
         <?php endif; ?>
         
         <?php if (!empty($active_loans)): ?>
-            <h2><?php _e('Meus Empréstimos', 'book-manager'); ?></h2>
+            <h2><?php esc_html_e('Meus Empréstimos', 'book-manager'); ?></h2>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
-                    <tr><th><?php _e('Livro', 'book-manager'); ?></th><th><?php _e('Empréstimo', 'book-manager'); ?></th><th><?php _e('Devolução', 'book-manager'); ?></th><th><?php _e('Prazo', 'book-manager'); ?></th><th><?php _e('Ação', 'book-manager'); ?></th></tr>
+                    <tr><th><?php esc_html_e('Livro', 'book-manager'); ?></th><th><?php esc_html_e('Empréstimo', 'book-manager'); ?></th><th><?php esc_html_e('Devolução', 'book-manager'); ?></th><th><?php esc_html_e('Prazo', 'book-manager'); ?></th><th><?php esc_html_e('Ação', 'book-manager'); ?></th></tr>
                 </thead>
                 <tbody>
                     <?php foreach ($active_loans as $loan): 
@@ -353,10 +350,10 @@ function bm_student_dashboard_content() {
                     ?>
                         <tr>
                             <td><?php echo esc_html($loan['book_title']); ?></td>
-                            <td><?php echo date('d/m/Y', strtotime($loan['loan_date'])); ?></td>
-                            <td><?php echo date('d/m/Y', strtotime($loan['due_date'])); ?></td>
-                            <td style="color:<?php echo $color; ?>;font-weight:bold;">
-                                <?php if ($days > 0) printf(__('%d dias restantes', 'book-manager'), $days); elseif ($days == 0) _e('Vence hoje!', 'book-manager'); else printf(__('%d dias atrasado', 'book-manager'), abs($days)); ?>
+                            <td><?php echo esc_html(date('d/m/Y', strtotime($loan['loan_date']))); ?></td>
+                            <td><?php echo esc_html(date('d/m/Y', strtotime($loan['due_date']))); ?></td>
+                            <td style="color:<?php echo esc_attr($color); ?>;font-weight:bold;">
+                                <?php if ($days > 0) printf(esc_html__('%d dias restantes', 'book-manager'), $days); elseif ($days == 0) esc_html_e('Vence hoje!', 'book-manager'); else printf(esc_html__('%d dias atrasado', 'book-manager'), abs($days)); ?>
                             </td>
                             <td>
                                 <?php 
@@ -366,9 +363,9 @@ function bm_student_dashboard_content() {
                                     if ($r['status'] === 'waiting' && $r['user_id'] != $user_id) $queue++;
                                 }
                                 if ($queue === 0): ?>
-                                    <button type="button" class="bm-btn-filter" onclick="bmRenewLoan(<?php echo $loan['book_id']; ?>, <?php echo $user_id; ?>)" style="padding:4px 10px;font-size:12px;">🔄 <?php _e('Renovar', 'book-manager'); ?></button>
+                                    <button type="button" class="bm-btn-filter" onclick="bmRenewLoan(<?php echo intval($loan['book_id']); ?>, <?php echo intval($user_id); ?>)" style="padding:4px 10px;font-size:12px;">🔄 <?php esc_html_e('Renovar', 'book-manager'); ?></button>
                                 <?php else: ?>
-                                    <span style="font-size:11px;color:#999;"><?php printf(__('%d na fila', 'book-manager'), $queue); ?></span>
+                                    <span style="font-size:11px;color:#999;"><?php printf(esc_html__('%d na fila', 'book-manager'), $queue); ?></span>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -378,17 +375,17 @@ function bm_student_dashboard_content() {
         <?php endif; ?>
         
         <?php if (!empty($user_reservations)): ?>
-            <h2><?php _e('Minhas Reservas', 'book-manager'); ?></h2>
+            <h2><?php esc_html_e('Minhas Reservas', 'book-manager'); ?></h2>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
-                    <tr><th><?php _e('Livro', 'book-manager'); ?></th><th><?php _e('Posição', 'book-manager'); ?></th><th><?php _e('Data', 'book-manager'); ?></th></tr>
+                    <tr><th><?php esc_html_e('Livro', 'book-manager'); ?></th><th><?php esc_html_e('Posição', 'book-manager'); ?></th><th><?php esc_html_e('Data', 'book-manager'); ?></th></tr>
                 </thead>
                 <tbody>
                     <?php foreach ($user_reservations as $res): ?>
                         <tr>
                             <td><?php echo esc_html($res['book_title']); ?></td>
-                            <td><?php echo isset($res['position']) ? $res['position'] . 'º' : '—'; ?></td>
-                            <td><?php echo date('d/m/Y', strtotime($res['date'])); ?></td>
+                            <td><?php echo isset($res['position']) ? esc_html($res['position'] . 'º') : '—'; ?></td>
+                            <td><?php echo esc_html(date('d/m/Y', strtotime($res['date']))); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -396,13 +393,12 @@ function bm_student_dashboard_content() {
         <?php endif; ?>
         
         <?php 
-        // FASE 36.6: Exibir lista de leitura da turma do aluno
         $reading_lists = get_option('bm_reading_lists', array());
         $student_group = get_user_meta($user_id, '_bm_user_' . sanitize_key('Turma'), true);
         if (!empty($student_group) && isset($reading_lists[$student_group])):
             $my_list = $reading_lists[$student_group];
         ?>
-            <h2>📚 <?php printf(__('Lista de Leitura — %s', 'book-manager'), esc_html($student_group)); ?></h2>
+            <h2>📚 <?php printf(esc_html__('Lista de Leitura — %s', 'book-manager'), esc_html($student_group)); ?></h2>
             <?php if (!empty($my_list['description'])): ?>
                 <p style="color:#555;"><?php echo esc_html($my_list['description']); ?></p>
             <?php endif; ?>
@@ -413,12 +409,12 @@ function bm_student_dashboard_content() {
                     $list_cover = get_the_post_thumbnail_url($list_book_id, 'thumbnail');
                     $list_author = get_post_meta($list_book_id, '_bm_author', true);
                 ?>
-                    <a href="<?php echo get_permalink($list_book_id); ?>" style="text-decoration:none;color:inherit;">
+                    <a href="<?php echo esc_url(get_permalink($list_book_id)); ?>" style="text-decoration:none;color:inherit;">
                         <div style="background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
                             <?php if ($list_cover): ?>
                                 <img src="<?php echo esc_url($list_cover); ?>" style="width:100%;height:160px;object-fit:cover;" alt="<?php echo esc_attr($list_book->post_title); ?>" />
                             <?php else: ?>
-                                <div style="width:100%;height:160px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;"><?php _e('Sem capa', 'book-manager'); ?></div>
+                                <div style="width:100%;height:160px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px;"><?php esc_html_e('Sem capa', 'book-manager'); ?></div>
                             <?php endif; ?>
                             <div style="padding:8px;">
                                 <strong style="font-size:12px;"><?php echo esc_html($list_book->post_title); ?></strong>
@@ -440,28 +436,28 @@ function bm_student_dashboard_content() {
         <div style="background:#f9f9f9;padding:12px;border-radius:6px;margin:15px 0;">
             <form method="post" style="display:flex;align-items:center;gap:10px;">
                 <?php wp_nonce_field('bm_profile_action', 'bm_profile_nonce'); ?>
-                <span><?php echo $profile_public === '1' ? '🌐 ' . __('Seu perfil é público', 'book-manager') : '🔒 ' . __('Seu perfil é privado', 'book-manager'); ?></span>
+                <span><?php echo $profile_public === '1' ? '🌐 ' . esc_html__('Seu perfil é público', 'book-manager') : '🔒 ' . esc_html__('Seu perfil é privado', 'book-manager'); ?></span>
                 <button type="submit" name="bm_toggle_profile" class="bm-btn-filter" style="padding:4px 10px;font-size:12px;">
-                    <?php echo $profile_public === '1' ? __('Tornar privado', 'book-manager') : __('Tornar público', 'book-manager'); ?>
+                    <?php echo $profile_public === '1' ? esc_html__('Tornar privado', 'book-manager') : esc_html__('Tornar público', 'book-manager'); ?>
                 </button>
             </form>
         </div>
         
         <?php $my_penalties = get_user_meta($user_id, '_bm_penalties', true) ?: array(); ?>
         <?php if (!empty($my_penalties)): ?>
-            <h2>🚫 <?php _e('Minhas Ocorrências', 'book-manager'); ?></h2>
+            <h2>🚫 <?php esc_html_e('Minhas Ocorrências', 'book-manager'); ?></h2>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
-                    <tr><th><?php _e('Tipo', 'book-manager'); ?></th><th><?php _e('Descrição', 'book-manager'); ?></th><th><?php _e('Data', 'book-manager'); ?></th></tr>
+                    <tr><th><?php esc_html_e('Tipo', 'book-manager'); ?></th><th><?php esc_html_e('Descrição', 'book-manager'); ?></th><th><?php esc_html_e('Data', 'book-manager'); ?></th></tr>
                 </thead>
                 <tbody>
                     <?php foreach (array_reverse($my_penalties) as $p): 
-                        $type_label = $p['type'] === 'warning' ? __('Advertência', 'book-manager') : ($p['type'] === 'suspension' ? __('Suspensão', 'book-manager') : __('Multa', 'book-manager'));
+                        $type_label = $p['type'] === 'warning' ? esc_html__('Advertência', 'book-manager') : ($p['type'] === 'suspension' ? esc_html__('Suspensão', 'book-manager') : esc_html__('Multa', 'book-manager'));
                     ?>
                         <tr>
                             <td><?php echo $type_label; ?></td>
                             <td><?php echo esc_html(isset($p['note']) ? $p['note'] : '—'); ?></td>
-                            <td><?php echo date('d/m/Y', strtotime($p['date'])); ?></td>
+                            <td><?php echo esc_html(date('d/m/Y', strtotime($p['date']))); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -469,26 +465,26 @@ function bm_student_dashboard_content() {
         <?php endif; ?>
                 
         <p style="margin-top:20px;">
-            <a href="<?php echo site_url('/sugerir-livro'); ?>" style="color:#111;text-decoration:underline;">📚 <?php _e('Minhas Sugestões de Aquisição', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(site_url('/sugerir-livro')); ?>" style="color:#111;text-decoration:underline;">📚 <?php esc_html_e('Minhas Sugestões de Aquisição', 'book-manager'); ?></a>
         </p>
 
         <p style="margin-top:5px;">
-            <a href="<?php echo site_url('/perfil-do-leitor'); ?>" style="color:#111;text-decoration:underline;">👤 <?php _e('Meu Perfil de Leitor', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(site_url('/perfil-do-leitor')); ?>" style="color:#111;text-decoration:underline;">👤 <?php esc_html_e('Meu Perfil de Leitor', 'book-manager'); ?></a>
         </p>
 
         <p style="margin-top:5px;">
-            <a href="<?php echo site_url('/minhas-fichas'); ?>" style="color:#111;text-decoration:underline;">📝 <?php _e('Minhas Fichas', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(site_url('/minhas-fichas')); ?>" style="color:#111;text-decoration:underline;">📝 <?php esc_html_e('Minhas Fichas', 'book-manager'); ?></a>
         </p>
 
         <script>
     document.querySelectorAll('.bm-return-detail-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var self = this;
-            if (!confirm('<?php _e('Confirmar devolução deste livro?', 'book-manager'); ?>')) return;
+            if (!confirm('<?php echo esc_js(__('Confirmar devolução deste livro?', 'book-manager')); ?>')) return;
             self.disabled = true;
             self.textContent = '...';
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', '<?php echo admin_url("admin-ajax.php"); ?>');
+            xhr.open('POST', '<?php echo esc_url(admin_url("admin-ajax.php")); ?>');
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
             xhr.onload = function() {
                 var r = JSON.parse(xhr.responseText);
@@ -497,16 +493,16 @@ function bm_student_dashboard_content() {
                     if (row) {
                         row.style.opacity = '0.5';
                         var situacaoCell = row.querySelector('td:nth-child(4)');
-                        if (situacaoCell) situacaoCell.innerHTML = '<span style="color:#46b450;font-weight:bold;">✅ ' + '<?php _e('Devolvido', 'book-manager'); ?>' + '</span>';
+                        if (situacaoCell) situacaoCell.innerHTML = '<span style="color:#46b450;font-weight:bold;">✅ ' + '<?php echo esc_js(__('Devolvido', 'book-manager')); ?>' + '</span>';
                     }
                     self.remove();
                 } else {
                     alert(r.message || 'Erro');
                     self.disabled = false;
-                    self.textContent = '📥 <?php _e('Devolver', 'book-manager'); ?>';
+                    self.textContent = '📥 <?php echo esc_js(__('Devolver', 'book-manager')); ?>';
                 }
             };
-            xhr.send('action=bm_service_return&book_id=' + self.getAttribute('data-book') + '&user_id=' + self.getAttribute('data-user') + '&nonce=<?php echo wp_create_nonce("bm_service_nonce"); ?>');
+            xhr.send('action=bm_service_return&book_id=' + self.getAttribute('data-book') + '&user_id=' + self.getAttribute('data-user') + '&nonce=<?php echo esc_attr(wp_create_nonce("bm_service_nonce")); ?>');
         });
     });
     </script>
@@ -521,7 +517,7 @@ function bm_student_dashboard_content() {
     </script>
 
         <?php if (empty($active_loans) && empty($user_reservations)): ?>
-            <p><?php _e('Você não tem empréstimos ou reservas ativas.', 'book-manager'); ?></p>
+            <p><?php esc_html_e('Você não tem empréstimos ou reservas ativas.', 'book-manager'); ?></p>
         <?php endif; ?>
     </div>
     <?php
@@ -535,7 +531,7 @@ function bm_teacher_view_student($student_id) {
     if (!in_array('bm_teacher', (array) $user->roles) && !in_array('bm_librarian', (array) $user->roles) && !current_user_can('manage_options')) return '';
     
     $student = get_userdata($student_id);
-    if (!$student || !in_array('bm_student', (array) $student->roles)) return '<p>' . __('Aluno não encontrado.', 'book-manager') . '</p>';
+    if (!$student || !in_array('bm_student', (array) $student->roles)) return '<p>' . esc_html__('Aluno não encontrado.', 'book-manager') . '</p>';
     
     ob_start();
     ?>
@@ -556,9 +552,9 @@ function bm_teacher_view_student($student_id) {
         $xp = bm_get_xp($student_id);
         $badges = get_user_meta($student_id, '_bm_badges', true) ?: array();
         ?>
-        <p style="margin:5px 0;"><strong>XP:</strong> <?php echo $xp; ?></p>
+        <p style="margin:5px 0;"><strong>XP:</strong> <?php echo esc_html($xp); ?></p>
         <?php if (!empty($badges)): ?>
-            <p style="margin:5px 0;"><strong>Medalhas:</strong> <?php echo count($badges); ?></p>
+            <p style="margin:5px 0;"><strong><?php esc_html_e('Medalhas:', 'book-manager'); ?></strong> <?php echo count($badges); ?></p>
         <?php endif; ?>
     </div>
     <?php
@@ -622,34 +618,34 @@ function bm_teacher_dashboard_content() {
     ob_start();
     ?>
     <div class="bm-dashboard" style="max-width:900px;margin:0 auto;padding:20px;">
-        <h1><?php _e('Painel do Professor', 'book-manager'); ?></h1>
-        <p><?php printf(__('Bem-vindo, %s!', 'book-manager'), esc_html($user->display_name)); ?></p>
+        <h1><?php esc_html_e('Painel do Professor', 'book-manager'); ?></h1>
+        <p><?php printf(esc_html__('Bem-vindo, %s!', 'book-manager'), esc_html($user->display_name)); ?></p>
         
         <div style="margin:10px 0;">
             <select id="bm-period-select" onchange="bmLoadPeriodTeacher()" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;">
-                <option value="all" <?php selected($period, 'all'); ?>><?php _e('Todo o período', 'book-manager'); ?></option>
-                <option value="month" <?php selected($period, 'month'); ?>><?php _e('Último mês', 'book-manager'); ?></option>
-                <option value="bimester" <?php selected($period, 'bimester'); ?>><?php _e('Último bimestre', 'book-manager'); ?></option>
-                <option value="year" <?php selected($period, 'year'); ?>><?php _e('Este ano', 'book-manager'); ?></option>
+                <option value="all" <?php selected($period, 'all'); ?>><?php esc_html_e('Todo o período', 'book-manager'); ?></option>
+                <option value="month" <?php selected($period, 'month'); ?>><?php esc_html_e('Último mês', 'book-manager'); ?></option>
+                <option value="bimester" <?php selected($period, 'bimester'); ?>><?php esc_html_e('Último bimestre', 'book-manager'); ?></option>
+                <option value="year" <?php selected($period, 'year'); ?>><?php esc_html_e('Este ano', 'book-manager'); ?></option>
             </select>
         </div>
         
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin:20px 0;">
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
-                <h3 style="margin:0;font-size:28px;"><?php echo $students_count; ?></h3>
-                <p style="margin:5px 0 0 0;color:#666;"><?php _e('Alunos', 'book-manager'); ?></p>
+                <h3 style="margin:0;font-size:28px;"><?php echo esc_html($students_count); ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;"><?php esc_html_e('Alunos', 'book-manager'); ?></p>
             </div>
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
                 <h3 style="margin:0;font-size:28px;"><?php echo count($active_loans); ?></h3>
-                <p style="margin:5px 0 0 0;color:#666;"><?php _e('Empréstimos ativos', 'book-manager'); ?></p>
+                <p style="margin:5px 0 0 0;color:#666;"><?php esc_html_e('Empréstimos ativos', 'book-manager'); ?></p>
             </div>
             <div style="background:#fff3f3;padding:15px;border-radius:6px;text-align:center;">
                 <h3 style="margin:0;font-size:28px;color:#dc3545;"><?php echo count($overdue_loans); ?></h3>
-                <p style="margin:5px 0 0 0;color:#dc3545;"><?php _e('Em atraso', 'book-manager'); ?></p>
+                <p style="margin:5px 0 0 0;color:#dc3545;"><?php esc_html_e('Em atraso', 'book-manager'); ?></p>
             </div>
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
-                <h3 style="margin:0;font-size:28px;"><?php echo $total_books; ?></h3>
-                <p style="margin:5px 0 0 0;color:#666;"><?php _e('Livros no acervo', 'book-manager'); ?></p>
+                <h3 style="margin:0;font-size:28px;"><?php echo esc_html($total_books); ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;"><?php esc_html_e('Livros no acervo', 'book-manager'); ?></p>
             </div>
         </div>
         <script>
@@ -661,16 +657,16 @@ function bm_teacher_dashboard_content() {
     }
     </script>
         <?php if (!empty($active_loans)): ?>
-            <h2><?php _e('Monitoramento de Empréstimos', 'book-manager'); ?></h2>
+            <h2><?php esc_html_e('Monitoramento de Empréstimos', 'book-manager'); ?></h2>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
-                        <th><?php _e('Aluno', 'book-manager'); ?></th>
-                        <th><?php _e('Livro', 'book-manager'); ?></th>
-                        <th><?php _e('Empréstimo', 'book-manager'); ?></th>
-                        <th><?php _e('Devolução', 'book-manager'); ?></th>
-                        <th><?php _e('Prazo', 'book-manager'); ?></th>
-                        <th><?php _e('WhatsApp', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Aluno', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Livro', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Empréstimo', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Devolução', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Prazo', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('WhatsApp', 'book-manager'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -679,13 +675,13 @@ function bm_teacher_dashboard_content() {
                         if ($days > 3) $color = '#46b450'; elseif ($days >= 1) $color = '#f0ad4e'; elseif ($days == 0) $color = '#e6c300'; else $color = '#dc3545';
                         $row_style = $days < 0 ? 'background:#fff3f3;' : '';
                     ?>
-                        <tr style="<?php echo $row_style; ?>">
+                        <tr style="<?php echo esc_attr($row_style); ?>">
                             <td><?php echo esc_html($loan['student_name']); ?></td>
                             <td><?php echo esc_html($loan['book_title']); ?></td>
-                            <td><?php echo isset($loan['loan_date']) ? date('d/m/Y', strtotime($loan['loan_date'])) : '—'; ?></td>
-                            <td><?php echo $loan['due_date_formatted']; ?></td>
-                            <td style="color:<?php echo $color; ?>;font-weight:bold;">
-                                <?php if ($days > 0) printf(__('%d dias', 'book-manager'), $days); elseif ($days == 0) _e('Vence hoje!', 'book-manager'); else printf(__('%d dias atrasado', 'book-manager'), abs($days)); ?>
+                            <td><?php echo isset($loan['loan_date']) ? esc_html(date('d/m/Y', strtotime($loan['loan_date']))) : '—'; ?></td>
+                            <td><?php echo esc_html($loan['due_date_formatted']); ?></td>
+                            <td style="color:<?php echo esc_attr($color); ?>;font-weight:bold;">
+                                <?php if ($days > 0) printf(esc_html__('%d dias', 'book-manager'), $days); elseif ($days == 0) esc_html_e('Vence hoje!', 'book-manager'); else printf(esc_html__('%d dias atrasado', 'book-manager'), abs($days)); ?>
                             </td>
                             <td>
                                 <?php if (!empty($loan['student_phone'])): ?>
@@ -702,7 +698,7 @@ function bm_teacher_dashboard_content() {
                 </tbody>
             </table>
         <?php else: ?>
-            <p><?php _e('Nenhum empréstimo ativo no momento.', 'book-manager'); ?></p>
+            <p><?php esc_html_e('Nenhum empréstimo ativo no momento.', 'book-manager'); ?></p>
         <?php endif; ?>
     </div>
     <?php
@@ -801,52 +797,52 @@ function bm_librarian_dashboard_content() {
 
         <div style="margin:10px 0;">
             <select id="bm-period-select" onchange="bmLoadPeriodGestor()" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;">
-                <option value="all"><?php _e('Todo o período', 'book-manager'); ?></option>
-                <option value="month"><?php _e('Último mês', 'book-manager'); ?></option>
-                <option value="bimester"><?php _e('Último bimestre', 'book-manager'); ?></option>
-                <option value="year"><?php _e('Este ano', 'book-manager'); ?></option>
+                <option value="all"><?php esc_html_e('Todo o período', 'book-manager'); ?></option>
+                <option value="month"><?php esc_html_e('Último mês', 'book-manager'); ?></option>
+                <option value="bimester"><?php esc_html_e('Último bimestre', 'book-manager'); ?></option>
+                <option value="year"><?php esc_html_e('Este ano', 'book-manager'); ?></option>
             </select>
         </div>
         
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:15px;margin:20px 0;">
             <div style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;">
-                <h3 style="margin:0;font-size:28px;"><?php echo $total; ?></h3>
-                <p style="margin:5px 0 0 0;color:#666;"><?php _e('Livros no acervo', 'book-manager'); ?></p>
+                <h3 style="margin:0;font-size:28px;"><?php echo esc_html($total); ?></h3>
+                <p style="margin:5px 0 0 0;color:#666;"><?php esc_html_e('Livros no acervo', 'book-manager'); ?></p>
             </div>
-            <a href="<?php echo admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=active'); ?>" style="text-decoration:none;">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=active')); ?>" style="text-decoration:none;">
                 <div class="bm-dash-card" style="background:#f9f9f9;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
                     <h3 style="margin:0;font-size:28px;"><?php echo count($active_loans); ?></h3>
-                    <p style="margin:5px 0 0 0;color:#666;"><?php _e('Empréstimos ativos', 'book-manager'); ?></p>
+                    <p style="margin:5px 0 0 0;color:#666;"><?php esc_html_e('Empréstimos ativos', 'book-manager'); ?></p>
                 </div>
             </a>
-            <a href="<?php echo admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=overdue'); ?>" style="text-decoration:none;">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=overdue')); ?>" style="text-decoration:none;">
                 <div class="bm-dash-card" style="background:#fff3f3;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
                     <h3 style="margin:0;font-size:28px;color:#dc3545;"><?php echo count($overdue_loans); ?></h3>
-                    <p style="margin:5px 0 0 0;color:#dc3545;"><?php _e('Em atraso', 'book-manager'); ?></p>
+                    <p style="margin:5px 0 0 0;color:#dc3545;"><?php esc_html_e('Em atraso', 'book-manager'); ?></p>
                 </div>
             </a>
-            <a href="<?php echo admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=waiting'); ?>" style="text-decoration:none;">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=waiting')); ?>" style="text-decoration:none;">
                 <div class="bm-dash-card" style="background:#fff8e1;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
                     <h3 style="margin:0;font-size:28px;color:#f0ad4e;"><?php echo count($pending_reservations); ?></h3>
-                    <p style="margin:5px 0 0 0;color:#f0ad4e;"><?php _e('Reservas pendentes', 'book-manager'); ?></p>
+                    <p style="margin:5px 0 0 0;color:#f0ad4e;"><?php esc_html_e('Reservas pendentes', 'book-manager'); ?></p>
                 </div>
             </a>
-            <a href="<?php echo admin_url('admin.php?page=bm_students&tab=approve_users'); ?>" style="text-decoration:none;">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=bm_students&tab=approve_users')); ?>" style="text-decoration:none;">
                 <div class="bm-dash-card" style="background:#e8f5e9;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
-                    <h3 style="margin:0;font-size:28px;color:#46b450;"><?php echo $pending_approvals_count; ?></h3>
-                    <p style="margin:5px 0 0 0;color:#46b450;"><?php _e('Cadastros pendentes', 'book-manager'); ?></p>
+                    <h3 style="margin:0;font-size:28px;color:#46b450;"><?php echo esc_html($pending_approvals_count); ?></h3>
+                    <p style="margin:5px 0 0 0;color:#46b450;"><?php esc_html_e('Cadastros pendentes', 'book-manager'); ?></p>
                 </div>
             </a>
-            <a href="<?php echo admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=scheduled'); ?>" style="text-decoration:none;">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=bm_service_desk&tab=loans&bm_status=scheduled')); ?>" style="text-decoration:none;">
                 <div class="bm-dash-card" style="background:#e3f2fd;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
-                    <h3 style="margin:0;font-size:28px;color:#1565c0;"><?php echo $scheduled_count; ?></h3>
-                    <p style="margin:5px 0 0 0;color:#1565c0;"><?php _e('Livros Agendados', 'book-manager'); ?></p>
+                    <h3 style="margin:0;font-size:28px;color:#1565c0;"><?php echo esc_html($scheduled_count); ?></h3>
+                    <p style="margin:5px 0 0 0;color:#1565c0;"><?php esc_html_e('Livros Agendados', 'book-manager'); ?></p>
                 </div>
             </a>
-            <a href="<?php echo admin_url('admin.php?page=bm_students&tab=approve_readings'); ?>" style="text-decoration:none;">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=bm_students&tab=approve_readings')); ?>" style="text-decoration:none;">
                 <div class="bm-dash-card" style="background:#fce4ec;padding:15px;border-radius:6px;text-align:center;cursor:pointer;transition:transform 0.15s ease, box-shadow 0.15s ease;">
-                    <h3 style="margin:0;font-size:28px;color:#c62828;"><?php echo $pending_readings_count; ?></h3>
-                    <p style="margin:5px 0 0 0;color:#c62828;"><?php _e('Fichas Pendentes', 'book-manager'); ?></p>
+                    <h3 style="margin:0;font-size:28px;color:#c62828;"><?php echo esc_html($pending_readings_count); ?></h3>
+                    <p style="margin:5px 0 0 0;color:#c62828;"><?php esc_html_e('Fichas Pendentes', 'book-manager'); ?></p>
                 </div>
             </a>
         </div>
@@ -875,11 +871,11 @@ function bm_librarian_dashboard_content() {
         if (!empty($birthdays)): usort($birthdays, function($a, $b) { return intval($a['date']) - intval($b['date']); });
         ?>
         <div style="background:#fff3e0;padding:15px;border-radius:8px;grid-column:1/-1;margin-top:10px;">
-            <h3 style="margin:0 0 10px 0;">🎂 <?php _e('Aniversariantes de', 'book-manager'); ?> <?php echo date_i18n('F'); ?></h3>
+            <h3 style="margin:0 0 10px 0;">🎂 <?php esc_html_e('Aniversariantes de', 'book-manager'); ?> <?php echo esc_html(date_i18n('F')); ?></h3>
             <div style="display:flex;flex-wrap:wrap;gap:10px;">
                 <?php foreach ($birthdays as $b): ?>
-                    <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_student_detail&student_id=' . $b['id']); ?>" style="background:#fff;padding:8px 12px;border-radius:20px;text-decoration:none;color:#111;font-size:13px;border:1px solid #ff9800;">
-                        <?php echo esc_html($b['name']); ?> <span style="color:#ff9800;"><?php echo $b['date']; ?></span>
+                    <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_student_detail&student_id=' . $b['id'])); ?>" style="background:#fff;padding:8px 12px;border-radius:20px;text-decoration:none;color:#111;font-size:13px;border:1px solid #ff9800;">
+                        <?php echo esc_html($b['name']); ?> <span style="color:#ff9800;"><?php echo esc_html($b['date']); ?></span>
                     </a>
                 <?php endforeach; ?>
             </div>
@@ -895,23 +891,23 @@ function bm_librarian_dashboard_content() {
         window.location.href = url.toString();
     }
     </script>
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book'); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">📚 <?php _e('Gerenciar Livros', 'book-manager'); ?></a>
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_loans'); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">📋 <?php _e('Empréstimos', 'book-manager'); ?></a>
-            <a href="<?php echo admin_url('users.php?page=bm_approve_users'); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">✅ <?php _e('Aprovar Cadastros', 'book-manager'); ?></a>
-            <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_csv_import'); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">📥 <?php _e('Importar CSV', 'book-manager'); ?></a>
-                    <a href="<?php echo admin_url('edit.php?post_type=bm_book&page=bm_acquisition_suggestions'); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">💡 <?php _e('Sugestões de Aquisição', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book')); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">📚 <?php esc_html_e('Gerenciar Livros', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_loans')); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">📋 <?php esc_html_e('Empréstimos', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('users.php?page=bm_approve_users')); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">✅ <?php esc_html_e('Aprovar Cadastros', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_csv_import')); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">📥 <?php esc_html_e('Importar CSV', 'book-manager'); ?></a>
+            <a href="<?php echo esc_url(admin_url('edit.php?post_type=bm_book&page=bm_acquisition_suggestions')); ?>" class="button" style="background:#111;color:#fff;border:none;padding:8px 16px;text-decoration:none;border-radius:4px;">💡 <?php esc_html_e('Sugestões de Aquisição', 'book-manager'); ?></a>
         </div>
         
         <?php if (!empty($overdue_loans)): ?>
-            <h2 style="color:#dc3545;">🔴 <?php _e('Em Atraso', 'book-manager'); ?></h2>
+            <h2 style="color:#dc3545;">🔴 <?php esc_html_e('Em Atraso', 'book-manager'); ?></h2>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
-                        <th><?php _e('Aluno', 'book-manager'); ?></th>
-                        <th><?php _e('Livro', 'book-manager'); ?></th>
-                        <th><?php _e('Devolução', 'book-manager'); ?></th>
-                        <th><?php _e('Atraso', 'book-manager'); ?></th>
-                        <th><?php _e('WhatsApp', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Aluno', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Livro', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Devolução', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Atraso', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('WhatsApp', 'book-manager'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -919,8 +915,8 @@ function bm_librarian_dashboard_content() {
                         <tr style="background:#fff3f3;">
                             <td><?php echo esc_html($loan['user_name']); ?></td>
                             <td><?php echo esc_html($loan['book_title']); ?></td>
-                            <td><?php echo $loan['due_date_formatted']; ?></td>
-                            <td style="color:#dc3545;font-weight:bold;"><?php printf(__('%d dias atrasado', 'book-manager'), abs($loan['days_remaining'])); ?></td>
+                            <td><?php echo esc_html($loan['due_date_formatted']); ?></td>
+                            <td style="color:#dc3545;font-weight:bold;"><?php printf(esc_html__('%d dias atrasado', 'book-manager'), abs($loan['days_remaining'])); ?></td>
                             <td>
                                 <?php if (!empty($loan['user_phone'])): ?>
                                     <?php 
@@ -938,14 +934,14 @@ function bm_librarian_dashboard_content() {
         <?php endif; ?>
         
         <?php if (!empty($pending_reservations)): ?>
-            <h2 style="color:#f0ad4e;">🟡 <?php _e('Reservas Pendentes', 'book-manager'); ?></h2>
+            <h2 style="color:#f0ad4e;">🟡 <?php esc_html_e('Reservas Pendentes', 'book-manager'); ?></h2>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
-                        <th><?php _e('Aluno', 'book-manager'); ?></th>
-                        <th><?php _e('Livro', 'book-manager'); ?></th>
-                        <th><?php _e('Posição', 'book-manager'); ?></th>
-                        <th><?php _e('Data', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Aluno', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Livro', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Posição', 'book-manager'); ?></th>
+                        <th><?php esc_html_e('Data', 'book-manager'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -953,8 +949,8 @@ function bm_librarian_dashboard_content() {
                         <tr>
                             <td><?php echo esc_html($res['user_name']); ?></td>
                             <td><?php echo esc_html($res['book_title']); ?></td>
-                            <td><?php echo isset($res['position']) ? $res['position'] . 'º' : '—'; ?></td>
-                            <td><?php echo date('d/m/Y', strtotime($res['date'])); ?></td>
+                            <td><?php echo isset($res['position']) ? esc_html($res['position'] . 'º') : '—'; ?></td>
+                            <td><?php echo esc_html(date('d/m/Y', strtotime($res['date']))); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -962,7 +958,7 @@ function bm_librarian_dashboard_content() {
         <?php endif; ?>
         
         <?php if (empty($overdue_loans) && empty($pending_reservations)): ?>
-            <p><?php _e('Tudo em dia! Nenhum atraso ou reserva pendente.', 'book-manager'); ?></p>
+            <p><?php esc_html_e('Tudo em dia! Nenhum atraso ou reserva pendente.', 'book-manager'); ?></p>
         <?php endif; ?>
     </div>
     <?php

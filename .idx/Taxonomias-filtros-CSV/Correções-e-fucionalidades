@@ -345,41 +345,23 @@ Estes contêm variáveis PHP (`admin_url()`, `wp_create_nonce()`, `$post->ID`, e
 
 Precisa numerar algumas diretrizes muito importantes que você já conhece, mas eu quero reforçar 
 
-número um jamais mexer nas funcionalidades do código o projeto O plugin deve permanecer exatamente como está em relação às suas funções em relação às suas engrenagens que já estão funcionando de maneira bastante satisfatória. 
+1 - jamais mexer nas funcionalidades do código o projeto O plugin deve permanecer exatamente como está em relação às suas funções em relação às suas engrenagens que já estão funcionando de maneira bastante satisfatória. 
 
-
-
-dois um enxugamento deve levar em consideração os critérios do wordpress.org e do Code Canyon. Então os comentários devem obedecer exatamente a estrutura que são pedidas nesses repositórios. 
-
-
+2 - um enxugamento deve levar em consideração os critérios do wordpress.org e do Code Canyon. Então os comentários devem obedecer exatamente a estrutura que são pedidas nesses repositórios. 
 
 3 - Antes de ser iniciado deve-se fazer um mapeamento de todas as funções no arquivo que será editado. Ou seja quando você for gerar um arquivo novo antes de se gerar, deve ser feito um aviamento de todas as funções todos os scripts que estão contidas nesse arquivo, eu acredito que isso é fundamental para um bom cálculo e para que nas fases seguintes a geração do arquivo se de maneira excelente.
 
-
-
 4 - Deve ser calculado também. Tudo que for CSS e HTML in line eu ainda estou um pouco de dúvida a respeito do HTML se o HTML vai para um arquivo CSS ou se o HTML Continuará um arquivo PHP isso eu ainda estou em dúvida, mas eu já sei que os arquivos CSS e JavaScript. Eles serão retirados os arquivos php, ou seja, eles são onlines e eles estão entendendo direito, então eles serão tirados do arquivo PHP. e serão colocados em um arquivo e comportamento disso a estrutura dos arquivos. Então na hora de calcular as funções eu acredito que também essa hora seja hora de calcular. Esse CSS JavaScript e HTML online já fiz observação sobre a maternidade. E você vai me responder sobre isso tudo isso deve ser calculado, porque eles vão ser retirados do arquivo PHP e você adicionado em um novo arquivo.
-
-
 
 5 - Logo após todas as funções de um arquivo serem calculadas assim como se o HTML CSS e javascripts forem devidamente mapeados. Devem ser gerados, o arquivo correspondente arquivos será gerado de maneira integral, eu não vou fazer substituições, eu não vou fazer emoções, o arquivo deverá ser gerado de maneira íntegra. Para que eu possa apenas substituir os arquivos que eu tenho em minha documentação. Esse procedimento será será realizado com todos os arquivos um a um todos os arquivos PHP.
 
-
-
 6 - Eu acredito que todos os documentos estão com excesso de comentários ao longo do projeto nós somos adicionando muitos comentários e acredito que há muitos comentários inúteis, então eu não tenho certeza do que eu tô falando. Por isso eu peço uma recomendação do que apenas um comentário por função principal você também que existem funções dentro de funções, não sei se seria Necessário colocar comentários em funções que estão dentro das funções, eu acredito que apenas um comentário por função e eu também não tenho certeza disso. Mas vc pode me ajudar a clarear isso. o às vezes duas funções . Que não estejam necessariamente uma dentro da outra mas talvez apenas um comentários seja suficietencomentário. Pode ser ou suficiente este comentário tem que ser absolutamente objetivo descritivo. Isso que você investigue isso.
-
-
 
 7 - comentários estarão deverão estar em inglês.
 
-
-
 8 - Em relação ao enxugamento do código deve-se fazer ali pequenas correções com espaços quebra-gelinha o vizinho desalinhamento do código que não necessariamente no código, mas tem a ver com uma questão de estética e de organização que poderá facilitar para que outros desenvolvedores consigam ler de uma maneira mais adequada. Porque como foram feitas muitas alterações e o nosso desenvolvedor, mas ele falou que ali espaços ou como que tablet tem necessariamente de acordo com uma estética visual que Facilite o trabalho de outra pessoa. Talvez parar pode ser perfeito mais para um ser humano não. Então essa correspondentes devem estar finalmente ajustada.
 
-
-
 9 - Vou falar agora, eu tenho pouca certeza e mais se baseia numa observação da minha interação com outro chefe. Algumas vezes os arquivos estavam enormes por exemplo 1500 linhas aí quando a gente encontrava algum problema achavam melhor geral um arquivo completo já com a correção e eu percebi que o chat já enxugava esse código não conseguia transformar. Por exemplo nessa nova regra um exemplo aqui aleatório as 1.500 linhas em 1100 linhas por exemplo. E aí eu sempre perguntava, mas de 1500 linhas para 1100 linhas, isso não é muita diferença e o chefe me responde rapaz essa funcionalidades provocadas ou apenas reorganismos e tudo continua a funcionar do mesmo jeito alinhamentos estão nos lugares as funções ali relacionadas estão em lugares e o que foi feito foi tirar. Abundância ou então coisas que estão fora de lugar com certeza, estou falando com mulher, mas eu percebi que ao gerar um arquivo novo os arquivos eram bem menores. E obviamente quanto menos código eu realmente acho bem melhor de você trabalhar que é um número não tocar na funcionalidade não mexer no que já funciona tudo que já funciona tem que continuar funcionando.
-
-
 
 10 - Esse último ponto é mais uma consulta de viabilidade. Mas pode ser que eu não aplique, mas mesmo assim eu quero saber da sua opinião, pois já que vamos gerar arquivos inteiros, eu gostaria realmente de analisar essa viabilidade. Você lembra que quando nós passamos O plugin de checagem? E ele gerou um arquivo csv que eu compartilhei uma parte com você e você me recomendou que deveria ser feita a troca, eu queria saber da viabilidade de se fazer a troca já nessa fase já que vamos adicionar o arquivo inteiro e que nós vamos mapear e nós vamos mapear e criar os arquivos do zero. Com todas essas funcionalidades. Talvez seja possível a gente já fazer a troca daqueles temas que eu plugin. de verificação fez para a gente para a gente poder trocar aqueles termos já que os arquivos vão ser feito agora então milhares dessa mas eu vou deixar aqui apenas que seja como referência:
 
