@@ -1,0 +1,388 @@
+book-manager/
+├── assets/
+│   ├── css/
+│   │   ├── tailwind-custom.css    ← CSS do Dashboard de Relatórios (NÃO MEXER)
+│   │   └── tailwind.min.css       ← Compilado do Tailwind (NÃO MEXER)
+│   └── js/
+│       └── reports-dashboard.js   ← JS do Dashboard de Relatórios (NÃO MEXER)
+├── includes/
+│   ├── admin-csv.php              ← Importação/Exportação CSV, ZIP, Nº Chamada, Histórico de importação
+│   ├── admin-fields.php           ← Metaboxes, listagem admin, filtros, campos dinâmicos, resenha oficial
+│   ├── admin-service.php          ← Balcão de Atendimento, Alunos, Empréstimos Admin, Etiquetas, Carteirinhas, Relatórios
+│   ├── admin-settings.php         ← Configurações, APIs, White Label, Virada de Ano, Status, Taxonomias dinâmicas
+│   ├── frontend.php               ← Templates, vitrine, filtros, capas, sinopse, IA (Diva/chatbot), handlers AJAX
+│   ├── reports.php                ← Motor de relatórios, endpoint JSON, sparklines, gráficos
+│   ├── users-circulacao.php       ← Roles, autocadastro, reservas, empréstimos, devoluções, multas, WhatsApp
+│   ├── users-dashboard.php        ← Dashboards do Aluno, Professor e Gestor
+│   └── users-gamificacao.php      ← Ranking, fichas de leitura, XP, medalhas, perfil público do leitor
+├── archive-bm_book.php            ← Template público do catálogo (vitrine)
+├── book-manager.php               ← Arquivo principal: CPT, taxonomias, capabilities, hooks, carregamento dos módulos
+├── single-bm_book.php             ← Template público da página individual do livro
+├── uninstall.php                  ← Limpeza de dados na desinstalação (já limpo)
+├── input.css                      ← Arquivo auxiliar do Tailwind
+├── tailwind.config.js             ← Configuração do Tailwind
+├── package.json / package-lock.json ← Dependências Node (para Tailwind)
+├── claude.md                      ← Diretrizes comportamentais para IA (CONSTITUIÇÃO)
+├── escopo.md                      ← Especificações técnicas, abordagens e barreiras
+├── roadmap.md                     ← Fases de desenvolvimento (Fases 0 a 53)
+└── changelog.md                   ← Histórico imutável (209 entradas)
+
+
+****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************
+
+
+
+---
+
+# RELATÓRIO DE TRANSIÇÃO — CHAT 15 → CHAT 17
+
+**Data:** 3 de julho de 2026
+**Elaborado por:** Chat 15 — Documentalista Técnico WordPress / Programador Sênior WordPress
+**Destinatário:** Chat 17
+**Objetivo:** Executar a Fase 53 — Enxugamento de Código do plugin book-manager
+
+---
+
+## 1. IDENTIDADE DO PROJETO
+
+| Campo | Valor |
+|-------|-------|
+| **Nome do plugin** | Gestão de Livros (Book Manager) |
+| **Slug** | `book-manager` |
+| **Text Domain** | `book-manager` |
+| **Prefixo de funções** | `bm_` |
+| **Prefixo de meta keys** | `_bm_` |
+| **Versão atual** | 10.7 |
+| **Autor** | Daniel Pereira |
+| **Propósito** | Sistema completo de gestão de bibliotecas escolares brasileiras dentro do WordPress |
+
+---
+
+## 2. OBJETIVO DA FASE 53
+
+Limpar o código-fonte do plugin **sem alterar nenhuma funcionalidade**. Isso inclui:
+
+- Remover comentários de fase/seção (`// ===== FASE X =====`)
+- Eliminar linhas em branco excessivas e espaços no final de linhas
+- Traduzir comentários essenciais para **inglês**, usando blocos **PHPDoc** (`/** ... */`)
+- Extrair **apenas** CSS e JavaScript inline **puramente estáticos** (sem variáveis PHP) para `assets/css/book-manager.css` e `assets/js/book-manager.js`
+- **Aplicar correções de escape** detectadas pelo Plugin Check do WordPress.org (ex: trocar `_e()` por `esc_html_e()`)
+- Manter o comportamento do plugin **idêntico** ao atual
+
+---
+
+## 3. AS 11 DIRETRIZES (REGRAS DE OURO)
+
+### Diretriz 1 — NÃO ALTERAR FUNCIONALIDADES
+O plugin deve permanecer exatamente como está em relação às suas funções e engrenagens. Nenhuma função, hook, parâmetro ou fluxo de dados pode ser alterado. O enxugamento é **estritamente cosmético e organizacional**.
+
+### Diretriz 2 — CRITÉRIOS WORDPRESS.ORG E CODECANYON
+Os comentários devem obedecer à estrutura exigida por esses repositórios:
+- Blocos PHPDoc (`/** ... */`) com `@param` e `@return`
+- Comentários em inglês
+- Código limpo e organizado
+
+### Diretriz 3 — MAPEAMENTO DE FUNÇÕES ANTES DE GERAR
+Antes de gerar cada arquivo limpo, faça um **mapeamento completo** de:
+- Todas as funções do arquivo
+- Hooks e callbacks usados
+- Blocos `<style>` e `<script>` inline
+- Dependências (quem chama essa função de outros arquivos)
+
+Isso garante que nada seja removido ou quebrado acidentalmente.
+
+### Diretriz 4 — CSS E JS INLINE: DESTINO
+- **CSS inline estático** → `assets/css/book-manager.css`
+- **JavaScript inline estático** → `assets/js/book-manager.js`
+- **CSS/JS com variáveis PHP** → **PERMANECE NO ARQUIVO PHP** (não extrair)
+- **HTML inline** → **PERMANECE NO ARQUIVO PHP** (HTML não se extrai — apenas blocos `<style>` e `<script>`)
+
+### Diretriz 5 — GERAR ARQUIVO COMPLETO, NÃO EDITAR
+Nada de substituir trechos com localizadores. Para cada arquivo:
+1. Mapear todas as funções
+2. Gerar o **arquivo PHP completo e limpo**
+3. O usuário substitui o arquivo antigo pelo novo e testa
+
+### Diretriz 6 — QUANTIDADE DE COMENTÁRIOS
+- **1 bloco PHPDoc por função principal** — descrição, parâmetros, retorno
+- Funções dentro de funções (closures) não precisam de comentário
+- **Evitar comentários no meio do corpo** da função, a menos que a lógica seja realmente complexa
+- O critério: se um desenvolvedor novo lesse a função, entenderia? Se sim, apenas PHPDoc basta.
+
+### Diretriz 7 — COMENTÁRIOS EM INGLÊS
+Todos os comentários no código devem estar em inglês. Textos de interface continuam em português (via `__()` e `_e()`).
+
+### Diretriz 8 — ESPAÇOS, ALINHAMENTO E ESTÉTICA
+- Remover linhas em branco duplas/triplas (máximo 1 linha entre funções)
+- Remover espaços no final de linhas
+- Indentação consistente
+- Código visualmente organizado para leitura humana
+
+### Diretriz 9 — ARQUIVOS MENORES APÓS ENXUGAMENTO
+É normal o arquivo reduzir significativamente (ex: 1500 → 1100 linhas). A redução vem da remoção de comentários de fase, espaços extras e reorganização. Nenhuma funcionalidade é perdida.
+
+### Diretriz 10 — APLICAR CORREÇÕES DO PLUGIN CHECK
+Aproveitar a geração dos arquivos completos para corrigir os erros de escape detectados pelo Plugin Check do WordPress.org. As principais trocas:
+
+| Erro | Correção |
+|------|----------|
+| `_e('texto', 'book-manager')` | `esc_html_e('texto', 'book-manager')` |
+| `__('texto', 'book-manager')` em echo | `esc_html__('texto', 'book-manager')` |
+| `'$var'` em atributo HTML | `esc_attr($var)` |
+| `$url` em link | `esc_url($url)` |
+
+Essas trocas são **seguras** — apenas adicionam escape, não alteram lógica.
+
+### Diretriz 11 — ABORDAGEM A: PHP PRIMEIRO, CSS/JS DEPOIS
+1. Limpar todos os arquivos PHP (tarefas 53.2 a 53.14)
+2. Só depois extrair CSS e JS inline para os novos arquivos (tarefas 53.15 e 53.16)
+3. Testar tudo (53.17)
+
+---
+
+## 4. ESTRUTURA DE ARQUIVOS
+
+```
+book-manager/
+├── assets/
+│   ├── css/
+│   │   ├── tailwind-custom.css    ← NÃO ALTERAR (específico do Dashboard de Relatórios)
+│   │   └── book-manager.css       ← A SER CRIADO na tarefa 53.15
+│   ├── js/
+│   │   ├── reports-dashboard.js   ← NÃO ALTERAR (específico do Dashboard de Relatórios)
+│   │   └── book-manager.js        ← A SER CRIADO na tarefa 53.16
+│   └── icons/
+├── includes/
+│   ├── admin-settings.php
+│   ├── admin-fields.php
+│   ├── admin-csv.php
+│   ├── admin-service.php
+│   ├── frontend.php
+│   ├── reports.php
+│   ├── users-circulacao.php
+│   ├── users-dashboard.php
+│   └── users-gamificacao.php
+├── book-manager.php               ← Arquivo principal
+├── uninstall.php
+├── single-bm_book.php
+├── archive-bm_book.php
+├── claude.md                      ← Constituição do projeto
+├── escopo.md                      ← Especificações e barreiras
+├── roadmap.md                     ← Fases de desenvolvimento
+└── changelog.md                   ← Histórico imutável (209 entradas)
+```
+
+---
+
+## 5. INVENTÁRIO DE SCRIPTS E ESTILOS INLINE (TAREFA 53.1)
+
+Resultado do mapeamento já realizado:
+
+### ✅ CSS que PODE ser extraído (5 blocos)
+
+| # | Arquivo | Descrição |
+|---|---------|-----------|
+| 1 | `archive-bm_book.php` | CSS do catálogo (`.bm-catalog`, `.bm-filters`, `.bm-book-grid`, etc.) |
+| 2 | `single-bm_book.php` | CSS responsivo das resenhas |
+| 3 | `frontend.php` | CSS do chatbot |
+| 4 | `frontend.php` | CSS do catálogo shortcode (duplicado do archive) |
+| 5 | `users-gamificacao.php` | CSS do microfone/ditado (animação pulse) |
+
+### ✅ JS que PODE ser extraído (6 blocos)
+
+| # | Arquivo | Descrição |
+|---|---------|-----------|
+| 1 | `admin-csv.php` | Toggle Google API (`bmToggleGoogleApi()`) |
+| 2 | `admin-csv.php` | Histórico toggle details |
+| 3 | `admin-csv.php` | Export filters (jQuery) |
+| 4 | `users-circulacao.php` | Filtros empréstimos (busca textual, status, datepickers) |
+| 5 | `admin-service.php` | Leitura de código de barras (foco automático) |
+| 6 | `users-gamificacao.php` | Microfone/ditado (Web Speech API) |
+
+### ❌ JS que DEVE permanecer inline (24 blocos)
+
+Estes contêm variáveis PHP (`admin_url()`, `wp_create_nonce()`, `$post->ID`, etc.) e **não podem ser extraídos**.
+
+### ⚠️ JS que precisa de atenção (2 blocos)
+
+| # | Arquivo | Descrição | Dependência |
+|---|---------|-----------|-------------|
+| 1 | `admin-fields.php` | Drag and drop (jQuery UI) | Requer `wp_enqueue_script('jquery-ui-sortable')` |
+| 2 | `admin-settings.php` | Media uploader | Requer `wp_enqueue_media()` |
+
+---
+
+## 6. ROADMAP DA FASE 53
+
+### Fase 53: Enxugamento de Código
+
+**Descrição:** Limpar o código-fonte do plugin sem alterar funcionalidades. Remover comentários de fase/seção, eliminar espaços extras, traduzir comentários para inglês com PHPDoc, extrair CSS/JS inline estáticos para `assets/`, e aplicar correções de escape do Plugin Check.
+
+**Critério de saída:** Código PHP limpo, comentários em inglês com PHPDoc, CSS/JS estáticos extraídos para `assets/css/book-manager.css` e `assets/js/book-manager.js`. Funcionalidades inalteradas. Erros de escape do Plugin Check corrigidos.
+
+**Tarefas:**
+
+1. [x] **53.1 — Inventário de scripts e estilos inline** ✅ (já realizado pelo Chat 15)
+
+2. [ ] **53.2 — Limpar `uninstall.php`**
+   - Remover comentários de fase/seção
+   - Reduzir espaços e linhas em branco
+   - Traduzir comentários para inglês
+   - Adicionar PHPDoc
+   - **Mapear antes, gerar arquivo completo depois**
+
+3. [ ] **53.3 — Limpar `archive-bm_book.php`**
+   - Remover comentários de fase/seção
+   - Reduzir espaços e linhas em branco
+   - Traduzir comentários para inglês
+   - Adicionar PHPDoc
+   - Extrair CSS inline estático (marcar para 53.15)
+   - **Aplicar correções de escape do Plugin Check** (erros já mapeados no arquivo)
+   - **Mapear antes, gerar arquivo completo depois**
+
+4. [ ] **53.4 — Limpar `single-bm_book.php`**
+   - Mesmo processo do 53.3
+
+5. [ ] **53.5 — Limpar `includes/users-dashboard.php`**
+   - Mesmo processo. Atenção: 3 scripts inline com variáveis PHP — permanecem.
+
+6. [ ] **53.6 — Limpar `includes/users-gamificacao.php`**
+   - Mesmo processo. Atenção: script do microfone (sem variável PHP) pode ser extraído. Scripts de avaliação e penalidades (com variável PHP) permanecem.
+
+7. [ ] **53.7 — Limpar `includes/reports.php`**
+   - Mesmo processo. Sem CSS/JS inline para extrair.
+
+8. [ ] **53.8 — Limpar `includes/admin-fields.php`**
+   - Mesmo processo. Atenção: drag and drop depende de `jquery-ui-sortable`.
+
+9. [ ] **53.9 — Limpar `includes/admin-settings.php`**
+   - Mesmo processo. Atenção: media uploader depende de `wp_enqueue_media()`.
+
+10. [ ] **53.10 — Limpar `includes/admin-csv.php`**
+    - Mesmo processo. Atenção: 3 scripts sem variável PHP podem ser extraídos.
+
+11. [ ] **53.11 — Limpar `includes/users-circulacao.php`**
+    - Mesmo processo. Atenção: script de filtros (sem variável PHP) pode ser extraído. Scripts de modais e AJAX (com variável PHP) permanecem.
+
+12. [ ] **53.12 — Limpar `includes/admin-service.php`**
+    - Mesmo processo. Atenção: script de leitura de código (sem variável PHP) pode ser extraído. Scripts de balcão, etiquetas, carteirinhas (com variável PHP) permanecem.
+
+13. [ ] **53.13 — Limpar `includes/frontend.php`**
+    - Mesmo processo. Atenção: CSS do chatbot e catálogo podem ser extraídos. Scripts com variável PHP permanecem.
+
+14. [ ] **53.14 — Limpar `book-manager.php`**
+    - Mesmo processo. Registrar e enfileirar `book-manager.css` e `book-manager.js` via `wp_enqueue_style()` e `wp_enqueue_script()`.
+
+15. [ ] **53.15 — Criar `assets/css/book-manager.css`**
+    - Consolidar **apenas** o CSS extraído (5 blocos do inventário)
+    - Comentários em inglês
+    - Carregar via `wp_enqueue_style('bm-book-manager', ...)` em `book-manager.php`
+
+16. [ ] **53.16 — Criar `assets/js/book-manager.js`**
+    - Consolidar **apenas** o JS extraído (6 blocos do inventário)
+    - Comentários em inglês
+    - Usar `wp_localize_script('bm-book-manager', 'bmData', array(...))` para passar variáveis PHP quando possível
+    - Declarar dependência `array('jquery')` onde necessário
+    - Carregar via `wp_enqueue_script('bm-book-manager', ...)` em `book-manager.php`
+
+17. [ ] **53.17 — Teste completo**
+    - Percorrer cada funcionalidade do plugin para confirmar que nada quebrou
+
+---
+
+## 7. BARREIRAS DO ESCOPO (PROIBIÇÕES)
+
+- ❌ Alterar qualquer lógica de negócio — o comportamento do plugin deve permanecer idêntico
+- ❌ Extrair scripts ou estilos inline que contenham variáveis PHP dinâmicas
+- ❌ Remover comentários que servem como marcadores de localização para manutenção — apenas traduzi-los para inglês
+- ❌ Misturar CSS inline extraído com o `tailwind-custom.css` — são contextos diferentes
+- ❌ Misturar JS inline extraído com o `reports-dashboard.js` — são contextos diferentes
+- ❌ Criar dependências externas ou CDN — todos os arquivos devem ser locais
+- ❌ Alterar a ordem de carregamento dos scripts que possa afetar a funcionalidade
+
+---
+
+## 8. INSTRUÇÕES DE EXECUÇÃO
+
+### Para cada arquivo PHP (tarefas 53.2 a 53.14):
+
+1. **Mapear** todas as funções do arquivo original (nome, hooks, dependências)
+2. **Identificar** blocos `<style>` e `<script>` — verificar se têm variáveis PHP
+3. **Gerar** o arquivo PHP completo e limpo, com:
+   - Comentários de fase/seção removidos
+   - Espaços e linhas em branco reduzidos
+   - Comentários essenciais traduzidos para inglês
+   - PHPDoc adicionado nas funções principais
+   - Correções de escape aplicadas (`_e()` → `esc_html_e()`, etc.)
+   - CSS/JS estático removido (será consolidado depois)
+   - CSS/JS com variáveis PHP **mantido** no arquivo
+4. **Entregar** o arquivo completo para o usuário substituir e testar
+
+### Para os arquivos CSS/JS (tarefas 53.15 e 53.16):
+
+1. Consolidar **apenas** os blocos do inventário marcados como extraíveis
+2. Comentários em inglês
+3. Registrar e enfileirar em `book-manager.php`
+
+---
+
+## 9. ⚠️ AVISO IMPORTANTE
+
+**Este relatório é uma orientação, não uma verdade absoluta.** O código-fonte real nos arquivos PHP é a referência definitiva. Verifique cada informação no código antes de agir. Siga a pirâmide de documentos: `claude.md` → `escopo.md` → `changelog.md`/`roadmap.md`.
+
+**O usuário não é programador.** Use linguagem simples e didática. Apresente **1 arquivo completo por vez**. Jamais apresente mais de um arquivo simultaneamente. Aguarde a confirmação de teste antes de prosseguir para o próximo.
+
+---
+
+**Fim do relatório.** Chat 17, você tem todas as informações para iniciar a Fase 53. Comece pela tarefa 53.2 (`uninstall.php`). Bom trabalho.
+
+
+
+
+
+****************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************
+
+
+Precisa numerar algumas diretrizes muito importantes que você já conhece, mas eu quero reforçar 
+
+1 - jamais mexer nas funcionalidades do código o projeto O plugin deve permanecer exatamente como está em relação às suas funções em relação às suas engrenagens que já estão funcionando de maneira bastante satisfatória. 
+
+2 - um enxugamento deve levar em consideração os critérios do wordpress.org e do Code Canyon. Então os comentários devem obedecer exatamente a estrutura que são pedidas nesses repositórios. 
+
+3 - Antes de ser iniciado deve-se fazer um mapeamento de todas as funções no arquivo que será editado. Ou seja quando você for gerar um arquivo novo antes de se gerar, deve ser feito um aviamento de todas as funções todos os scripts que estão contidas nesse arquivo, eu acredito que isso é fundamental para um bom cálculo e para que nas fases seguintes a geração do arquivo se de maneira excelente.
+
+4 - Deve ser calculado também. Tudo que for CSS e HTML in line eu ainda estou um pouco de dúvida a respeito do HTML se o HTML vai para um arquivo CSS ou se o HTML Continuará um arquivo PHP isso eu ainda estou em dúvida, mas eu já sei que os arquivos CSS e JavaScript. Eles serão retirados os arquivos php, ou seja, eles são onlines e eles estão entendendo direito, então eles serão tirados do arquivo PHP. e serão colocados em um arquivo e comportamento disso a estrutura dos arquivos. Então na hora de calcular as funções eu acredito que também essa hora seja hora de calcular. Esse CSS JavaScript e HTML online já fiz observação sobre a maternidade. E você vai me responder sobre isso tudo isso deve ser calculado, porque eles vão ser retirados do arquivo PHP e você adicionado em um novo arquivo.
+
+5 - Logo após todas as funções de um arquivo serem calculadas assim como se o HTML CSS e javascripts forem devidamente mapeados. Devem ser gerados, o arquivo correspondente arquivos será gerado de maneira integral, eu não vou fazer substituições, eu não vou fazer emoções, o arquivo deverá ser gerado de maneira íntegra. Para que eu possa apenas substituir os arquivos que eu tenho em minha documentação. Esse procedimento será será realizado com todos os arquivos um a um todos os arquivos PHP.
+
+6 - Eu acredito que todos os documentos estão com excesso de comentários ao longo do projeto nós somos adicionando muitos comentários e acredito que há muitos comentários inúteis, então eu não tenho certeza do que eu tô falando. Por isso eu peço uma recomendação do que apenas um comentário por função principal você também que existem funções dentro de funções, não sei se seria Necessário colocar comentários em funções que estão dentro das funções, eu acredito que apenas um comentário por função e eu também não tenho certeza disso. Mas vc pode me ajudar a clarear isso. o às vezes duas funções . Que não estejam necessariamente uma dentro da outra mas talvez apenas um comentários seja suficietencomentário. Pode ser ou suficiente este comentário tem que ser absolutamente objetivo descritivo. Isso que você investigue isso.
+
+7 - comentários estarão deverão estar em inglês.
+
+8 - Em relação ao enxugamento do código deve-se fazer ali pequenas correções com espaços quebra-gelinha o vizinho desalinhamento do código que não necessariamente no código, mas tem a ver com uma questão de estética e de organização que poderá facilitar para que outros desenvolvedores consigam ler de uma maneira mais adequada. Porque como foram feitas muitas alterações e o nosso desenvolvedor, mas ele falou que ali espaços ou como que tablet tem necessariamente de acordo com uma estética visual que Facilite o trabalho de outra pessoa. Talvez parar pode ser perfeito mais para um ser humano não. Então essa correspondentes devem estar finalmente ajustada.
+
+9 - Vou falar agora, eu tenho pouca certeza e mais se baseia numa observação da minha interação com outro chefe. Algumas vezes os arquivos estavam enormes por exemplo 1500 linhas aí quando a gente encontrava algum problema achavam melhor geral um arquivo completo já com a correção e eu percebi que o chat já enxugava esse código não conseguia transformar. Por exemplo nessa nova regra um exemplo aqui aleatório as 1.500 linhas em 1100 linhas por exemplo. E aí eu sempre perguntava, mas de 1500 linhas para 1100 linhas, isso não é muita diferença e o chefe me responde rapaz essa funcionalidades provocadas ou apenas reorganismos e tudo continua a funcionar do mesmo jeito alinhamentos estão nos lugares as funções ali relacionadas estão em lugares e o que foi feito foi tirar. Abundância ou então coisas que estão fora de lugar com certeza, estou falando com mulher, mas eu percebi que ao gerar um arquivo novo os arquivos eram bem menores. E obviamente quanto menos código eu realmente acho bem melhor de você trabalhar que é um número não tocar na funcionalidade não mexer no que já funciona tudo que já funciona tem que continuar funcionando.
+
+10 - Esse último ponto é mais uma consulta de viabilidade. Mas pode ser que eu não aplique, mas mesmo assim eu quero saber da sua opinião, pois já que vamos gerar arquivos inteiros, eu gostaria realmente de analisar essa viabilidade. Você lembra que quando nós passamos O plugin de checagem? E ele gerou um arquivo csv que eu compartilhei uma parte com você e você me recomendou que deveria ser feita a troca, eu queria saber da viabilidade de se fazer a troca já nessa fase já que vamos adicionar o arquivo inteiro e que nós vamos mapear e nós vamos mapear e criar os arquivos do zero. Com todas essas funcionalidades. Talvez seja possível a gente já fazer a troca daqueles temas que eu plugin. de verificação fez para a gente para a gente poder trocar aqueles termos já que os arquivos vão ser feito agora então milhares dessa mas eu vou deixar aqui apenas que seja como referência:
+
+file,line,column,type,code,message,docs,severity,link
+
+"C:\Users\odani\Local Sites\biblioteca-plugin\app\public\wp-content\plugins\book-manager\archive-bm_book.php",41,108,ERROR,WordPress.Security.EscapeOutput.OutputNotEscaped,"All output should be run through an escaping function (see the Security sections in the WordPress Developer Handbooks), found '__'.",https://developer.wordpress.org/apis/security/escaping/#escaping-functions,5,
+
+"C:\Users\odani\Local Sites\biblioteca-plugin\app\public\wp-content\plugins\book-manager\archive-bm_book.php",45,26,ERROR,WordPress.Security.EscapeOutput.UnsafePrintingFunction,"All output should be run through an escaping function (like esc_html_e() or esc_attr_e()), found '_e'.",https://developer.wordpress.org/apis/security/escaping/#escaping-with-localization,5,
+
+"C:\Users\odani\Local Sites\biblioteca-plugin\app\public\wp-content\plugins\book-manager\archive-bm_book.php",46,153,ERROR,WordPress.Security.EscapeOutput.UnsafePrintingFunction,"All output should be run through an escaping function (like esc_html_e() or esc_attr_e()), found '_e'.",https://developer.wordpress.org/apis/security/escaping/#escaping-with-localization,5,
+
+"C:\Users\odani\Local Sites\biblioteca-plugin\app\public\wp-content\plugins\book-manager\archive-bm_book.php",115,63,ERROR,WordPress.Security.EscapeOutput.UnsafePrintingFunction,"All output should be run through an escaping function (like esc_html_e() or esc_attr_e()), found '_e'.",https://developer.wordpress.org/apis/security/escaping/#escaping-with-localization,5,
+
+"C:\Users\odani\Local Sites\biblioteca-plugin\app\public\wp-content\plugins\book-manager\archive-bm_book.php",116,33,ERROR,WordPress.Security.EscapeOutput.OutputNotEscaped,"All output should be run through an escaping function (see the Security sections in the WordPress Developer Handbooks), found 'get_post_type_archive_link'.",https://developer.wordpress.org/apis/security/escaping/#escaping-functions,5,
+
+"C:\Users\odani\Local Sites\biblioteca-plugin\app\public\wp-content\plugins\book-manager\archive-bm_book.php",116,103,ERROR,WordPress.Security.EscapeOutput.UnsafePrintingFunction,"All output should be run through an escaping function (like esc_html_e() or esc_attr_e()), found '_e'.",https://developer.wordpress.org/apis/security/escaping/#escaping-with-localization,5,
+
+"C:\Users\odani\Local Sites\biblioteca-plugin\app\public\wp-content\plugins\book-manager\archive-bm_book.php",171,39,ERROR,WordPress.Security.EscapeOutput.UnsafePrintingFunction,"All output should be run through an escaping function (like esc_html_e() or esc_attr_e()), found '_e'.",https://developer.wordpress.org/apis/security/escaping/#escaping-with-localization,5,
+
+"C:\Users\odani\Local Sites\biblioteca-plugin\app\public\wp-content\plugins\book-manager\archive-bm_book.php",190,18,ERROR,WordPress.Security.EscapeOutput.OutputNotEscaped,"All output should be run through an escaping function (see the Security sections in the WordPress Developer Handbooks), found 'paginate_links'.",https://developer.wordpress.org/apis/security/escaping/#escaping-functions,5,
+
+
+
+11 - Aqui uma outra dúvida, mas essa sim é uma parte fundamental depois que a gente gerar todos os arquivos deverão ser gerado novos arquivos contendo CSS. Já vai script e o html. Então a pergunta que eu faço é nós geramos todos os nossos regeneramos todos os arquivos php primeiro. E depois ao final de ter gerado todos os arquivos a gente pega o CSS o HTML e o j o Java script em line e geramos por novos arquivos. Ao gerar cada um dos novos arquivos a gente retira aqueles CSS java script in line e já vamos colocando nestes documentos novos em função duas abordagens que eu gostaria que você comparasse e me dissesse. Qual é a melhor?
