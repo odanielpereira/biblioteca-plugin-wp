@@ -757,7 +757,7 @@ CHAT 14
 
     ---
 
-## CHAT 18 — Ciclo 13  
+## CHAT 19 — Ciclo 13  
 
 ## Ciclo 13 — Versão 13.0.0 ← 
 
@@ -870,15 +870,41 @@ CHAT 14
     8.  [x] **62.8 — Importação CSV em massa com todos os checkboxes marcados.**
     9.  [x] **62.9 — Verificar mensagens de erro (nenhuma menção a Groq).**
 
+
+
+
+---
+## CHAT 20 — Ciclo 14
+
+### Fase 63: Correção das Funções Base de Capa e Sinopse (Frontend)
+**Objetivo:** Fazer a busca manual, a sinopse e o preenchimento por ISBN respeitarem o Hotlink e a nova regra de busca (Título+Autor → Título).
+**Critério de saída:** O link da imagem deve ser do Google (se Hotlink ativo) ou salvo no servidor (se Download ativo). A sinopse deve vir preenchida. O preenchimento por ISBN segue a mesma regra.
+*   **Tarefas:**
+    1.  [ ] **63.1 — Ajustar `bm_search_book_cover()`** para ler `bm_get_settings()['cover_mode']` e, se `hotlink`, salvar apenas a URL em `_bm_cover_hotlink` (sem `wp_remote_get()`/`file_put_contents()`); se `download`, baixar a imagem e definir como Imagem Destacada.
+    2.  [ ] **63.2 — Ajustar `bm_google_books_search()`** para priorizar "Título + Autor" e, se falhar, tentar apenas "Título". Proibido usar Editora.
+    3.  [ ] **63.3 — Ajustar `bm_fetch_sinopse_from_google()`** para seguir a mesma regra de busca (Título+Autor → Título).
+    4.  [ ] **63.4 — Corrigir `bm_ajax_fill_by_isbn()` e `bm_ajax_service_register_book_by_isbn()`** para aplicarem a regra Título+Autor → Título e respeitarem o `cover_mode` (hotlink vs download).
+    5.  [ ] **63.5 — Testar a busca manual de capa e sinopse no painel do WordPress.**
+    6.  [ ] **63.6 — Testar o preenchimento por ISBN** (edição do livro e cadastro rápido no balcão).
+
 ---
 
-### Fase 63: Documentação e Versionamento
-**Objetivo:** Sincronizar changelog, roadmap e versão do plugin.
-**Critério de saída:** Documentos atualizados; versão 13.0.0 publicada.
+### Fase 64: Correção e Resiliência da Importação em Massa (CSV)
+**Objetivo:** Fazer a importação respeitar o Hotlink, não travar por timeout e não ser bloqueada pelo Google.
+**Critério de saída:** Importar 3 livros via CSV com sucesso (todos com capa e sinopse), sem baixar imagem no modo Hotlink.
 *   **Tarefas:**
-    1.  [ ] **63.1 — Adicionar entrada no changelog registrando a migração.**
-    2.  [ ] **63.2 — Marcar Fases 54–62 como concluídas.**
-    3.  [ ] **63.3 — Sincronizar menções a Groq no escopo.md (marcar como histórico).**
-    4.  [ ] **63.4 — Atualizar versão do plugin para 13.0.0.**
-    5.  [ ] **63.5 — Tag de versão no Git.**
+    1.  [ ] **64.1 — Ajustar o bloco de capas em `admin-csv.php`** para respeitar o modo Hotlink (salvar apenas URL em `_bm_cover_hotlink`).
+    2.  [ ] **64.2 — Adicionar retry (máx. 2 tentativas por livro, `sleep(1)` entre elas)** nas chamadas da API do Google. Monitorar `max_execution_time`; se estourar, reduzir `sleep` ou desativar retry em lotes grandes — decisão com base em teste real (ver escopo 25.1.3).
+    3.  [ ] **64.3 — Testar a importação de 3 livros via CSV**, verificando se as capas aparecem corretamente (sem baixar imagem no modo Hotlink).
+    4.  [ ] **64.4 — Validar o Preenchimento por ISBN** na importação, garantindo que ele segue a mesma regra (correção aplicada na 63.4).
 
+---
+
+### Fase 65: Documentação e Fechamento
+**Objetivo:** Registrar as mudanças, conferir a chave DeepSeek e encerrar o ciclo de correções da Google Books.
+**Critério de saída:** Documentos atualizados, `admin-settings.php` conferido (sem edição) e código comitado no GitHub.
+*   **Tarefas:**
+    1.  [ ] **65.1 — Atualizar o `changelog.md`** com as correções das Fases 63 e 64.
+    2.  [ ] **65.2 — Atualizar o `roadmap.md`** marcando tudo como concluído.
+    3.  [ ] **65.3 — Subir a versão 13.1.0 para o GitHub.**
+    4.  [ ] **65.4 — Conferir `includes/admin-settings.php`:** verificar que `bm_get_api_key()` está lendo corretamente a chave DeepSeek salva na Central de APIs. **Sem edição** — apenas conferência (escopo 25.2).

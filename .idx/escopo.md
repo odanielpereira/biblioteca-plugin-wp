@@ -1300,3 +1300,60 @@ Cada uma das 8 funcionalidades deve:
 ### 24.8 Versão do Plugin
 
 Após a conclusão da migração, a versão do plugin sobe de **12.0.0 → 13.0.0**, refletindo a troca de provedor de IA.
+
+## 25. CICLO 14 — CORREÇÕES GOOGLE BOOKS E CAPAS (VERSÃO 13.1.0)
+
+### 25.1 Abordagem Técnica
+
+#### 25.1.1 Regra de Busca Obrigatória (Capa e Sinopse)
+Toda e qualquer busca na Google Books API (seja para capa, sinopse ou preenchimento por ISBN) deve seguir a seguinte hierarquia estrita:
+1. Tentar primeiro: `Título + Autor`.
+2. Se não retornar resultados válidos, tentar: `Apenas o Título`.
+3. **Proibido:** Buscar usando `Título + Autor + Editora`. A editora é um dado volátil que varia conforme a edição do livro, fazendo a busca falhar e retornar vazio.
+
+**Funções abrangidas por esta regra** (todas em `includes/frontend.php`):
+- `bm_search_book_cover()`
+- `bm_google_books_search()`
+- `bm_fetch_sinopse_from_google()`
+- `bm_ajax_fill_by_isbn()`
+- `bm_ajax_service_register_book_by_isbn()`
+
+#### 25.1.2 Respeito ao Modo de Capa (Hotlink vs Download)
+O plugin possui uma configuração global (`cover_mode`) que define como as capas devem ser salvas. O código deve ser corrigido para respeitar essa regra em **todos os fluxos**, sem exceção:
+- **Busca Manual** (metabox do livro) → `bm_search_book_cover()`
+- **Sinopse** (botão "Buscar Sinopse") → `bm_fetch_sinopse_from_google()`
+- **Importação CSV** → `includes/admin-csv.php` (loop de processamento)
+- **Preenchimento por ISBN na edição** → `bm_ajax_fill_by_isbn()`
+- **Cadastro rápido por ISBN no balcão** → `bm_ajax_service_register_book_by_isbn()`
+
+Regras:
+- Se `cover_mode === 'hotlink'`: O código deve salvar apenas a URL externa no metadado `_bm_cover_hotlink` e **jamais** usar `wp_remote_get()` ou `file_put_contents()` para baixar a imagem para a pasta `uploads`.
+- Se `cover_mode === 'download'`: O código deve baixar a imagem, registrar o anexo e vinculá-la como "Imagem Destacada".
+
+#### 25.1.3 Resiliência e Timeout (Importação em Massa)
+A importação de CSV faz chamadas em um loop muito rápido, o que pode causar bloqueios temporários da API do Google (Erro 429) ou timeouts.
+- **Retry:** As funções de busca devem ter um mecanismo de "segunda chance". Se a primeira chamada HTTP falhar (`is_wp_error`), o código deve aguardar 1 segundo (`sleep(1)`) e tentar a busca uma segunda vez antes de desistir do livro.
+- **Timeout:** O limite de espera da resposta do Google (`timeout` do `wp_remote_get`) deve ser de no mínimo 20 segundos para suportar redes lentas.
+- **Limite de tentativas:** no máximo **2 tentativas por livro** (1 original + 1 retry). Não usar loop de retry.
+- **Alerta de performance:** o `sleep(1)` somado ao timeout de 20s pode estourar `max_execution_time` (30s) do PHP em importações longas. Se o teste na Fase 64 indicar estouro, reduzir o `sleep` para 0,5s ou remover o retry em lotes acima de N livros — decisão a ser tomada com base em teste real, não presumida.
+
+### 25.2 Barreiras do Escopo (Proibido)
+- ❌ **Não alterar o código da IA (DeepSeek).** O escopo é estritamente focado na Google Books e no sistema de capas.
+- ❌ **Não criar novas opções no banco de dados.** Devem ser usadas as opções existentes (ex: `bm_get_settings()['cover_mode']`).
+- ❌ **Não alterar a lógica de negócio do Número de Chamada (CDU/Cutter) ou do Chatbot.**
+- ❌ **Não modificar a estrutura de metadados** (`_bm_cover_hotlink`, `_bm_dynamic_sinopse`, etc.).
+- ❌ **Não editar `includes/admin-settings.php` neste ciclo.** Ele entra apenas como conferência (verificar que a chave DeepSeek está sendo lida corretamente por `bm_get_api_key()`). Qualquer alteração nele está fora do escopo do Ciclo 14.
+- ❌ **Não tocar em arquivos fora dos 2 arquivos editáveis do Ciclo 14:** `includes/frontend.php` e `includes/admin-csv.php`.
+- ❌ **Não entregar blocos de código com localizadores imprecisos.** O código deve ser gerado de forma cirúrgica, com localizadores claros e testáveis, um passo por vez.
+
+**Nota de versionamento:** a versão sobe de 13.0.0 → **13.1.0** ao final do Ciclo 14. O cabeçalho de `book-manager.php` deve ser atualizado na Fase 65, junto com `changelog.md` e `roadmap.md`.
+
+### 25.3 Critério de Sucesso do Ciclo 14
+O Ciclo 14 só é considerado concluído quando:
+1. Busca manual de capa respeita o `cover_mode` (hotlink salva só URL; download baixa imagem).
+2. Busca manual de sinopse preenche corretamente usando Título+Autor → Título.
+3. Importação de 3 livros via CSV conclui com capa e sinopse, sem baixar imagem no modo Hotlink.
+4. Preenchimento por ISBN (edição e balcão) segue a regra Título+Autor → Título.
+5. Nenhuma chamada usa Título+Autor+Editora.
+6. Nenhuma regressão nas funcionalidades de IA (DeepSeek), CDU/Cutter ou Chatbot.
+7. `changelog.md` e `roadmap.md` atualizados; versão 13.1.0 no cabeçalho.
