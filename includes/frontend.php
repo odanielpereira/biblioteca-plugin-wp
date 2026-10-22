@@ -325,7 +325,6 @@ function bm_google_books_search($title, $author, $publisher, $isbn = '') {
     // Prioriza Título + Autor e ignora a editora para não falhar com edições diferentes
     if (!empty($title) && !empty($author)) $queries[] = $title . ' ' . $author;
     if (!empty($title)) $queries[] = $title;
-    if (!empty($title) && !empty($author) && !empty($publisher)) $queries[] = $title . ' ' . $author . ' ' . $publisher;
     if (empty($queries)) return false;
 
     $st = mb_strtolower(trim($title));
@@ -333,8 +332,12 @@ function bm_google_books_search($title, $author, $publisher, $isbn = '') {
 
     foreach ($queries as $query) {
         $url = 'https://www.googleapis.com/books/v1/volumes?q=' . urlencode($query) . '&key=' . bm_get_api_key('google_books');
-        $r = wp_remote_get($url, array('timeout' => 15));
-        if (is_wp_error($r)) continue;
+        $r = wp_remote_get($url, array('timeout' => 20));
+        if (is_wp_error($r)) {
+            sleep(1);
+            $r = wp_remote_get($url, array('timeout' => 20));
+            if (is_wp_error($r)) continue;
+        }
         $body = json_decode(wp_remote_retrieve_body($r), true);
         if (empty($body['items'])) continue;
 
@@ -439,7 +442,6 @@ function bm_fetch_google_book_data($title, $author = '', $publisher = '', $isbn 
     // Prioriza Título + Autor para não falhar com editoras diferentes
     if (!empty($title) && !empty($author)) $queries[] = $title . ' ' . $author;
     if (!empty($title)) $queries[] = $title;
-    if (!empty($title) && !empty($author) && !empty($publisher)) $queries[] = $title . ' ' . $author . ' ' . $publisher;
     if (empty($queries)) return false;
 
     $st = mb_strtolower(trim($title));
@@ -527,7 +529,6 @@ function bm_search_book_cover() {
     if(!empty($isbn)){$c=preg_replace('/[^0-9]/','',$isbn); if(strlen($c)>=10){$queries[]='isbn:'.$c;$ln[]='ISBN';}}
     if(!empty($title)&&!empty($author)){$queries[]=$title.' '.$author;$ln[]='Título + Autor';}
     if(!empty($title)){$queries[]=$title;$ln[]='Título';}
-    if(!empty($title)&&!empty($author)&&!empty($publisher)){$queries[]=$title.' '.$author.' '.$publisher;$ln[]='Título + Autor + Editora';}
     if(empty($queries)) wp_die(esc_html__('Preencha Título, Autor ou ISBN.','book-manager'));
     $body=null; $used='';
     foreach($queries as $i=>$q){
@@ -2449,23 +2450,29 @@ function bm_ajax_service_register_book_by_isbn() {
     if (isset($info['imageLinks']['thumbnail'])) {
         $cover_url = str_replace('http://', 'https://', $info['imageLinks']['thumbnail']);
         $cover_url = str_replace('&zoom=1', '&zoom=2', $cover_url);
-        require_once ABSPATH . 'wp-admin/includes/media.php';
-        require_once ABSPATH . 'wp-admin/includes/file.php';
-        require_once ABSPATH . 'wp-admin/includes/image.php';
-        $ir = wp_remote_get($cover_url, array('timeout' => 15));
-        if (!is_wp_error($ir)) {
-            $body = wp_remote_retrieve_body($ir);
-            if (!empty($body)) {
-                $ud = wp_upload_dir();
-                $fn = 'book-cover-' . $post_id . '-' . time() . '.jpg';
-                $fp = $ud['path'] . '/' . $fn;
-                file_put_contents($fp, $body);
-                $att = array('post_mime_type' => 'image/jpeg', 'post_title' => $title, 'post_content' => '', 'post_status' => 'inherit');
-                $aid = wp_insert_attachment($att, $fp, $post_id);
-                if (!is_wp_error($aid)) {
-                    $ad = wp_generate_attachment_metadata($aid, $fp);
-                    wp_update_attachment_metadata($aid, $ad);
-                    set_post_thumbnail($post_id, $aid);
+        $settings = bm_get_settings();
+        $cover_mode = isset($settings['cover_mode']) ? $settings['cover_mode'] : 'download';
+        if ($cover_mode === 'hotlink') {
+            update_post_meta($post_id, '_bm_cover_hotlink', $cover_url);
+        } else {
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            $ir = wp_remote_get($cover_url, array('timeout' => 15));
+            if (!is_wp_error($ir)) {
+                $body = wp_remote_retrieve_body($ir);
+                if (!empty($body)) {
+                    $ud = wp_upload_dir();
+                    $fn = 'book-cover-' . $post_id . '-' . time() . '.jpg';
+                    $fp = $ud['path'] . '/' . $fn;
+                    file_put_contents($fp, $body);
+                    $att = array('post_mime_type' => 'image/jpeg', 'post_title' => $title, 'post_content' => '', 'post_status' => 'inherit');
+                    $aid = wp_insert_attachment($att, $fp, $post_id);
+                    if (!is_wp_error($aid)) {
+                        $ad = wp_generate_attachment_metadata($aid, $fp);
+                        wp_update_attachment_metadata($aid, $ad);
+                        set_post_thumbnail($post_id, $aid);
+                    }
                 }
             }
         }
@@ -2543,24 +2550,31 @@ function bm_ajax_fill_by_isbn() {
         if (strpos($cover_url, '&zoom=') === false) {
             $cover_url .= '&zoom=2';
         }
-        require_once ABSPATH . 'wp-admin/includes/media.php';
-        require_once ABSPATH . 'wp-admin/includes/file.php';
-        require_once ABSPATH . 'wp-admin/includes/image.php';
-        $ir = wp_remote_get($cover_url, array('timeout' => 15));
-        if (!is_wp_error($ir)) {
-            $body = wp_remote_retrieve_body($ir);
-            if (!empty($body)) {
-                $ud = wp_upload_dir();
-                $fn = 'book-cover-' . $post_id . '-' . time() . '.jpg';
-                $fp = $ud['path'] . '/' . $fn;
-                file_put_contents($fp, $body);
-                $att = array('post_mime_type' => 'image/jpeg', 'post_title' => get_the_title($post_id), 'post_content' => '', 'post_status' => 'inherit');
-                $aid = wp_insert_attachment($att, $fp, $post_id);
-                if (!is_wp_error($aid)) {
-                    $ad = wp_generate_attachment_metadata($aid, $fp);
-                    wp_update_attachment_metadata($aid, $ad);
-                    set_post_thumbnail($post_id, $aid);
-                    $filled[] = esc_html__('Capa', 'book-manager');
+        $settings = bm_get_settings();
+        $cover_mode = isset($settings['cover_mode']) ? $settings['cover_mode'] : 'download';
+        if ($cover_mode === 'hotlink') {
+            update_post_meta($post_id, '_bm_cover_hotlink', $cover_url);
+            $filled[] = esc_html__('Capa', 'book-manager');
+        } else {
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+            $ir = wp_remote_get($cover_url, array('timeout' => 15));
+            if (!is_wp_error($ir)) {
+                $body = wp_remote_retrieve_body($ir);
+                if (!empty($body)) {
+                    $ud = wp_upload_dir();
+                    $fn = 'book-cover-' . $post_id . '-' . time() . '.jpg';
+                    $fp = $ud['path'] . '/' . $fn;
+                    file_put_contents($fp, $body);
+                    $att = array('post_mime_type' => 'image/jpeg', 'post_title' => get_the_title($post_id), 'post_content' => '', 'post_status' => 'inherit');
+                    $aid = wp_insert_attachment($att, $fp, $post_id);
+                    if (!is_wp_error($aid)) {
+                        $ad = wp_generate_attachment_metadata($aid, $fp);
+                        wp_update_attachment_metadata($aid, $ad);
+                        set_post_thumbnail($post_id, $aid);
+                        $filled[] = esc_html__('Capa', 'book-manager');
+                    }
                 }
             }
         }
